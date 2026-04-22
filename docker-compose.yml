@@ -1,0 +1,150 @@
+# ────────────────────────────────────────────────────────────────
+# Collections AI — full stack
+# ────────────────────────────────────────────────────────────────
+#
+# MOCK (no API keys):          docker compose up --build
+# LIVE (real Claude + Vapi):   docker compose --profile live up --build
+#
+# Services:
+#   postgres      — Temporal persistence
+#   temporal      — Workflow engine          (port 7233)
+#   temporal-ui   — Temporal web UI          (http://localhost:8233)
+#   worker        — Mock worker              (collections-queue)
+#   worker-live   — Live worker [profile=live] (collections-queue-live)
+#   chat-server   — FastAPI + WebSocket UI   (http://localhost:8000)
+#   harness       — Auto smoke-test (exits)
+# ────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────── #
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - temporal-db:/var/lib/postgresql/data
+
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z $(hostname -i) 7233"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 45s
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8233
+    ports:
+      - "8233:8080"
+
+  # ── Mock worker (simulation, no API keys) ───────────────── #
+
+  worker:
+    build: .
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TASK_QUEUE=collections-queue
+      - USE_LLM_MOCK=1
+      - USE_REAL_CHAT=0
+      - SKIP_LLM_JUDGE=1
+      - VOICE_PROVIDER=mock
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+    command: ["python", "-m", "src.temporal_activities"]
+    volumes:
+      - ./call_logs:/app/call_logs
+    restart: on-failure
+
+  # ── Live worker (real Claude + Vapi) ────────────────────── #
+
+  worker-live:
+    build: .
+    profiles: [live]
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TASK_QUEUE=collections-queue-live
+      - USE_LLM_MOCK=0
+      - USE_REAL_CHAT=1
+      - SKIP_LLM_JUDGE=1
+      - VOICE_PROVIDER=vapi
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VAPI_API_KEY=${VAPI_API_KEY}
+      - VAPI_ASSISTANT_ID=${VAPI_ASSISTANT_ID}
+      - VAPI_PHONE_NUMBER_ID=${VAPI_PHONE_NUMBER_ID}
+      - CALLER_NUMBER=${CALLER_NUMBER}
+      - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+    command: ["python", "-m", "src.temporal_activities"]
+    volumes:
+      - ./call_logs:/app/call_logs
+    restart: on-failure
+
+  # ── Chat server (FastAPI + WebSocket UI) ────────────────── #
+
+  chat-server:
+    build: .
+    depends_on:
+      temporal:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TASK_QUEUE_LIVE=collections-queue-live
+      - CHAT_HOST=localhost:8000
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+      - PORT=8000
+    command: ["python", "-m", "src.chat_server"]
+    restart: on-failure
+
+  # ── Smoke-test harness (mock, exits after 4 runs) ───────── #
+
+  harness:
+    build: .
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TASK_QUEUE=collections-queue
+      - USE_LLM_MOCK=1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+    command: ["python", "-m", "src.starter", "--batch"]
+    restart: on-failure
+
+volumes:
+  temporal-db:

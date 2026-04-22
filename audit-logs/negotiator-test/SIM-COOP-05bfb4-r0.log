@@ -1,0 +1,40 @@
+════════════════════════════════════════════════════════════════════════
+RUN SIM-COOP-05bfb4-r0
+════════════════════════════════════════════════════════════════════════
+
+┌─ STAGE 1: ASSESSMENT (chat) ────────────────────────────────────────
+│ t1 │ Borrower: Yes, I received your notice. What is this about exactly?
+│    │ Agent:    Last four digits of your loan account number and your birth year.
+│    │ out_tokens=16
+│ t2 │ Borrower: Last 4 digits are 9102, born 1987.
+│    │ Agent:    Confirmed. Monthly income amount.
+│    │ out_tokens=10
+│ t3 │ Borrower: My monthly income is around 90000 but it varies.
+│    │ Agent:    Monthly expenses amount.
+│    │ out_tokens=7
+│ t4 │ Borrower: Expenses are about 55000 a month, maybe more with kids.
+│    │ Agent:    Employment status.
+│    │ out_tokens=6
+│ t5 │ Borrower: Salaried, I work in manufacturing, 8 years tenure.
+│    │ Agent:    Total value of assets — property, vehicles, or investments. Amount in rupees.
+│    │ out_tokens=20
+│ t6 │ Borrower: I have a flat worth maybe 4500000 but it has a home loan on it.
+│    │ Agent:    Other liabilities — total outstanding amount in rupees, including the home loan.
+│    │ out_tokens=19
+│ t7 │ Borrower: I have a car loan with 150000 outstanding.
+│    │ Agent:    Home loan outstanding amount.
+│    │ out_tokens=8
+│ t8 │ Borrower: Cash flow is tight this year because of medical bills.
+│    │ Agent:    Total outstanding on the home loan. Amount in rupees.
+│    │ out_tokens=15
+│ Stage eval: PASS (score=0.80)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — N/A for assessment
+│   ✓ response_length        1.00 — avg 7 words (limit 120)
+│   ✗ outcome_marker         0.00 — no stage completion detected
+└───────────────────────────────────────────────────────────────────────
+
+── Cost breakdown ──
+  AssessmentAgent: 4945 in / 101 out = $0.0817
+  TOTAL: $0.0817

@@ -1,0 +1,3 @@
+{"ts": "2026-04-21T08:39:16.974559+00:00", "run_id": "SIM-COOP-0246bf-r0", "event": "run_started"}
+{"ts": "2026-04-21T08:39:16.974599+00:00", "run_id": "SIM-COOP-0246bf-r0", "event": "run_config", "persona": "cooperative", "live": true, "personas_file": "personas/negotiator.json", "prompt_overrides_file": null, "model": "claude-opus-4-5", "profile": "SIM-COOP-0246bf"}
+{"ts": "2026-04-21T08:39:50.118559+00:00", "run_id": "SIM-COOP-0246bf-r0", "event": "run_finished"}

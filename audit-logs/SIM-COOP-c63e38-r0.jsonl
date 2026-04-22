@@ -1,0 +1,4 @@
+{"ts": "2026-04-21T08:24:04.277858+00:00", "run_id": "SIM-COOP-c63e38-r0", "event": "run_started"}
+{"ts": "2026-04-21T08:24:04.277915+00:00", "run_id": "SIM-COOP-c63e38-r0", "event": "run_config", "persona": "cooperative", "live": true, "personas_file": "personas/example_cooperative.json", "prompt_overrides_file": "prompts/example_tweaks.json", "model": "claude-opus-4-5", "profile": "SIM-COOP-c63e38"}
+{"ts": "2026-04-21T08:24:21.136162+00:00", "run_id": "SIM-COOP-c63e38-r0", "event": "final_report", "outcome": "assessment_incomplete", "final_stage": "assessment", "total_turns": 8, "handoff_tokens": [], "cost_usd": 0.08775, "eval": {}}
+{"ts": "2026-04-21T08:24:21.136389+00:00", "run_id": "SIM-COOP-c63e38-r0", "event": "run_finished"}

@@ -1,0 +1,22 @@
+{
+  "AssessmentAgent": [
+    "Yes, I got the notice. I'm ready to discuss.",
+    "Last 4 digits are 4455, born in 1992.",
+    "I earn 75000 a month.",
+    "My monthly expenses are about 45000.",
+    "I'm salaried at a tech firm in Bengaluru.",
+    "I own a flat worth about 3500000 and a car worth 800000.",
+    "No other loans at the moment.",
+    "Cash flow is a bit tight this quarter but manageable.",
+    "Anything else you need?"
+  ],
+  "ResolutionAgent": [
+    "What plans can you offer me?",
+    "The installment plan sounds workable. Can the down payment be lower?",
+    "Fine. I accept the installment plan."
+  ],
+  "FinalNoticeAgent": [
+    "Got it. I'll make the down payment today.",
+    "Yes, I formally accept."
+  ]
+}

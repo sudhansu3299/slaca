@@ -1,0 +1,24 @@
+{
+  "_description": "A middle-income borrower who negotiates hard but eventually accepts. Steady job, some savings. Pushes back on every term, asks for discounts, but ultimately commits to the installment plan.",
+  "AssessmentAgent": [
+    "Yes, I received your notice. What is this about exactly?",
+    "Last 4 digits are 9102, born 1987.",
+    "My monthly income is around 90000 but it varies.",
+    "Expenses are about 55000 a month.",
+    "Salaried, I work in manufacturing, 8 years tenure.",
+    "Assets total about 4500000 — mostly a flat plus some savings.",
+    "Other liabilities: home loan 2500000 and car loan 150000 outstanding.",
+    "Cash flow is tight this year because of medical bills.",
+    "Anything else you need from me?"
+  ],
+  "ResolutionAgent": [
+    "What are my options here? I want to resolve this.",
+    "The down payment is too high for me. Can we cut it in half?",
+    "Look, 7225 a month is manageable but 12750 upfront is a lot. Can you spread the down payment over 2 months?",
+    "Fine, if those are the rules. I commit to the installment plan as stated."
+  ],
+  "FinalNoticeAgent": [
+    "I hear you. Just confirm the first installment date and I will pay.",
+    "Yes, I formally accept the terms you outlined."
+  ]
+}

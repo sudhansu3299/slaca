@@ -1,0 +1,100 @@
+════════════════════════════════════════════════════════════════════════
+RUN SIM-COOP-72d28e-r0
+════════════════════════════════════════════════════════════════════════
+
+┌─ STAGE 1: ASSESSMENT (chat) ────────────────────────────────────────
+│ t1 │ Borrower: Yes, I received your notice. What is this about exactly?
+│    │ Agent:    Last four digits of your loan account number and your birth year.
+│    │ out_tokens=16
+│ t2 │ Borrower: Last 4 digits are 9102, born 1987.
+│    │ Agent:    Confirmed. Monthly income amount.
+│    │ out_tokens=10
+│ t3 │ Borrower: My monthly income is around 90000 but it varies.
+│    │ Agent:    Monthly expenses amount.
+│    │ out_tokens=7
+│ t4 │ Borrower: Expenses are about 55000 a month.
+│    │ Agent:    Employment status — salaried, self-employed, or unemployed.
+│    │ out_tokens=18
+│ t5 │ Borrower: Salaried, I work in manufacturing, 8 years tenure.
+│    │ Agent:    Total value of assets — property, vehicles, or investments. Amount in rupees.
+│    │ out_tokens=20
+│ t6 │ Borrower: Assets total about 4500000 — mostly a flat plus some savings.
+│    │ Agent:    Total value of other liabilities — existing loans, credit card debt, or pending dues. Amount in rupees.
+│    │ out_tokens=26
+│ t7 │ Borrower: Other liabilities: home loan 2500000 and car loan 150000 outstanding.
+│    │ Agent:    Cash flow difficulty — yes, no, or mild.
+│    │ out_tokens=14
+│ t8 │ Borrower: Cash flow is tight this year because of medical bills.
+│    │ Agent:    [System: repeated question guard triggered for ['cash_flow_issue']] Other liabilities confirmed at ₹2,650,000. Cash flow difficulty confirmed.
+│    │ out_tokens=32 ✓ ADVANCED
+│ Stage eval: PASS (score=1.00)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — N/A for assessment
+│   ✓ response_length        1.00 — avg 10 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 2: RESOLUTION (voice) ────────────────────────────────────────
+│ t1 │ Borrower: What are my options here? I want to resolve this.
+│    │ Agent:    Here's the offer: ₹12,750 down payment within 3 days, followed by ₹7,225 per month for 10 months. This clears your outstanding balance in full.
+
+Can you commit to this today?
+│    │ out_tokens=57
+│ t2 │ Borrower: The down payment is too high for me. Can we cut it in half?
+│    │ Agent:    The down payment is ₹12,750 — that's the minimum required to lock in this plan. The monthly payments are structured at ₹7,225 to fit within your budget.
+
+Can you commit to the ₹12,750 down payment within 3 days?
+│    │ out_tokens=66
+│ t3 │ Borrower: Look, 7225 a month is manageable but 12750 upfront is a lot. Can you spread the down payment over 2 months?
+│    │ Agent:    The terms remain: ₹12,750 down payment within 3 days, then ₹7,225 monthly for 10 months. The down payment cannot be split.
+
+Can you commit to these terms today?
+│    │ out_tokens=53
+│ t4 │ Borrower: Fine, if those are the rules. I commit to the installment plan as stated.
+│    │ Agent:    Confirmed. You've committed to the installment plan: ₹12,750 down payment by April 24th, followed by ₹7,225 per month for 10 months.
+
+You'll receive payment instructions shortly. Thank you for resolving this today.
+│    │ out_tokens=69 ✓ ADVANCED
+│ Stage eval: PASS (score=0.96)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        0.80 — 2/5 push keywords found
+│   ✓ response_length        1.00 — avg 32 words (limit 40)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 3: FINAL NOTICE (chat) ────────────────────────────────────────
+│ t1 │ Borrower: I hear you. Just confirm the first installment date and I will pay.
+│    │ Agent:    **FINAL OFFER — EXPIRES 24 Apr 2026 08:40 UTC**
+
+- ₹12,750 down payment due by **24 April 2026**
+- First monthly installment of ₹7,225 due **24 May 2026**
+- 9 subsequent payments of ₹7,225 each on the 24th of each following month
+
+Do you accept this offer?
+│    │ out_tokens=101
+│ t2 │ Borrower: Yes, I formally accept the terms you outlined.
+│    │ Agent:    **ACCEPTANCE CONFIRMED**
+
+- Down payment: ₹12,750 due **24 April 2026**
+- First installment: ₹7,225 due **24 May 2026**
+- Remaining 9 installments: ₹7,225 each on the 24th of subsequent months
+
+Payment instructions will be sent to your registered contact details within 24 hours.
+
+****
+│    │ out_tokens=103 ✓ ADVANCED
+│ Stage eval: PASS (score=0.88)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✗ resolution_push        0.40 — 1/5 push keywords found
+│   ✓ response_length        1.00 — avg 46 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+── Cost breakdown ──
+  AssessmentAgent: 4988 in / 143 out = $0.0855
+  ResolutionAgent: 3889 in / 245 out = $0.0767
+  FinalNoticeAgent: 2188 in / 204 out = $0.0481
+  TOTAL: $0.2104

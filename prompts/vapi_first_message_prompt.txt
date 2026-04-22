@@ -1,0 +1,3 @@
+This is regarding your outstanding loan of ₹{outstanding_amount}.
+I'm calling to discuss your settlement options.
+Based on your assessment — {employment_status}, monthly income ₹{monthly_income} — I have a {resolution_path} offer ready for you.

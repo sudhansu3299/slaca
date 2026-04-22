@@ -1,0 +1,66 @@
+════════════════════════════════════════════════════════════════════════
+RUN SIM-COOP-150d3d-r0
+════════════════════════════════════════════════════════════════════════
+
+┌─ STAGE 1: ASSESSMENT (chat) ────────────────────────────────────────
+│ t1 │ Borrower: Hi, I received the collections notice.
+│    │ Agent:    Please provide the last 4 digits of your loan account and birth year.
+│    │ out_tokens=60
+│ t2 │ Borrower: Last 4 digits are 7823, born in 1985.
+│    │ Agent:    What is your current monthly income?
+│    │ out_tokens=60
+│ t3 │ Borrower: My monthly income is 60000 and I spend about 40000.
+│    │ Agent:    [System: repeated question guard triggered for ['monthly_expenses']] What are your monthly expenses?
+│    │ out_tokens=60
+│ t4 │ Borrower: I am salaried at a private company.
+│    │ Agent:    [System: repeated question guard triggered for ['employment_status']] What is your employment status?
+│    │ out_tokens=60
+│ t5 │ Borrower: I have a vehicle worth about 150000.
+│    │ Agent:    [System: repeated question guard triggered for ['assets_value']] Do you have any assets?
+│    │ out_tokens=60
+│ t6 │ Borrower: No other significant liabilities.
+│    │ Agent:    Thank you.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=1.00)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — N/A for assessment
+│   ✓ response_length        1.00 — avg 10 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 2: RESOLUTION (voice) ────────────────────────────────────────
+│ t1 │ Borrower: What options do I have?
+│    │ Agent:    Your offer: ₹12,750 down + ₹7,225/month × 10 months. Deadline April 24.
+│    │ out_tokens=60
+│ t2 │ Borrower: The installment plan sounds reasonable.
+│    │ Agent:    Terms are fixed. Can you commit?
+│    │ out_tokens=60
+│ t3 │ Borrower: Yes, I can commit to the 10-month plan. I agree.
+│    │ Agent:    Confirmed.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=1.00)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — 3/5 push keywords found
+│   ✓ response_length        1.00 — avg 6 words (limit 40)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 3: FINAL NOTICE (chat) ────────────────────────────────────────
+│ t1 │ Borrower: I understand. Can I still take the installment offer?
+│    │ Agent:    Final offer expires April 24. Credit bureau reporting follows.
+│    │ out_tokens=60
+│ t2 │ Borrower: Yes, I accept the terms. Please proceed.
+│    │ Agent:    Payment confirmed.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=0.96)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        0.80 — 2/5 push keywords found
+│   ✓ response_length        1.00 — avg 6 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+── Cost breakdown ──
+  TOTAL: $0.0000

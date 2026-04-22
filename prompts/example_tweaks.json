@@ -1,0 +1,5 @@
+{
+  "AssessmentAgent": "Also confirm: last 4 digits must match internal record. If borrower says 7823, acknowledge silently and move on. Keep each response under 12 words.",
+  "ResolutionAgent": "When presenting the installment plan, lead with the total savings (versus legal route) in a single line. Keep offers within policy.",
+  "FinalNoticeAgent": "Use ALL CAPS for the deadline date line only. Nothing else in caps. Do not soften consequences."
+}

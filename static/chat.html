@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Loan Resolution — Collections</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0f1a; --surface: #161927; --border: #252839;
+  --accent: #4c82f7; --accent-dim: #3464c8;
+  --agent: #1b1f31; --borrower: #0f2d5e;
+  --amber: #f59e0b; --green: #22c55e; --red: #ef4444; --purple: #8b5cf6;
+  --text: #dde3f0; --muted: #7a849a; --radius: 16px; --r2: 8px;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header ──────────────────────────── */
+.hdr {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.hdr-icon {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg,#4c82f7,#8b5cf6);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.hdr-info h2 { font-size: 14px; font-weight: 700; }
+.hdr-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+  transition: all .3s;
+}
+.dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.ring { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.2s infinite; }
+
+/* ── Stage bar ─────────────────────────── */
+.stage-bar {
+  background: #0f1120; border-bottom: 1px solid var(--border);
+  padding: 6px 18px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  font-size: 11px; color: var(--muted);
+}
+.pill {
+  padding: 2px 10px; border-radius: 20px; font-size: 10px;
+  font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  background: var(--border); transition: all .3s;
+}
+.pill.assessment  { background: #0d2a4a; color: #60a5fa; }
+.pill.resolution  { background: #2d1660; color: #c084fc; }
+.pill.final_notice{ background: #3a0f0f; color: #f87171; }
+.pill.complete    { background: #0d3021; color: #4ade80; }
+.pill.escalated   { background: #3a0f0f; color: #f87171; }
+
+/* ── Voice overlay ─────────────────────── */
+.voice-banner {
+  display: none; flex-direction: column; align-items: center;
+  gap: 10px; padding: 20px; background: #0d0f1a;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.voice-banner.show { display: flex; }
+.ring-anim {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, #4c82f7, #8b5cf6);
+  display: flex; align-items: center; justify-content: center; font-size: 26px;
+  animation: ringpulse 1.5s infinite;
+}
+@keyframes ringpulse {
+  0%   { box-shadow: 0 0 0 0 rgba(76,130,247,.5); }
+  70%  { box-shadow: 0 0 0 18px rgba(76,130,247,0); }
+  100% { box-shadow: 0 0 0 0 rgba(76,130,247,0); }
+}
+.voice-label { font-size: 13px; font-weight: 600; }
+.voice-sub { font-size: 11px; color: var(--muted); text-align: center; max-width: 280px; }
+
+/* ── Messages ───────────────────────────── */
+.msgs {
+  flex: 1; overflow-y: auto; padding: 16px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  scroll-behavior: smooth;
+}
+.msgs::-webkit-scrollbar { width: 3px; }
+.msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.row { display: flex; gap: 8px; max-width: 88%; animation: fadeup .2s ease; }
+.row.agent    { align-self: flex-start; }
+.row.borrower { align-self: flex-end;   flex-direction: row-reverse; }
+.row.system   { align-self: center;     max-width: 100%; }
+
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: .35; }
+}
+
+.av {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0; align-self: flex-end;
+}
+.av.agent    { background: linear-gradient(135deg,#4c82f7,#8b5cf6); }
+.av.borrower { background: var(--border); }
+
+.bbl {
+  padding: 9px 13px; border-radius: var(--radius);
+  font-size: 13.5px; line-height: 1.6; word-break: break-word;
+}
+.agent   .bbl { background: var(--agent);    border-bottom-left-radius: 4px; }
+.borrower .bbl { background: var(--borrower); border-bottom-right-radius: 4px; }
+
+.ts { font-size: 10px; color: var(--muted); margin-top: 3px; padding: 0 3px; }
+.agent .ts    { text-align: left; }
+.borrower .ts { text-align: right; }
+
+.sys-msg {
+  border: 1px solid var(--border); border-radius: var(--r2);
+  padding: 7px 14px; font-size: 11px; color: var(--muted); text-align: center;
+}
+.sys-msg.amber  { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,.06); }
+.sys-msg.green  { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.06); }
+.sys-msg.red    { border-color: var(--red);   color: var(--red);   background: rgba(239,68,68,.06); }
+
+.typing {
+  display: flex; gap: 3px; padding: 10px 13px;
+  background: var(--agent); border-radius: var(--radius);
+  border-bottom-left-radius: 4px; width: fit-content;
+}
+.typing span {
+  width: 5px; height: 5px; background: var(--muted);
+  border-radius: 50%; animation: bounce .9s infinite;
+}
+.typing span:nth-child(2) { animation-delay: .15s; }
+.typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce {
+  0%,60%,100% { transform:translateY(0); }
+  30%          { transform:translateY(-5px); }
+}
+
+/* ── Input ────────────────────────────── */
+.iarea {
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 10px 14px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+}
+.iarea textarea {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r2); color: var(--text); padding: 9px 12px;
+  font-size: 13.5px; font-family: inherit; resize: none; max-height: 100px;
+  line-height: 1.5; outline: none; transition: border-color .2s;
+}
+.iarea textarea:focus { border-color: var(--accent); }
+.iarea textarea:disabled { opacity: .35; cursor: not-allowed; }
+.sbtn {
+  width: 38px; height: 38px; background: var(--accent); border: none;
+  border-radius: 50%; color: #fff; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .2s, transform .1s;
+}
+.sbtn:hover:not(:disabled) { background: var(--accent-dim); }
+.sbtn:active:not(:disabled) { transform: scale(.92); }
+.sbtn:disabled { opacity: .35; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-icon">🏦</div>
+  <div class="hdr-info">
+    <h2 id="hdr-title">Loan Resolution</h2>
+    <div class="hdr-sub" id="hdr-sub">Connecting…</div>
+  </div>
+  <div class="hdr-right">
+    <div class="dot" id="dot"></div>
+  </div>
+</div>
+
+<!-- Stage bar -->
+<div class="stage-bar">
+  Stage: <span class="pill" id="pill">—</span>
+  <span id="stage-name" style="margin-left:4px"></span>
+</div>
+
+<!-- Voice call banner (shown during resolution) -->
+<div class="voice-banner" id="voice-banner">
+  <div class="ring-anim">📞</div>
+  <div class="voice-label">Your phone is ringing</div>
+  <div class="voice-sub">Answer the call to discuss your settlement options. The agent already knows your situation.</div>
+</div>
+
+<!-- Messages -->
+<div class="msgs" id="msgs"></div>
+
+<!-- Input area -->
+<div class="iarea">
+  <textarea id="inp" rows="1" placeholder="Type your reply…"
+    onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+  <button class="sbtn" id="sbtn" onclick="send()">&#10148;</button>
+</div>
+
+<script>
+const WF = "{{WORKFLOW_ID}}";
+const WS_URL = `ws://${location.host}/ws/${WF}`;
+
+const msgsEl  = document.getElementById("msgs");
+const inpEl   = document.getElementById("inp");
+const sbtnEl  = document.getElementById("sbtn");
+const dotEl   = document.getElementById("dot");
+const hdrSub  = document.getElementById("hdr-sub");
+const pillEl  = document.getElementById("pill");
+const nameEl  = document.getElementById("stage-name");
+const voiceEl = document.getElementById("voice-banner");
+
+const STAGE_NAMES = {
+  assessment:   "Assessment Chat",
+  resolution:   "Voice Call",
+  final_notice: "Final Notice",
+  complete:     "Resolved ✓",
+  escalated:    "Escalated",
+};
+
+let ws, retryTimer, stage = "assessment", disabled = false;
+
+// ── WebSocket ──────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    dotEl.className = "dot on";
+    hdrSub.textContent = "Connected";
+    clearTimeout(retryTimer);
+  };
+  ws.onclose = () => {
+    dotEl.className = "dot";
+    hdrSub.textContent = "Reconnecting…";
+    retryTimer = setTimeout(connect, 2500);
+  };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => handle(JSON.parse(e.data));
+}
+
+function handle(m) {
+  if (m.role === "agent") {
+    removeTyping();
+    addMsg("agent", m.content, m.stage, m.ts);
+    setStage(m.stage);
+  } else if (m.role === "borrower") {
+    // already shown locally — skip duplicate echo
+  } else if (m.role === "system") {
+    handleSystem(m);
+  }
+}
+
+function handleSystem(m) {
+  const ev = m.event || "";
+  if (ev === "assessment_complete") {
+    addSys("✅ Assessment complete — you will receive a call shortly.", "amber");
+    setStage("resolution");
+    setVoice(true);
+    setDisabled(true, "Waiting for your call…");
+    dotEl.className = "dot ring";
+    hdrSub.textContent = "Voice call in progress";
+  } else if (ev === "final_notice_opened") {
+    // Voice call ended — final notice chat begins
+    setVoice(false);
+    setStage("final_notice");
+    dotEl.className = "dot on";
+    hdrSub.textContent = "Final Notice";
+    setDisabled(false);
+    addSys(m.content, "amber");
+  } else if (ev === "final_notice_resolved") {
+    addSys("✅ " + m.content, "green");
+    setStage("complete");
+    setDisabled(true, "Case closed.");
+  } else if (ev === "final_notice_escalated") {
+    addSys("⚠️ " + m.content, "red");
+    setStage("escalated");
+    setDisabled(true, "Escalated to legal.");
+  }
+}
+
+// ── UI helpers ──────────────────────────────────────────────
+function setStage(s) {
+  if (!s || s === stage) return;
+  stage = s;
+  pillEl.className = `pill ${s}`;
+  pillEl.textContent = s.replace("_", " ");
+  nameEl.textContent = STAGE_NAMES[s] || "";
+}
+
+function setVoice(on) {
+  voiceEl.classList.toggle("show", on);
+}
+
+function setDisabled(on, hint) {
+  disabled = on;
+  inpEl.disabled = on;
+  sbtnEl.disabled = on;
+  inpEl.placeholder = hint || (on ? "…" : "Type your reply…");
+}
+
+function addMsg(role, text, stg, ts) {
+  setStage(stg);
+  const row = el("div", `row ${role}`);
+  const av  = el("div", `av ${role}`);
+  av.textContent = role === "agent" ? "🤖" : "👤";
+  const wrap = el("div");
+  const bbl  = el("div", "bbl");
+  bbl.textContent = text;
+  const t = el("div", "ts");
+  t.textContent = ts ? new Date(ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "";
+  wrap.append(bbl, t);
+  row.append(role === "agent" ? av : wrap, role === "agent" ? wrap : av);
+  msgsEl.appendChild(row);
+  scroll();
+}
+
+function addSys(text, cls="") {
+  const row = el("div", "row system");
+  const d = el("div", `sys-msg ${cls}`);
+  d.innerHTML = text;
+  row.appendChild(d);
+  msgsEl.appendChild(row);
+  scroll();
+}
+
+function showTyping() {
+  const row = el("div", "row agent"); row.id = "typing";
+  row.innerHTML = `<div class="av agent">🤖</div><div class="typing"><span></span><span></span><span></span></div>`;
+  msgsEl.appendChild(row); scroll();
+}
+function removeTyping() { document.getElementById("typing")?.remove(); }
+
+function scroll() { msgsEl.scrollTop = msgsEl.scrollHeight; }
+
+function el(tag, cls="") {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+// ── Send ────────────────────────────────────────────────────
+function send() {
+  const text = inpEl.value.trim();
+  if (!text || !ws || ws.readyState !== 1 || disabled) return;
+  addMsg("borrower", text, stage, new Date().toISOString());
+  ws.send(JSON.stringify({message: text}));
+  inpEl.value = ""; resize(inpEl);
+  showTyping();
+}
+
+function onKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function resize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 100) + "px";
+}
+
+// ── Init ─────────────────────────────────────────────────────
+setStage("assessment");
+pillEl.className = "pill assessment";
+pillEl.textContent = "assessment";
+nameEl.textContent = STAGE_NAMES.assessment;
+connect();
+</script>
+</body>
+</html>

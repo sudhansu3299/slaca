@@ -1,0 +1,198 @@
+🧱 Milestone 1: System Architecture
+
+Goal: Define the full system design
+
+Must include:
+
+Temporal workflow design
+Agent boundaries
+Data flow between agents
+Storage (conversation state, summaries)
+
+Key decision pressure:
+
+Where does “truth” live? (DB vs workflow state vs memory layer)
+
+Validation:
+
+Can you trace a borrower from start → end without ambiguity?
+🔗 Milestone 2: Cross-Modal Handoff Design
+
+This is THE hardest part.
+
+Goal: Seamless transitions
+
+From your spec :
+
+No re-verification
+No repeated questions
+Voice knows chat context
+Chat reflects voice conversation
+
+Implementation Ideas:
+
+Structured summary object (NOT raw text)
+Example:
+{
+  "identity_verified": true,
+  "debt_amount": 5400,
+  "financial_state": "unstable_income",
+  "intent": "willing_partial_payment",
+  "offers_presented": [],
+  "objections": []
+}
+
+Validation:
+
+Agent 2 never asks identity again
+Agent 3 references voice conversation correctly
+✂️ Milestone 3: Token Budget Enforcement Layer
+
+Goal: Hard constraints (not “best effort”)
+
+Build:
+
+Token counter
+Summary compressor (<= 500 tokens)
+Prompt builder enforcing:
+Agent 2 → max 1500 prompt tokens
+Agent 3 → max 1500 prompt tokens
+
+Validation:
+
+Force overflow scenario → system trims correctly
+No agent exceeds limits
+🤖 Milestone 4: Agent Behavior Prompts
+
+Design tight, personality-driven prompts:
+
+Agent 1 (Assessment)
+Cold, factual
+No empathy
+Only data extraction
+Agent 2 (Resolution)
+Deal-focused
+Anchored negotiation
+Handles objections logically
+Agent 3 (Final Notice)
+Legal tone
+Deadline-driven
+No persuasion
+
+Validation:
+
+Run simulated conversations
+Ensure tone differences are obvious
+📞 Milestone 5: Voice Integration
+
+Goal: Real-time negotiation
+
+Pick one:
+
+Pipecat / Vapi / Retell
+
+Key challenge:
+
+Inject structured context into voice system
+
+Validation:
+
+Call starts mid-context (no restart feel)
+Agent responds to prior chat data naturally
+🧠 Milestone 6: Conversation Memory + Summarization
+
+Goal: Build the 500-token “golden summary”
+
+Hard requirement from spec :
+
+Must preserve:
+Identity
+Financials
+Offers
+Objections
+Emotional tone
+
+Technique:
+
+Structured → compressed → LLM rewrite
+
+Validation:
+
+Drop summary into next agent → no info loss
+🔁 Milestone 7: Self-Learning Loop
+
+Now it gets interesting.
+
+Goal: Agents improve themselves
+
+Loop:
+
+Simulate conversations
+Evaluate outcomes
+Update prompts / strategies
+
+Evaluation Metrics:
+
+Recovery rate
+Commitment success
+Drop-off points
+Repetition errors
+🧪 Milestone 8: Simulation Engine
+
+Goal: Generate synthetic borrowers
+
+Profiles:
+
+Cooperative
+Hostile
+Broke
+Strategic defaulter
+
+Validation:
+
+Agents handle all personas
+📊 Milestone 9: Evaluation System
+
+Goal: Judge agents objectively
+
+Use:
+
+LLM-as-judge OR rule-based
+
+Evaluate:
+
+Did agent repeat questions?
+Did it follow tone rules?
+Did it push toward resolution?
+💸 Milestone 10: Cost Optimization
+
+From spec :
+
+Total ≤ $20
+
+Strategies:
+
+Cheap model for simulation
+Strong model for evaluation
+Batch processing
+Cache summaries
+
+Validation:
+
+Output cost report:
+simulations
+eval calls
+total $
+🏁 Final Milestone: End-to-End Test
+
+Run full flow:
+
+Chat → Assessment
+Voice → Resolution
+Chat → Final Notice
+
+Success criteria:
+
+Feels like ONE system
+No repeated info
+Logical progression: info → deal → ultimatum

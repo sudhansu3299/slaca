@@ -1,0 +1,66 @@
+════════════════════════════════════════════════════════════════════════
+RUN SIM-COOP-1ac0d5-r0
+════════════════════════════════════════════════════════════════════════
+
+┌─ STAGE 1: ASSESSMENT (chat) ────────────────────────────────────────
+│ t1 │ Borrower: Yes, I got the notice. I'm ready to discuss.
+│    │ Agent:    Please provide the last 4 digits of your loan account and birth year.
+│    │ out_tokens=60
+│ t2 │ Borrower: Last 4 digits are 4455, born in 1992.
+│    │ Agent:    What is your current monthly income?
+│    │ out_tokens=60
+│ t3 │ Borrower: I earn 75000 a month and spend 45000.
+│    │ Agent:    [System: repeated question guard triggered for ['monthly_expenses']] What are your monthly expenses?
+│    │ out_tokens=60
+│ t4 │ Borrower: I'm salaried at a tech firm in Bengaluru.
+│    │ Agent:    [System: repeated question guard triggered for ['employment_status']] What is your employment status?
+│    │ out_tokens=60
+│ t5 │ Borrower: I own a flat worth about 3500000 and a car worth 800000.
+│    │ Agent:    [System: repeated question guard triggered for ['assets_value']] Do you have any assets?
+│    │ out_tokens=60
+│ t6 │ Borrower: No other loans at the moment.
+│    │ Agent:    Thank you.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=1.00)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — N/A for assessment
+│   ✓ response_length        1.00 — avg 10 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 2: RESOLUTION (voice) ────────────────────────────────────────
+│ t1 │ Borrower: What plans can you offer me?
+│    │ Agent:    Your offer: ₹12,750 down + ₹7,225/month × 10 months. Deadline April 24.
+│    │ out_tokens=60
+│ t2 │ Borrower: The installment plan sounds workable. Can the down payment be lower?
+│    │ Agent:    Terms are fixed. Can you commit?
+│    │ out_tokens=60
+│ t3 │ Borrower: Fine. I accept the installment plan.
+│    │ Agent:    Confirmed.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=1.00)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        1.00 — 3/5 push keywords found
+│   ✓ response_length        1.00 — avg 6 words (limit 40)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+┌─ STAGE 3: FINAL NOTICE (chat) ────────────────────────────────────────
+│ t1 │ Borrower: Got it. I'll make the down payment today.
+│    │ Agent:    Final offer expires April 24. Credit bureau reporting follows.
+│    │ out_tokens=60
+│ t2 │ Borrower: Yes, I formally accept.
+│    │ Agent:    Payment confirmed.
+│    │ out_tokens=60 ✓ ADVANCED
+│ Stage eval: PASS (score=0.96)
+│   ✓ no_repeat_questions    1.00 — no context provided
+│   ✓ tone_compliance        1.00 — tone correct
+│   ✓ resolution_push        0.80 — 2/5 push keywords found
+│   ✓ response_length        1.00 — avg 6 words (limit 120)
+│   ✓ outcome_marker         1.00 — stage completed
+└───────────────────────────────────────────────────────────────────────
+
+── Cost breakdown ──
+  TOTAL: $0.0000
