@@ -2,17 +2,21 @@
 # Collections AI — full stack
 # ────────────────────────────────────────────────────────────────
 #
-# MOCK (no API keys):          docker compose up --build
-# LIVE (real Claude + Vapi):   docker compose --profile live up --build
+# LIVE (real Claude + Vapi):      docker-compose --profile live up --build
+# MOCK (no LLM/voice API keys):   docker-compose up --build
+# SMOKE TEST (run 4 mock runs):   docker-compose --profile test up --build
 #
 # Services:
-#   postgres      — Temporal persistence
-#   temporal      — Workflow engine          (port 7233)
-#   temporal-ui   — Temporal web UI          (http://localhost:8233)
-#   worker        — Mock worker              (collections-queue)
-#   worker-live   — Live worker [profile=live] (collections-queue-live)
-#   chat-server   — FastAPI + WebSocket UI   (http://localhost:8000)
-#   harness       — Auto smoke-test (exits)
+#   postgres      — Temporal persistence              (internal)
+#   collections-db— Borrower/financials DB            (port 5433)
+#   redis         — Ephemeral session/summary cache    (port 6379)
+#   mongodb       — Persistent audit + eval store      (port 27017)
+#   temporal      — Workflow engine                    (port 7233)
+#   temporal-ui   — Temporal web UI                   (http://localhost:8233)
+#   worker        — Mock worker                        (collections-queue)
+#   worker-live   — Live worker [profile=live]         (collections-queue-live)
+#   chat-server   — FastAPI + WebSocket UI             (http://localhost:8000)
+#   harness       — Smoke-test starter [profile=test]  (exits after 4 runs)
 # ────────────────────────────────────────────────────────────────
 
 services:
@@ -32,6 +36,52 @@ services:
       retries: 30
     volumes:
       - temporal-db:/var/lib/postgresql/data
+
+  # ── Borrower application database ───────────────────────── #
+  collections-db:
+    image: postgres:15-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: collections
+      POSTGRES_PASSWORD: collections
+      POSTGRES_DB: collections_ai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collections -d collections_ai"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - collections-db:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  # ── Redis (ephemeral session state) ─────────────────────── #
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no  # pure in-memory, no disk flush
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # ── MongoDB (persistent audit + eval) ───────────────────── #
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: collections_ai
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   temporal:
     image: temporalio/auto-setup:1.24.2
@@ -64,12 +114,15 @@ services:
     ports:
       - "8233:8080"
 
-  # ── Mock worker (simulation, no API keys) ───────────────── #
-
+  # ── Mock worker (simulation, no LLM/voice keys) ──────────── #
   worker:
     build: .
     depends_on:
       temporal:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
@@ -78,20 +131,26 @@ services:
       - USE_REAL_CHAT=0
       - SKIP_LLM_JUDGE=1
       - VOICE_PROVIDER=mock
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-placeholder}
       - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=collections_ai
     command: ["python", "-m", "src.temporal_activities"]
-    volumes:
-      - ./call_logs:/app/call_logs
     restart: on-failure
 
-  # ── Live worker (real Claude + Vapi) ────────────────────── #
-
+  # ── Live worker (real Claude + Vapi) ─────────────────────── #
   worker-live:
     build: .
     profiles: [live]
     depends_on:
       temporal:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      collections-db:
         condition: service_healthy
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
@@ -100,23 +159,32 @@ services:
       - USE_REAL_CHAT=1
       - SKIP_LLM_JUDGE=1
       - VOICE_PROVIDER=vapi
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - VAPI_API_KEY=${VAPI_API_KEY}
       - VAPI_ASSISTANT_ID=${VAPI_ASSISTANT_ID}
       - VAPI_PHONE_NUMBER_ID=${VAPI_PHONE_NUMBER_ID}
       - CALLER_NUMBER=${CALLER_NUMBER}
       - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=collections_ai
+      - BORROWER_DB_URL=postgresql://collections:collections@collections-db:5432/collections_ai
+      # Push agent messages to the chat-server over HTTP (it holds all WebSocket connections)
+      - MESSAGE_BUS_URL=http://chat-server:8000
     command: ["python", "-m", "src.temporal_activities"]
-    volumes:
-      - ./call_logs:/app/call_logs
     restart: on-failure
 
-  # ── Chat server (FastAPI + WebSocket UI) ────────────────── #
-
+  # ── Chat server (FastAPI + WebSocket UI) ─────────────────── #
   chat-server:
     build: .
     depends_on:
       temporal:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      collections-db:
         condition: service_healthy
     ports:
       - "8000:8000"
@@ -124,16 +192,26 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TASK_QUEUE_LIVE=collections-queue-live
       - CHAT_HOST=localhost:8000
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-placeholder}
       - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
       - PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=collections_ai
+      - BORROWER_DB_URL=postgresql://collections:collections@collections-db:5432/collections_ai
+      # Disable embedded worker — worker-live handles all activities.
+      # The chat-server is UI-only; it receives agent pushes via /internal/push.
+      - EMBEDDED_WORKER=0
+      # Multi-process mode: borrower messages go via Redis so worker-live can read them.
+      # Agent messages come in via POST /internal/push from worker-live.
+      - MESSAGE_BUS_URL=http://chat-server:8000
     command: ["python", "-m", "src.chat_server"]
     restart: on-failure
 
-  # ── Smoke-test harness (mock, exits after 4 runs) ───────── #
-
+  # ── Smoke-test harness — disabled by default, use profile=test to enable ─ #
   harness:
     build: .
+    profiles: [test]
     depends_on:
       temporal:
         condition: service_healthy
@@ -141,10 +219,15 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TASK_QUEUE=collections-queue
       - USE_LLM_MOCK=1
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-placeholder}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-placeholder}
       - BORROWER_PHONE=${BORROWER_PHONE:-+919999999999}
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=collections_ai
     command: ["python", "-m", "src.starter", "--batch"]
     restart: on-failure
 
 volumes:
   temporal-db:
+  mongo-data:
+  collections-db:

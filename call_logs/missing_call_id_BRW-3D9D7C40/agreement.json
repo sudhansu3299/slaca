@@ -1,0 +1,58 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-23T07:02:04.059021+00:00",
+  "borrower_id": "BRW-3D9D7C40",
+  "loan_id": "LN-006371",
+  "workflow_id": "collections-BRW-3D9D7C40",
+  "call_id": "missing_call_id_BRW-3D9D7C40",
+  "offer": {
+    "deadline_days": 3,
+    "discount_percentage": 0.0,
+    "monthly_payment": 7225.0,
+    "path": "installment",
+    "tenure_months": 10,
+    "upfront_required": 12750.0,
+    "valid_until": "2026-04-26T07:01:51.372119+00:00"
+  },
+  "conversation": [
+    {
+      "content": "What options do I have?",
+      "role": "user",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:01:51.372211+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "This call is being recorded. I am an AI collections agent acting on behalf of Riverline.\n\nHere is the offer: a down payment of 12,750, followed by 10 monthly payments of 7,225. This offer expires in 3 days, on April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:01:54.260497+00:00"
+    },
+    {
+      "content": "The installment plan sounds reasonable.",
+      "role": "user",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:01:54.260678+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "Good. Down payment of 12,750 due within 3 days, then 7,225 monthly for 10 months. Can you confirm you agree to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:01:59.883522+00:00"
+    },
+    {
+      "content": "Yes, I can commit to the 10-month plan. I agree.",
+      "role": "user",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:01:59.883682+00:00"
+    },
+    {
+      "advanced": true,
+      "content": "Confirmed. You have agreed to the following: down payment of 12,750 due by April 26th, followed by 10 monthly payments of 7,225. You will receive confirmation details shortly.",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:02:04.033128+00:00"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
-1. Store the context-summary from agent-1, agent-2, agent-3 and the outcome in the audit logs in DB
-2. Improve the negotiation prompt in agent-2 and determine if the borrower's persona
-3. Use LLM as a judge to do the complete E2E eval (Batch intake the audit logs )
+1. Say good bye and cut the call (Either in resolution or non resolution)
+2. Explain a bit more if someone wants to know about the hardship offer or if installment options in details
+and let them know that more details will be in the settlement offer
+3.

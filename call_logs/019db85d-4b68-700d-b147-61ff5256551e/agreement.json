@@ -1,0 +1,103 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-23T03:25:56.864726+00:00",
+  "borrower_id": "BRW-E9040718",
+  "loan_id": "LN-23920A",
+  "workflow_id": "collections-BRW-E9040718",
+  "call_id": "019db85d-4b68-700d-b147-61ff5256551e",
+  "offer": {
+    "deadline_days": 3,
+    "discount_percentage": 0.0,
+    "monthly_payment": 7650.0,
+    "path": "installment",
+    "tenure_months": 10,
+    "upfront_required": 13500.0,
+    "valid_until": "2026-04-26T03:23:35.216638+00:00"
+  },
+  "conversation": [
+    {
+      "content": "Yes. please.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:43.745943+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "This call is being recorded. I am an AI collections agent acting on behalf of Riverline.\n\nHere is the offer: a down payment of \u20b913,500, followed by \u20b97,650 per month for 10 months. This offer is valid until April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:46.569622+00:00"
+    },
+    {
+      "content": "What is the offer?",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:46.569765+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The offer is a down payment of \u20b913,500, followed by \u20b97,650 per month for 10 months. This expires April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:48.139512+00:00"
+    },
+    {
+      "content": "What's the payment",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:48.139592+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The payment is \u20b913,500 down, then \u20b97,650 per month for 10 months. Deadline is April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:50.073404+00:00"
+    },
+    {
+      "content": "Actually, I'm having some family emergencies and medical issues. I don't think I'll be able to pay this month.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:50.073491+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "I can flag your account for hardship review. This pauses the current process. Do you want me to do that?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:52.202844+00:00"
+    },
+    {
+      "content": "What will happen in hardship review?",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:52.202992+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "A hardship review assesses your situation for potential adjusted terms or a temporary pause on collection activity. Do you want me to flag your account for hardship review?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:54.220259+00:00"
+    },
+    {
+      "content": "Yeah.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:54.220334+00:00"
+    },
+    {
+      "advanced": true,
+      "content": "Your account is now flagged for hardship review. This pauses the current collection process. A specialist will contact you within 5-7 business days to discuss your situation.",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:25:56.844525+00:00"
+    }
+  ]
+}

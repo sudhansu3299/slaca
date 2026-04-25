@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
+from src.agent_tools import FINAL_NOTICE_TOOLS
 from src.agents.base import BaseAgent, AgentResponse
 from src.models import ConversationContext, Stage
-from src.token_budget import CostTracker
+from src.token_budget import CostTracker, TokenUsage
 from src.prompts import final_notice_system_prompt
 
 CONSEQUENCES = [
@@ -21,6 +23,21 @@ ESCALATION_SIGNALS = [
     "refuse", "won't pay", "not paying", "cannot pay", "don't care",
     "take me to court", "sue me", "call my lawyer", "talk to my attorney",
     "i have nothing", "bankrupt",
+]
+
+ACCEPTANCE_SIGNALS = [
+    "yes", "i accept", "accept", "i agree", "agreed", "okay", "ok", "confirmed",
+]
+
+REJECTION_SIGNALS = [
+    "no", "nope", "not accept", "do not accept", "don't accept", "i refuse",
+    "won't pay", "not paying", "cannot pay", "can't pay", "decline",
+]
+
+RENEGOTIATION_SIGNALS = [
+    "discount", "reduce", "lower", "less", "waive", "better offer",
+    "negotiate", "extend", "extra time", "more time", "change terms",
+    "another plan", "can you do", "can we do", "rework", "modify",
 ]
 
 
@@ -51,6 +68,63 @@ class FinalNoticeAgent(BaseAgent):
         )
 
     async def process(self, context: ConversationContext, user_input: str) -> AgentResponse:
+        stage_open = user_input.strip().startswith("[STAGE_OPEN:")
+
+        # Backward compatibility for existing contexts created before attempt counter.
+        if context.final_notice_confirmation_asked and context.final_notice_confirmation_attempts <= 0:
+            context.final_notice_confirmation_attempts = 1
+
+        # Code-level confirmation guard (3 attempts total):
+        # 1) opening ask
+        # 2) re-ask
+        # 3) final warning ask (renegotiation rejected here)
+        # then escalate if still not accepted
+        if not stage_open and context.final_notice_confirmation_asked:
+            if self._is_acceptance_signal(user_input):
+                contract_result = await self._generate_contract(context)
+                contract_html = contract_result.get("contract_html", "")
+                context.final_notice_outcome = "resolved"
+                if contract_result.get("required_docs"):
+                    context.settlement_documents = contract_result["required_docs"]
+                return AgentResponse(
+                    message="Confirmed. Your settlement is accepted. Goodbye.",
+                    should_advance=True,
+                    context_update={"current_stage": Stage.COMPLETE},
+                    tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
+                    metadata={"contract_html": contract_html} if contract_html else {},
+                )
+
+            attempts = max(context.final_notice_confirmation_attempts, 1)
+
+            if attempts == 1:
+                context.final_notice_confirmation_attempts = 2
+                context.final_notice_reask_used = True
+                return AgentResponse(
+                    message=self._build_attempt_two_message(context),
+                    should_advance=False,
+                    tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
+                )
+
+            if attempts == 2:
+                context.final_notice_confirmation_attempts = 3
+                context.final_notice_reask_used = True
+                return AgentResponse(
+                    message=self._build_attempt_three_message(
+                        context,
+                        renegotiation=self._is_renegotiation_signal(user_input),
+                    ),
+                    should_advance=False,
+                    tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
+                )
+
+            context.final_notice_outcome = "escalated"
+            return AgentResponse(
+                message=self._build_escalation_message(context),
+                should_advance=True,
+                context_update={"current_stage": Stage.ESCALATED},
+                tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
+            )
+
         system = self.get_system_prompt(context)
         context_str = self.format_context_for_agent(context)
 
@@ -58,7 +132,13 @@ class FinalNoticeAgent(BaseAgent):
             {"role": "user", "content": f"{context_str}\n\nBorrower says: {user_input}"}
         ]
 
-        text, usage = await self._call_claude(system, messages, temperature=0.05)
+        # Reset tool results for this turn so stale results from previous turns
+        # don't bleed into the contract metadata check below
+        self._tool_results = {}
+        # Tool loop: Claude calls generate_settlement_document when borrower agrees
+        text, usage = await self._call_claude_with_tools(
+            system, messages, FINAL_NOTICE_TOOLS, temperature=0.05
+        )
 
         outcome = self._parse_outcome(text)
         clean_message = (
@@ -68,21 +148,63 @@ class FinalNoticeAgent(BaseAgent):
             .strip()
         )
 
+        asked_before = context.final_notice_confirmation_asked
+
+        # Opening notice must ask confirmation and initialize attempt counter.
+        if stage_open and outcome is None:
+            if not self._contains_accept_question(clean_message):
+                clean_message = f"{clean_message}\n\nDo you accept this offer?".strip()
+            context.final_notice_confirmation_asked = True
+            context.final_notice_confirmation_attempts = max(
+                context.final_notice_confirmation_attempts, 1
+            )
+        elif self._contains_accept_question(clean_message):
+            if asked_before:
+                # Prevent repeated confirmation prompts unless this is the explicit re-ask path.
+                clean_message = self._strip_accept_question(clean_message).strip()
+            else:
+                context.final_notice_confirmation_asked = True
+                context.final_notice_confirmation_attempts = max(
+                    context.final_notice_confirmation_attempts, 1
+                )
+
         # Also check for explicit escalation signals in user input
         if outcome is None and self._is_escalation_signal(user_input):
+            if context.final_notice_confirmation_asked and context.final_notice_confirmation_attempts == 1:
+                context.final_notice_confirmation_attempts = 2
+                context.final_notice_reask_used = True
+                return AgentResponse(
+                    message=self._build_attempt_two_message(context),
+                    should_advance=False,
+                    tokens_used=usage,
+                )
+            if context.final_notice_confirmation_asked and context.final_notice_confirmation_attempts == 2:
+                context.final_notice_confirmation_attempts = 3
+                context.final_notice_reask_used = True
+                return AgentResponse(
+                    message=self._build_attempt_three_message(context, renegotiation=True),
+                    should_advance=False,
+                    tokens_used=usage,
+                )
             outcome = "escalated"
-            clean_message = (
-                "This account will now be referred to our legal team. "
-                "All consequences outlined above will proceed automatically."
-            )
+            clean_message = self._build_escalation_message(context)
 
         if outcome == "complete":
             context.final_notice_outcome = "resolved"
+            # Pull the contract from the tool result and attach it to metadata
+            contract_result = self._tool_results.get("generate_settlement_document", {})
+            contract_html   = contract_result.get("contract_html", "")
+            if not contract_html:
+                contract_result = await self._generate_contract(context)
+                contract_html = contract_result.get("contract_html", "")
+            if contract_html:
+                context.settlement_documents = contract_result.get("required_docs", [])
             return AgentResponse(
-                message=clean_message,
+                message=clean_message or "Confirmed. Your settlement is accepted. Goodbye.",
                 should_advance=True,
                 context_update={"current_stage": Stage.COMPLETE},
                 tokens_used=usage,
+                metadata={"contract_html": contract_html} if contract_html else {},
             )
 
         if outcome == "escalated":
@@ -114,6 +236,112 @@ class FinalNoticeAgent(BaseAgent):
     def _is_escalation_signal(self, user_input: str) -> bool:
         text = user_input.lower()
         return any(signal in text for signal in ESCALATION_SIGNALS)
+
+    def _is_acceptance_signal(self, user_input: str) -> bool:
+        text = user_input.lower().strip()
+        if re.fullmatch(r"\s*(yes|y|ok|okay)\s*[.!]?\s*", text):
+            return True
+        return any(signal in text for signal in ACCEPTANCE_SIGNALS)
+
+    def _is_rejection_signal(self, user_input: str) -> bool:
+        text = user_input.lower().strip()
+        if re.fullmatch(r"\s*(no|n|nope)\s*[.!]?\s*", text):
+            return True
+        return any(signal in text for signal in REJECTION_SIGNALS)
+
+    def _is_renegotiation_signal(self, user_input: str) -> bool:
+        text = user_input.lower()
+        return any(signal in text for signal in RENEGOTIATION_SIGNALS)
+
+    def _contains_accept_question(self, text: str) -> bool:
+        t = text.lower()
+        return (
+            "do you accept" in t
+            or "accept this offer" in t
+            or "can you confirm you agree" in t
+        )
+
+    def _strip_accept_question(self, text: str) -> str:
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        kept = [
+            ln for ln in lines
+            if not self._contains_accept_question(ln)
+        ]
+        return "\n".join(kept)
+
+    def _offer_summary(self, context: ConversationContext) -> str:
+        offer = context.resolution_offer
+        if not offer:
+            return "the final offer"
+
+        try:
+            deadline = datetime.fromisoformat(offer.valid_until).strftime("%d %b %Y %H:%M UTC")
+        except (TypeError, ValueError):
+            deadline = "the stated deadline"
+
+        if offer.monthly_payment:
+            return (
+                f"₹{offer.upfront_required:,.0f} down + ₹{offer.monthly_payment:,.0f}/month "
+                f"for {offer.tenure_months} months, deadline {deadline}"
+            )
+        return f"₹{offer.upfront_required:,.0f} one-time payment, deadline {deadline}"
+
+    def _consequence_document(self) -> str:
+        lines = ["LEGAL CONSEQUENCES NOTICE:"]
+        for i, item in enumerate(CONSEQUENCES, start=1):
+            lines.append(f"{i}. {item}")
+        return "\n".join(lines)
+
+    def _build_attempt_two_message(self, context: ConversationContext) -> str:
+        return (
+            f"Final offer remains unchanged: {self._offer_summary(context)}. "
+            "Do you accept this offer?"
+        )
+
+    def _build_attempt_three_message(self, context: ConversationContext, renegotiation: bool) -> str:
+        if renegotiation:
+            lead = (
+                "Renegotiation is not available at this stage. "
+                "If not confirmed this time, this will be escalated immediately."
+            )
+        else:
+            lead = "This is the final confirmation before immediate escalation."
+        return (
+            f"{lead}\n\n"
+            f"Final offer: {self._offer_summary(context)}\n\n"
+            f"{self._consequence_document()}\n\n"
+            "Do you accept this offer now?"
+        )
+
+    def _build_escalation_message(self, context: ConversationContext) -> str:
+        return (
+            "No confirmation received. This account is now escalated to legal. Goodbye.\n\n"
+            f"{self._consequence_document()}"
+        )
+
+    async def _generate_contract(self, context: ConversationContext) -> dict:
+        if not context.resolution_offer or not context.assessment_data:
+            return {}
+
+        from src.agent_tools import handle_generate_settlement_document
+
+        offer = context.resolution_offer
+        try:
+            expiry = datetime.fromisoformat(offer.valid_until).strftime("%d %B %Y, %H:%M UTC")
+        except (TypeError, ValueError):
+            expiry = offer.valid_until or ""
+
+        return await handle_generate_settlement_document({
+            "borrower_id": context.borrower_id,
+            "loan_id": context.loan_id,
+            "resolution_path": offer.path.value,
+            "outstanding_amount": context.assessment_data.outstanding_amount,
+            "upfront_amount": offer.upfront_required,
+            "monthly_amount": offer.monthly_payment,
+            "tenure_months": offer.tenure_months,
+            "offer_expiry": expiry,
+            "accepted": True,
+        })
 
     def _format_final_offer(self, context: ConversationContext) -> str:
         offer = context.resolution_offer

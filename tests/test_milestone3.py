@@ -44,7 +44,7 @@ def make_fully_answered_context() -> ConversationContext:
 
 
 def mock_claude_response(text: str, input_tokens: int = 100, output_tokens: int = 50):
-    """Return a coroutine that simulates _call_claude."""
+    """Return a coroutine that simulates _call_claude_with_tools."""
     usage = TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens)
     async def _mock(*args, **kwargs):
         return text, usage
@@ -60,9 +60,9 @@ class TestAssessmentAgentInit:
         agent = AssessmentAgent()
         assert agent.name == "AssessmentAgent"
 
-    def test_model_is_opus4(self):
+    def test_model_is_agent_model_default(self):
         agent = AssessmentAgent()
-        assert agent.model == "claude-opus-4-5"
+        assert agent.model == os.getenv("AGENT_MODEL", "gpt-4o")
 
     def test_uses_shared_cost_tracker(self):
         tracker = CostTracker()
@@ -174,7 +174,7 @@ class TestProcessMocked:
         ctx = make_context()
         ctx.conversation_history.append({"role": "user", "content": "Hello"})
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "What are the last 4 digits of your loan account?"
         )):
             response = await agent.process(ctx, "Hello")
@@ -192,8 +192,9 @@ class TestProcessMocked:
             qt.mark_answered(key, "val")
         from src.handoff import _serialise_qt
         _serialise_qt(ctx, qt)
+        ctx.assessment_data.identity_verified = True
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "All facts gathered. ASSESSMENT_COMPLETE:INSTALLMENT"
         )):
             response = await agent.process(ctx, "I earn 50000 monthly")
@@ -207,16 +208,55 @@ class TestProcessMocked:
         agent = AssessmentAgent(cost_tracker=tracker)
         ctx = make_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "What is your employment status?", input_tokens=200, output_tokens=30
         )):
             response = await agent.process(ctx, "I am employed")
 
-        # When _call_claude is mocked, tracker.record is bypassed;
+        # When _call_claude_with_tools is mocked, tracker.record is bypassed;
         # verify that the response carries the usage the mock returned.
         assert response.tokens_used is not None
         assert response.tokens_used.input_tokens == 200
         assert response.tokens_used.output_tokens == 30
+
+    @pytest.mark.asyncio
+    async def test_ignores_stale_failed_identity_recheck(self):
+        agent = AssessmentAgent()
+        ctx = make_context()
+        ctx.assessment_data.identity_verified = True
+
+        qt = QuestionTracker()
+        qt.mark_asked(FactKey.IDENTITY_LAST4, "AssessmentAgent", "assessment")
+        qt.mark_answered(FactKey.IDENTITY_LAST4, "7823")
+        qt.mark_asked(FactKey.IDENTITY_DOB_YEAR, "AssessmentAgent", "assessment")
+        qt.mark_answered(FactKey.IDENTITY_DOB_YEAR, "1985")
+        from src.handoff import _serialise_qt
+        _serialise_qt(ctx, qt)
+
+        async def _mock(*args, **kwargs):
+            agent._tool_results = {"verify_borrower_identity": {"verified": False}}
+            return "What is your cash flow difficulty? (yes / no / mild)", TokenUsage(120, 30)
+
+        with patch.object(agent, "_call_claude_with_tools", _mock):
+            response = await agent.process(ctx, "a little")
+
+        assert ctx.assessment_data.identity_verified is True
+        assert "last 4" not in response.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_adds_identity_verified_ack_when_tool_succeeds(self):
+        agent = AssessmentAgent()
+        ctx = make_context()
+
+        async def _mock(*args, **kwargs):
+            agent._tool_results = {"verify_borrower_identity": {"verified": True}}
+            return "What is your monthly income?", TokenUsage(110, 24)
+
+        with patch.object(agent, "_call_claude_with_tools", _mock):
+            response = await agent.process(ctx, "7823, 1985")
+
+        assert ctx.assessment_data.identity_verified is True
+        assert response.message.lower().startswith("identity verified")
 
     @pytest.mark.asyncio
     async def test_output_within_token_limit(self):
@@ -224,7 +264,7 @@ class TestProcessMocked:
         ctx = make_context()
 
         # Simulate a response right at the limit
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "x" * (MAX_TOKENS_PER_AGENT * 4),  # ~2000 tokens of chars
             output_tokens=MAX_TOKENS_PER_AGENT
         )):
@@ -237,8 +277,8 @@ class TestProcessMocked:
 # ------------------------------------------------------------------ #
 
 @pytest.mark.skipif(
-    not os.getenv("ANTHROPIC_API_KEY"),
-    reason="ANTHROPIC_API_KEY not set"
+    not (os.getenv("OPENCODE_API_KEY") or os.getenv("OPENAI_API_KEY")),
+    reason="OPENCODE_API_KEY or OPENAI_API_KEY not set"
 )
 @pytest.mark.asyncio
 async def test_live_assessment_first_turn():

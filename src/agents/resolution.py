@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from src.agent_tools import RESOLUTION_TOOLS
 from src.agents.base import BaseAgent, AgentResponse
 from src.models import (
-    ConversationContext, Stage, ResolutionPath, ResolutionOffer
+    ConversationContext, Stage, ResolutionPath, ResolutionOffer, BorrowerBehaviour
 )
 from src.token_budget import CostTracker
 from src.prompts import resolution_system_prompt
@@ -128,9 +129,10 @@ class ResolutionAgent(BaseAgent):
             {"role": "user", "content": f"{context_str}\n\nBorrower says: {user_input}"}
         ]
 
-        # Voice turns should be short: cap at 300 tokens
-        text, usage = await self._call_claude(
-            system, messages, temperature=0.15, max_tokens=300
+        # Voice turns should be short: cap at 300 tokens.
+        # Tool loop is used so Claude can call classify_borrower_behaviour when ready.
+        text, usage = await self._call_claude_with_tools(
+            system, messages, RESOLUTION_TOOLS, temperature=0.15, max_tokens=300
         )
 
         should_advance, refused = self._parse_outcome(text)
@@ -140,6 +142,14 @@ class ResolutionAgent(BaseAgent):
             .replace("RESOLUTION_REFUSED", "")
             .strip()
         )
+
+        # Persist behaviour classification extracted by the tool call
+        behaviour_label = getattr(self, "_last_behaviour", None)
+        if behaviour_label:
+            try:
+                context.borrower_behaviour = BorrowerBehaviour(behaviour_label)
+            except ValueError:
+                pass
 
         if should_advance:
             context.resolution_outcome = "committed"

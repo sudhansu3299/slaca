@@ -112,11 +112,11 @@ async def run_one(
                 max_turns_per_stage=8,
             )
         else:
-            with patch.object(pipeline.assessment_agent, "_call_claude",
+            with patch.object(pipeline.assessment_agent, "_call_claude_with_tools",
                               side_effect=mock_claude(llm.get("AssessmentAgent", []))), \
-                 patch.object(pipeline.resolution_agent, "_call_claude",
+                 patch.object(pipeline.resolution_agent, "_call_claude_with_tools",
                               side_effect=mock_claude(llm.get("ResolutionAgent", []))), \
-                 patch.object(pipeline.final_notice_agent, "_call_claude",
+                 patch.object(pipeline.final_notice_agent, "_call_claude_with_tools",
                               side_effect=mock_claude(llm.get("FinalNoticeAgent", []))):
                 result = await pipeline.run(
                     borrower_id=run_id,
@@ -395,12 +395,11 @@ async def main() -> None:
     args = parser.parse_args()
 
     if args.live and not (
-        os.getenv("ANTHROPIC_API_KEY")
-        or os.getenv("OPENCODE_API_KEY")
+        os.getenv("OPENCODE_API_KEY")
         or os.getenv("OPENAI_API_KEY")
     ):
         print(
-            "ERROR: --live requires ANTHROPIC_API_KEY, OPENCODE_API_KEY, or OPENAI_API_KEY in env or .env",
+            "ERROR: --live requires OPENCODE_API_KEY or OPENAI_API_KEY in env or .env",
             file=sys.stderr,
         )
         sys.exit(1)

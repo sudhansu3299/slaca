@@ -47,6 +47,7 @@ from src.message_bus import (
     unregister_push_callback,
     get_message_buffer,
 )
+from src.admin_api import router as admin_router
 
 
 # ── Lifespan (embedded worker) ────────────────────────────────── #
@@ -74,6 +75,7 @@ async def lifespan(app_):
 app = FastAPI(title="Collections Chat", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
+app.include_router(admin_router)
 
 # ── In-process connection registry ─────────────────────────── #
 _connections: dict[str, set[WebSocket]] = {}
@@ -162,7 +164,7 @@ class StartRequest(BaseModel):
     borrower_id: Optional[str] = None
     loan_id: Optional[str] = None
     borrower_name: str = ""
-    phone_number: str
+    phone_number: Optional[str] = None
     principal_amount: float = 100_000
     outstanding_amount: float = 85_000
     days_past_due: int = 90
@@ -181,6 +183,12 @@ async def start_workflow(req: StartRequest):
     borrower_id = req.borrower_id or f"BRW-{uuid.uuid4().hex[:8].upper()}"
     loan_id = req.loan_id or f"LN-{uuid.uuid4().hex[:6].upper()}"
     workflow_id = f"collections-{borrower_id}"
+    phone_number = (req.phone_number or "").strip() or os.getenv("BORROWER_PHONE", "").strip()
+    if not phone_number:
+        raise HTTPException(
+            status_code=400,
+            detail="Phone number is required. Provide one in the form or set BORROWER_PHONE in env.",
+        )
 
     address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
     task_queue = os.getenv("TASK_QUEUE_LIVE", "collections-queue-live")
@@ -194,7 +202,7 @@ async def start_workflow(req: StartRequest):
                 loan_id=loan_id,
                 workflow_id=workflow_id,        # ← KEY FIX: full ID passed through
                 borrower_name=req.borrower_name or borrower_id,
-                phone_number=req.phone_number,
+                phone_number=phone_number,
                 principal_amount=req.principal_amount,
                 outstanding_amount=req.outstanding_amount,
                 days_past_due=req.days_past_due,
@@ -300,6 +308,7 @@ input, select {
 }
 input:focus, select:focus { border-color: #4c82f7; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.phone-group { display: grid; grid-template-columns: 104px 1fr; gap: 8px; }
 .btn {
   margin-top: 24px; width: 100%; background: #4c82f7; border: none;
   border-radius: 10px; color: #fff; font-size: 15px; font-weight: 700;
@@ -315,7 +324,7 @@ input:focus, select:focus { border-color: #4c82f7; }
 <div class="card">
   <div class="logo">🏦</div>
   <h1>New Collection Case</h1>
-  <p class="sub">Starts a live 3-stage pipeline — borrower chats first, then gets a voice call, then final written notice.</p>
+  <p class="sub">Start a live case with just name and phone. Other account details are loaded from backend records.</p>
 
   <div class="pipeline">
     <div class="step a">💬 Assessment<br><span style="font-weight:400;font-size:10px">Chat · identity + financials</span></div>
@@ -326,39 +335,21 @@ input:focus, select:focus { border-color: #4c82f7; }
   <form id="frm" onsubmit="go(event)">
     <div class="row">
       <div>
-        <label>Borrower name</label>
+        <label>Name</label>
         <input name="borrower_name" placeholder="Rahul Sharma" required>
       </div>
       <div>
-        <label>Phone (for voice call)</label>
-        <input name="phone_number" type="tel" placeholder="+917008098779" value="+917008098779" required>
-      </div>
-    </div>
-
-    <div class="row">
-      <div>
-        <label>Outstanding amount (₹)</label>
-        <input name="outstanding_amount" type="number" value="85000" min="1" required>
-      </div>
-      <div>
-        <label>Days past due</label>
-        <input name="days_past_due" type="number" value="90" min="0" required>
-      </div>
-    </div>
-
-    <div class="row">
-      <div>
-        <label>Principal (₹)</label>
-        <input name="principal_amount" type="number" value="100000" min="1" required>
-      </div>
-      <div>
-        <label>Borrower persona</label>
-        <select name="persona">
-          <option value="cooperative">Cooperative</option>
-          <option value="hostile">Hostile</option>
-          <option value="broke">Broke</option>
-          <option value="strategic_defaulter">Strategic</option>
-        </select>
+        <label>Phone</label>
+        <div class="phone-group">
+          <select name="country_code">
+            <option value="+91" selected>🇮🇳 +91</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+61">🇦🇺 +61</option>
+            <option value="+65">🇸🇬 +65</option>
+          </select>
+          <input name="phone_number" type="tel" placeholder="7008098779">
+        </div>
       </div>
     </div>
 
@@ -381,10 +372,18 @@ async function go(e) {
 
   const fd = new FormData(e.target);
   const body = Object.fromEntries(fd.entries());
-  body.outstanding_amount = parseFloat(body.outstanding_amount);
-  body.principal_amount   = parseFloat(body.principal_amount);
-  body.days_past_due      = parseInt(body.days_past_due);
-
+  const cc = (body.country_code || '+91').trim();
+  const rawPhone = (body.phone_number || '').trim();
+  if (rawPhone) {
+    const compact = rawPhone.replace(/\\s+/g, '');
+    body.phone_number = compact.startsWith('+')
+      ? compact
+      : `${cc}${compact.replace(/^0+/, '')}`;
+  } else {
+    // Backend will fall back to BORROWER_PHONE from env.
+    delete body.phone_number;
+  }
+  delete body.country_code;
   try {
     const res = await fetch('/start', {
       method: 'POST',
@@ -408,6 +407,19 @@ async function go(e) {
 
 
 # ── Chat UI page ─────────────────────────────────────────────── #
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page():
+    with open(os.path.join(os.path.dirname(__file__), "../static/admin.html")) as f:
+        return HTMLResponse(
+            f.read(),
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
 
 @app.get("/chat/{workflow_id}", response_class=HTMLResponse)
 async def chat_page(workflow_id: str):

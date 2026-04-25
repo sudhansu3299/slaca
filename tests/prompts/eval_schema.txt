@@ -1,0 +1,7 @@
+{
+  "goal_achieved": true,
+  "tone_score": 0.7,
+  "compliance_score": 0.9,
+  "negotiation_effectiveness": 0.6,
+  "persona_alignment": 0.8
+}

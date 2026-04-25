@@ -1,0 +1,17 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-25T03:49:32.304810+00:00",
+  "borrower_id": "BRW-CONTRACTTEST",
+  "loan_id": "LN-CTEST01",
+  "workflow_id": "collections-BRW-CONTRACTTEST",
+  "call_id": "test-call-001",
+  "offer": {
+    "path": "lump_sum",
+    "upfront_required": 89760.0,
+    "monthly_payment": 0.0,
+    "tenure_months": 0,
+    "discount_percentage": 15.0,
+    "valid_until": "2026-04-30T10:00:00+00:00"
+  },
+  "conversation": []
+}

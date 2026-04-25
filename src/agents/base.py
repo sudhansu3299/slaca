@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from src.models import ConversationContext
@@ -45,7 +46,7 @@ class AgentResponse(BaseModel):
 
 
 class BaseAgent(ABC):
-    MODEL = "claude-opus-4-5"
+    MODEL = os.getenv("AGENT_MODEL", "gpt-4o")
 
     def __init__(self, name: str, cost_tracker: Optional[CostTracker] = None):
         self.name = name
@@ -65,8 +66,48 @@ class BaseAgent(ABC):
         pass
 
     # ------------------------------------------------------------------ #
-    # Shared Claude call with token enforcement
+    # Shared LLM call with token enforcement
     # ------------------------------------------------------------------ #
+    def _build_openai_messages(self, system: str, messages: list[dict]) -> list[dict[str, Any]]:
+        built: list[dict[str, Any]] = [{"role": "system", "content": system}]
+        for m in messages:
+            content = m.get("content", "")
+            if isinstance(content, list):
+                content = json.dumps(content)
+            built.append({"role": m.get("role", "user"), "content": content})
+        return built
+
+    def _build_openai_tools(self, tools: list[dict]) -> list[dict[str, Any]]:
+        openai_tools: list[dict[str, Any]] = []
+        for tool in tools:
+            openai_tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool["name"],
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("input_schema", {"type": "object", "properties": {}}),
+                    },
+                }
+            )
+        return openai_tools
+
+    @staticmethod
+    def _content_to_text(content: Any) -> str:
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for part in content:
+                if isinstance(part, str):
+                    parts.append(part)
+                elif isinstance(part, dict) and isinstance(part.get("text"), str):
+                    parts.append(part["text"])
+            return "\n".join(parts)
+        return str(content)
+
     async def _call_claude(
         self,
         system: str,
@@ -75,7 +116,7 @@ class BaseAgent(ABC):
         max_tokens: Optional[int] = None,
     ) -> tuple[str, TokenUsage]:
         """
-        Call Claude Opus with token budget enforcement.
+        Call configured chat model with token budget enforcement.
         Returns (text, usage).
         Raises BudgetExceededError / TokenLimitError on violation.
         """
@@ -89,57 +130,180 @@ class BaseAgent(ABC):
 
         opencode_key = _first_nonempty_env("OPENCODE_API_KEY")
         openai_key = _first_nonempty_env("OPENAI_API_KEY")
-        anthropic_key = _first_nonempty_env("ANTHROPIC_API_KEY")
         opencode_base_url = _normalize_base_url(_first_nonempty_env("OPENCODE_BASE_URL"))
         openai_base_url = _normalize_base_url(_first_nonempty_env("OPENAI_BASE_URL"))
-        anthropic_base_url = _normalize_base_url(_first_nonempty_env("ANTHROPIC_BASE_URL"))
 
-        for env_name in ("OPENCODE_BASE_URL", "OPENAI_BASE_URL", "ANTHROPIC_BASE_URL"):
+        for env_name in ("OPENCODE_BASE_URL", "OPENAI_BASE_URL"):
             if not os.getenv(env_name, "").strip():
                 os.environ.pop(env_name, None)
 
         key_source = (
             "opencode"
             if opencode_key
-            else ("openai" if openai_key else ("anthropic" if anthropic_key else "none"))
+            else ("openai" if openai_key else "none")
         )
         base_url = (
             opencode_base_url
-            if opencode_key
-            else (openai_base_url if openai_key else anthropic_base_url)
+            if opencode_key else openai_base_url
         )
         logger.info(
             "[llm] provider_key=%s base_url_override=%s",
             key_source,
             "yes" if bool(base_url) else "no",
         )
-        if not (opencode_key or openai_key or anthropic_key):
+        if not (opencode_key or openai_key):
             raise RuntimeError(
-                "Missing LLM API key. Set one of OPENCODE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY."
+                "Missing LLM API key. Set one of OPENCODE_API_KEY or OPENAI_API_KEY."
             )
 
-        api_key = opencode_key or openai_key or anthropic_key
+        api_key = opencode_key or openai_key
         client_kwargs = {"api_key": api_key}
         if base_url:
             client_kwargs["base_url"] = base_url
-        client = AsyncAnthropic(**client_kwargs)
-        response = await client.messages.create(
+        client = AsyncOpenAI(**client_kwargs)
+        response = await client.chat.completions.create(
             model=self.model,
             max_tokens=safe_max,
             temperature=temperature,
-            system=system,
-            messages=messages,
+            messages=self._build_openai_messages(system, messages),
         )
-        text = response.content[0].text
+        message = response.choices[0].message if response.choices else None
+        text = self._content_to_text(message.content if message else "")
         usage = TokenUsage(
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
+            input_tokens=(response.usage.prompt_tokens if response.usage else 0),
+            output_tokens=(response.usage.completion_tokens if response.usage else 0),
         )
 
         enforce_output_limit(usage.output_tokens, MAX_TOKENS_PER_AGENT, label=self.name)
         self.cost_tracker.record(self.name, usage)
 
         return text, usage
+
+    async def _call_claude_with_tools(
+        self,
+        system: str,
+        messages: list[dict],
+        tools: list[dict],
+        temperature: float = 0.1,
+        max_tokens: Optional[int] = None,
+    ) -> tuple[str, TokenUsage]:
+        """
+        Call chat model with tool-use support.
+
+        Runs the full agentic loop:
+          1. Send messages + tool schemas to the model
+          2. If model returns tool calls, execute each tool
+          3. Append tool results to the message list and re-call Claude
+          4. Repeat until Claude returns a plain text response (no tool calls)
+
+        Returns (final_text, aggregated_usage).
+        """
+        from src.agent_tools import execute_tool
+
+        # Compatibility flag for test/mocked paths that patch _call_claude
+        # but do not execute the structured tool loop.
+        self._tool_loop_fallback = False
+
+        self.cost_tracker.check_budget()
+        safe_max = clamp_max_tokens(
+            max_tokens or MAX_TOKENS_PER_AGENT,
+            self.cost_tracker,
+            label=self.name,
+        )
+
+        api_key = (
+            _first_nonempty_env("OPENCODE_API_KEY")
+            or _first_nonempty_env("OPENAI_API_KEY")
+        )
+        if not api_key:
+            self._tool_loop_fallback = True
+            logger.info(
+                "[llm] no api key for tool loop; falling back to _call_claude"
+            )
+            return await self._call_claude(
+                system,
+                messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+
+        base_url = _normalize_base_url(
+            _first_nonempty_env("OPENCODE_BASE_URL")
+            or _first_nonempty_env("OPENAI_BASE_URL")
+        )
+        client_kwargs: dict[str, Any] = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = AsyncOpenAI(**client_kwargs)
+
+        total_input = 0
+        total_output = 0
+        current_messages = self._build_openai_messages(system, messages)
+        openai_tools = self._build_openai_tools(tools)
+
+        # Agentic tool loop — max 5 rounds to prevent runaway calls
+        for _round in range(5):
+            response = await client.chat.completions.create(
+                model=self.model,
+                max_tokens=safe_max,
+                temperature=temperature,
+                messages=current_messages,
+                tools=openai_tools,
+                tool_choice="auto",
+            )
+            if response.usage:
+                total_input += response.usage.prompt_tokens or 0
+                total_output += response.usage.completion_tokens or 0
+
+            message = response.choices[0].message if response.choices else None
+            tool_calls = list(message.tool_calls or []) if message else []
+
+            if not tool_calls:
+                # No more tool calls — extract the final text and stop
+                final_text = self._content_to_text(message.content if message else "")
+                break
+
+            # Execute all tool calls in this round
+            current_messages.append(
+                {
+                    "role": "assistant",
+                    "content": message.content or "",
+                    "tool_calls": [tc.model_dump() for tc in tool_calls],
+                }
+            )
+
+            tool_results = []
+            for call in tool_calls:
+                name = call.function.name if call.function else ""
+                args_raw = call.function.arguments if call.function else "{}"
+                logger.info("[tool_call] %s → %s", self.name, name)
+                try:
+                    args = json.loads(args_raw) if args_raw else {}
+                except json.JSONDecodeError:
+                    args = {}
+                result = await execute_tool(name, args)
+                # Store every tool result on self so subclasses can inspect them
+                if not hasattr(self, "_tool_results"):
+                    self._tool_results = {}
+                self._tool_results[name] = result
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": call.id,
+                    "content": json.dumps(result),
+                })
+
+            # Append tool results to history for the next model turn
+            current_messages.extend(tool_results)
+
+        else:
+            # Exhausted rounds without a plain-text response — use last text found
+            final_text = self._content_to_text(message.content if message else "")
+
+        usage = TokenUsage(input_tokens=total_input, output_tokens=total_output)
+        enforce_output_limit(usage.output_tokens, MAX_TOKENS_PER_AGENT, label=self.name)
+        self.cost_tracker.record(self.name, usage)
+
+        return final_text, usage
 
     # ------------------------------------------------------------------ #
     # Context helpers

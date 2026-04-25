@@ -129,7 +129,7 @@ class TestResolutionAgentProcess:
         ctx = make_assessed_context()
         assert ctx.resolution_offer is None
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "The offer is 12,750 upfront plus 8,000 per month for 10 months."
         )):
             response = await agent.process(ctx, "Okay, what are my options?")
@@ -142,7 +142,7 @@ class TestResolutionAgentProcess:
         agent = ResolutionAgent()
         ctx = make_assessed_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "Great. RESOLUTION_COMPLETE"
         )):
             response = await agent.process(ctx, "Fine, I agree to the installment plan.")
@@ -155,7 +155,7 @@ class TestResolutionAgentProcess:
         agent = ResolutionAgent()
         ctx = make_assessed_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "Understood. RESOLUTION_REFUSED"
         )):
             response = await agent.process(ctx, "I refuse to pay anything.")
@@ -178,7 +178,7 @@ class TestResolutionAgentProcess:
         agent = ResolutionAgent()
         ctx = make_assessed_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "The offer stands at these terms.", input_tokens=150, output_tokens=25
         )):
             response = await agent.process(ctx, "Can you repeat the offer?")
@@ -191,7 +191,7 @@ class TestResolutionAgentProcess:
         agent = ResolutionAgent()
         ctx = make_assessed_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "Confirmed. RESOLUTION_COMPLETE"
         )):
             response = await agent.process(ctx, "Yes, I agree.")

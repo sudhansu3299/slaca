@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collections AI — Admin</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0d0f1a; --surface:#161927; --surface2:#1c2035; --surface3:#212640;
+  --border:#252839; --border2:#2e3450;
+  --accent:#4c82f7; --accent-dim:#3464c8;
+  --text:#dde3f0; --muted:#7a849a; --muted2:#515a72;
+  --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --purple:#8b5cf6; --cyan:#06b6d4;
+  --r:14px; --r2:8px; --r3:6px;
+}
+body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",sans-serif; min-height:100vh; }
+
+/* ── header ─────────────────────────────────────────── */
+.hdr {
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:12px 24px; display:flex; align-items:center; gap:12px;
+  position:sticky; top:0; z-index:200;
+}
+.hdr-icon { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#4c82f7,#8b5cf6);
+            display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.hdr-title { font-size:14px; font-weight:700; }
+.hdr-sub   { font-size:11px; color:var(--muted); margin-top:1px; }
+.hdr-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.btn { border:none; border-radius:var(--r3); cursor:pointer; font-size:12px; font-weight:700;
+       padding:7px 14px; display:flex; align-items:center; gap:5px; transition:all .2s; }
+.btn-primary  { background:var(--accent); color:#fff; }
+.btn-primary:hover:not(:disabled) { background:var(--accent-dim); }
+.btn-ghost    { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { border-color:var(--accent); }
+.btn:disabled { opacity:.45; cursor:not-allowed; }
+.hdr-link { font-size:12px; color:var(--muted); text-decoration:none;
+            padding:5px 12px; border:1px solid var(--border); border-radius:var(--r3); transition:all .2s; }
+.hdr-link:hover { color:var(--text); border-color:var(--accent); }
+
+/* ── tabs ────────────────────────────────────────────── */
+.tabs { background:var(--surface); border-bottom:1px solid var(--border);
+        padding:0 24px; display:flex; gap:0; }
+.tab { padding:12px 18px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer;
+       border-bottom:2px solid transparent; transition:all .2s; user-select:none; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab:hover:not(.active) { color:var(--text); }
+
+/* ── main ────────────────────────────────────────────── */
+.main { max-width:1360px; margin:0 auto; padding:24px 20px; }
+.pane { display:none; } .pane.active { display:block; }
+
+/* ── stats bar ───────────────────────────────────────── */
+.stats-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:24px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; }
+.stat-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:700; margin-bottom:5px; }
+.stat-val { font-size:24px; font-weight:800; line-height:1; }
+.stat-val.green  { color:var(--green); } .stat-val.red  { color:var(--red); }
+.stat-val.amber  { color:var(--amber); } .stat-val.accent{ color:var(--accent); }
+.stat-val.purple { color:var(--purple); }
+
+/* ── section header ──────────────────────────────────── */
+.sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sec-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+
+/* ── eval cards ──────────────────────────────────────── */
+.eval-cards { display:flex; flex-direction:column; gap:12px; }
+.eval-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.eval-card.pass { border-left:3px solid var(--green); }
+.eval-card.fail { border-left:3px solid var(--red); }
+.eval-card-hdr { padding:14px 18px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+.eval-card-hdr:hover { background:var(--surface2); }
+.score-circle { width:46px; height:46px; border-radius:50%; border:3px solid var(--border); flex-shrink:0;
+                display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; }
+.eval-meta { flex:1; min-width:0; }
+.eval-meta .eid  { font-size:13px; font-weight:700; margin-bottom:2px; }
+.eval-meta .emeta { font-size:11px; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px; }
+.eval-scores { display:flex; gap:14px; align-items:center; flex-shrink:0; }
+.sc-col { text-align:center; }
+.sc-col .lbl { font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin-bottom:2px; }
+.sc-col .val { font-size:14px; font-weight:800; }
+.badge { font-size:10px; font-weight:700; padding:2px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.3px; }
+.badge.AGREEMENT { background:#0d3021; color:var(--green); }
+.badge.NO_DEAL   { background:#3a0f0f; color:var(--red); }
+.badge.LEGAL     { background:#3a1a0f; color:#fb923c; }
+.badge.unknown   { background:var(--border); color:var(--muted); }
+.badge.pass { background:#0d3021; color:var(--green); }
+.badge.fail { background:#3a0f0f; color:var(--red); }
+.toggle-icon { color:var(--muted); font-size:14px; transition:transform .2s; }
+.toggle-icon.open { transform:rotate(180deg); }
+.card-body { display:none; border-top:1px solid var(--border); }
+.card-body.open { display:grid; grid-template-columns:1fr 1fr; }
+@media(max-width:800px){.card-body.open{grid-template-columns:1fr;}}
+.panel { padding:16px 18px; border-right:1px solid var(--border); }
+.panel:last-child { border-right:none; }
+.panel-title { font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:700; margin-bottom:12px; }
+.dim-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.dim-name { font-size:11px; color:var(--muted); width:170px; flex-shrink:0; }
+.dim-bar-w { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+.dim-bar   { height:100%; border-radius:3px; }
+.dim-val   { font-size:11px; font-weight:700; width:32px; text-align:right; }
+.rule-row  { display:flex; gap:7px; margin-bottom:7px; font-size:11px; align-items:flex-start; }
+.rule-dot  { width:14px; height:14px; border-radius:50%; flex-shrink:0; margin-top:1px;
+             display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; }
+.rule-dot.p { background:#0d3021; color:var(--green); }
+.rule-dot.f { background:#3a0f0f; color:var(--red); }
+.turn { display:flex; gap:7px; margin-bottom:7px; }
+.turn.bor  { flex-direction:row-reverse; }
+.turn-bub  { max-width:80%; padding:7px 11px; border-radius:10px; font-size:11px; line-height:1.5; }
+.turn.agt  .turn-bub { background:#1b1f31; border-radius:3px 10px 10px 10px; }
+.turn.bor  .turn-bub { background:#0f2d5e; border-radius:10px 3px 10px 10px; }
+.turn-lbl  { font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin-bottom:2px; }
+.feedback-box { margin-top:12px; padding:10px 12px; background:#0f1120; border:1px solid var(--border2);
+                border-radius:var(--r2); font-size:11px; line-height:1.6; color:var(--muted); }
+.feedback-box strong { color:var(--text); }
+
+/* ── pipeline pane ───────────────────────────────────── */
+.pipeline-layout { display:grid; grid-template-columns:340px 1fr; gap:16px; }
+@media(max-width:900px){.pipeline-layout{grid-template-columns:1fr;}}
+.pipeline-sidebar { display:flex; flex-direction:column; gap:12px; }
+.pipeline-main   { display:flex; flex-direction:column; gap:16px; }
+
+/* trigger card */
+.trigger-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; }
+.trigger-card h3 { font-size:13px; font-weight:700; margin-bottom:14px; }
+.fld label { font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:700; display:block; margin-bottom:5px; }
+.fld select, .fld input[type=number] {
+  width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  font-size:13px; border-radius:var(--r3); padding:8px 10px; margin-bottom:12px;
+}
+.fld select:focus, .fld input:focus { outline:none; border-color:var(--accent); }
+.run-btn { width:100%; margin-top:4px; justify-content:center; font-size:13px; padding:10px; }
+
+/* stage steps */
+.stages-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; }
+.stages-card h3 { font-size:12px; font-weight:700; margin-bottom:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.stage-step { display:flex; gap:10px; margin-bottom:12px; align-items:flex-start; }
+.stage-num  { width:22px; height:22px; border-radius:50%; background:var(--border); flex-shrink:0;
+              display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--muted); }
+.stage-num.done    { background:#0d3021; color:var(--green); }
+.stage-num.running { background:#1a2240; color:var(--accent); animation:pulse .8s infinite; }
+.stage-num.fail    { background:#3a0f0f; color:var(--red); }
+.stage-info h4 { font-size:12px; font-weight:600; margin-bottom:2px; }
+.stage-info p  { font-size:11px; color:var(--muted); }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+/* run history */
+.run-history { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:0; overflow:hidden; }
+.run-row { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border);
+           cursor:pointer; transition:background .15s; }
+.run-row:last-child { border-bottom:none; }
+.run-row:hover { background:var(--surface2); }
+.run-row.selected { background:var(--surface3); }
+.run-status { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.run-status.completed { background:var(--green); }
+.run-status.running   { background:var(--amber); animation:pulse .8s infinite; }
+.run-status.failed    { background:var(--red); }
+.run-id   { font-size:12px; font-weight:700; flex:1; font-family:monospace; }
+.run-ts   { font-size:10px; color:var(--muted); }
+.run-decision { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; }
+.run-decision.adopt  { background:#0d3021; color:var(--green); }
+.run-decision.reject { background:#3a0f0f; color:var(--red); }
+.run-decision.pending{ background:var(--border); color:var(--muted); }
+.iter-badge { font-size:9px; font-weight:800; background:var(--surface3); color:var(--muted);
+              padding:2px 7px; border-radius:10px; flex-shrink:0; font-family:monospace; }
+.trigger-badge { font-size:9px; padding:1px 6px; border-radius:8px; font-weight:700; text-transform:uppercase; }
+.trigger-badge.auto   { background:#0d2240; color:var(--accent); }
+.trigger-badge.manual { background:#1c1230; color:var(--purple); }
+
+/* feeder status bar */
+.feeder-bar { background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+              padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.feeder-stat .flbl { font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:700; margin-bottom:3px; }
+.feeder-stat .fval { font-size:22px; font-weight:800; line-height:1; }
+.feeder-prog { flex:1; min-width:160px; }
+.feeder-prog-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:6px; }
+.feeder-prog-fill  { height:100%; background:var(--accent); border-radius:3px; transition:width .5s; }
+
+/* score trend table */
+.trend-tbl { width:100%; border-collapse:collapse; font-size:11px; }
+.trend-tbl th { padding:6px 10px; text-align:left; color:var(--muted); font-size:9px;
+                text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); font-weight:700; }
+.trend-tbl td { padding:8px 10px; border-bottom:1px solid var(--border); }
+.trend-tbl tr:last-child td { border-bottom:none; }
+.trend-tbl tr:hover td { background:var(--surface2); }
+.delta-up   { color:var(--green); font-weight:700; }
+.delta-down { color:var(--red);   font-weight:700; }
+.delta-flat { color:var(--muted); }
+
+/* detail panel */
+.detail-panel { display:none; }
+.detail-panel.open { display:flex; flex-direction:column; gap:14px; }
+.detail-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.detail-card-hdr { padding:12px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+.detail-card-hdr:hover { background:var(--surface2); }
+.detail-card-hdr h4 { font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.detail-card-body { display:none; padding:14px 16px; border-top:1px solid var(--border); }
+.detail-card-body.open { display:block; }
+
+/* score grid in pipeline detail */
+.score-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
+.score-tile { background:var(--surface2); border-radius:var(--r2); padding:10px 12px; text-align:center; }
+.score-tile .label { font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin-bottom:4px; }
+.score-tile .value { font-size:20px; font-weight:800; }
+
+/* pattern cards */
+.pattern-card { background:var(--surface2); border-radius:var(--r2); padding:12px 14px; margin-bottom:10px; }
+.pattern-card .ptitle { font-size:12px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.pattern-card .prow { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.pattern-card .prow strong { color:var(--text); }
+
+/* hypothesis cards */
+.hyp-card { background:var(--surface2); border-radius:var(--r2); padding:12px 14px; margin-bottom:10px; border-left:3px solid var(--accent); }
+.hyp-card h5 { font-size:12px; font-weight:700; color:var(--accent); margin:0; }
+.hyp-card p  { font-size:11px; color:var(--muted); margin-bottom:4px; line-height:1.5; }
+.hyp-card p strong { color:var(--text); }
+.patch-btn {
+  font-size:10px; font-weight:700; padding:4px 12px; border-radius:var(--r3);
+  border:1px solid var(--accent); background:transparent; color:var(--accent);
+  cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0;
+}
+.patch-btn:hover:not(:disabled) { background:var(--accent); color:#fff; }
+.patch-btn:disabled { opacity:.6; cursor:not-allowed; }
+.patch-btn.applied { background:#0d3021; color:var(--green); border-color:var(--green); }
+.patch-btn.failed  { background:#3a0f0f; color:var(--red);   border-color:var(--red); }
+
+/* comparison block */
+.compare-row { display:flex; gap:12px; margin-bottom:12px; }
+.compare-side { flex:1; background:var(--surface2); border-radius:var(--r2); padding:12px; text-align:center; }
+.compare-side h5 { font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:6px; }
+.compare-side .big { font-size:28px; font-weight:800; }
+.compare-arrow { display:flex; align-items:center; color:var(--muted); font-size:18px; }
+
+/* prompt diff */
+.prompt-diff { background:#0a0c14; border:1px solid var(--border); border-radius:var(--r2);
+               padding:12px 14px; font-family:monospace; font-size:11px; line-height:1.6;
+               white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto; color:var(--text); }
+
+/* changes list */
+.change-item { display:flex; gap:8px; margin-bottom:6px; font-size:12px; }
+.change-icon { color:var(--accent); flex-shrink:0; }
+
+/* agent analytics */
+.agent-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:var(--r2); overflow:hidden; margin-bottom:12px; }
+.agent-tab { flex:1; background:var(--surface); color:var(--muted); border:none; border-right:1px solid var(--border); padding:10px 12px; font-size:12px; font-weight:700; cursor:pointer; }
+.agent-tab:last-child { border-right:none; }
+.agent-tab.active { background:var(--surface2); color:var(--text); }
+.agent-banner { background:#1b3d66; border:1px solid #274f7f; color:#d8e7fa; border-radius:var(--r2); padding:10px 12px; font-size:13px; line-height:1.5; margin-bottom:12px; }
+.agent-metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:12px; }
+.agent-metric-card { background:#202124; border:1px solid #2d2f36; border-radius:10px; padding:12px; }
+.agent-metric-card .k { font-size:11px; color:#b8bac1; margin-bottom:4px; }
+.agent-metric-card .v { font-size:31px; font-weight:800; color:#ffffff; line-height:1; margin-bottom:4px; }
+.agent-metric-card .h { font-size:11px; color:#9ca3af; }
+.formula-bar { background:#202124; border:1px solid #2d2f36; border-radius:10px; padding:10px 12px; font-family:monospace; font-size:14px; color:#f5f5f5; margin-bottom:12px; }
+.analytics-table-wrap { background:#202124; border:1px solid #2d2f36; border-radius:10px; overflow:hidden; }
+.analytics-table { width:100%; border-collapse:collapse; font-size:12px; }
+.analytics-table th { color:#9ca3af; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:10px 12px; border-bottom:1px solid #2d2f36; }
+.analytics-table td { padding:10px 12px; border-bottom:1px solid #2d2f36; color:#e5e7eb; }
+.analytics-table tr:last-child td { border-bottom:none; }
+.dec-chip { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; text-transform:capitalize; white-space:nowrap; }
+.dec-baseline { background:#1e3a5f; color:#93c5fd; }
+.dec-adopted { background:#16381e; color:#86efac; }
+.dec-rejected { background:#4b1f1f; color:#fca5a5; }
+.dec-rolled { background:#5a430f; color:#fcd34d; }
+.dec-observed { background:#2d2f36; color:#9ca3af; }
+.agent-insight { margin-top:10px; background:#5b4512; border:1px solid #7a5d18; color:#fde68a; border-radius:8px; padding:10px 12px; font-size:12px; line-height:1.5; }
+
+/* empty / loading */
+.empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.empty .icon { font-size:32px; margin-bottom:10px; }
+.spinner { width:24px; height:24px; border:3px solid var(--border2); border-top-color:var(--accent);
+           border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 10px; }
+@keyframes spin { to{transform:rotate(360deg);} }
+
+/* toast */
+.toast { position:fixed; bottom:18px; right:18px; background:var(--surface3); border:1px solid var(--border2);
+         color:var(--text); font-size:12px; padding:9px 14px; border-radius:var(--r2);
+         display:none; z-index:9999; }
+.toast.show { display:block; }
+
+/* colors helpers */
+.c-green { color:var(--green); } .c-red { color:var(--red); }
+.c-amber { color:var(--amber); } .c-accent { color:var(--accent); }
+.c-muted { color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-icon">📊</div>
+  <div>
+    <div class="hdr-title">Collections AI</div>
+    <div class="hdr-sub">Admin Dashboard</div>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="hdr-link">← New Case</a>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="scores" onclick="switchTab('scores')">Transcript Scores</div>
+  <div class="tab" data-tab="generate" onclick="switchTab('generate')">Generate + Learn</div>
+  <div class="tab" data-tab="pipeline" onclick="switchTab('pipeline')">Improvement Pipeline</div>
+  <div class="tab" data-tab="analytics" onclick="switchTab('analytics')">Agent Analytics</div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════════════════════════════════
+     PANE 1 — TRANSCRIPT SCORES
+════════════════════════════════════════════════════ -->
+<div class="pane active" id="pane-scores">
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat"><div class="stat-lbl">Interactions</div><div class="stat-val accent" id="stInt">—</div></div>
+    <div class="stat"><div class="stat-lbl">Outcomes</div><div class="stat-val purple" id="stOut">—</div></div>
+    <div class="stat"><div class="stat-lbl">Agreements</div><div class="stat-val green" id="stAg">—</div></div>
+    <div class="stat"><div class="stat-lbl">Legal</div><div class="stat-val amber" id="stLg">—</div></div>
+    <div class="stat"><div class="stat-lbl">Avg LLM Score</div><div class="stat-val accent" id="stAvg">—</div></div>
+    <div class="stat"><div class="stat-lbl">Stored Evals</div><div class="stat-val" id="stEv">—</div></div>
+  </div>
+
+  <div class="sec-hdr">
+    <span class="sec-title">Last
+      <select id="evalLimit" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:5px;padding:3px 8px;cursor:pointer;"
+              onchange="loadEvals(false)">
+        <option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
+      </select>
+      Transcripts
+    </span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="evalGenAt" style="font-size:11px;color:var(--muted);"></span>
+      <button class="btn btn-ghost" onclick="loadEvals(false)">Load</button>
+      <button class="btn btn-primary" id="btnRefresh" onclick="loadEvals(true)">↻ Re-run Judge</button>
+    </div>
+  </div>
+
+  <div class="eval-cards" id="evalCards">
+    <div class="empty"><div class="icon">📋</div>Click <strong>Load</strong> to fetch and score transcripts.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PANE 2 — GENERATE + LEARN
+════════════════════════════════════════════════════ -->
+<div class="pane" id="pane-generate">
+  <div class="pipeline-layout">
+
+    <!-- Left: config + job list -->
+    <div class="pipeline-sidebar">
+
+      <div class="trigger-card">
+        <h3>Generate Synthetic Conversations</h3>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Use one of the two actions below:
+          <br>1) Generate synthetic transcripts only (increments Redis call counter)
+          <br>2) Generate transcripts and run the improvement pipeline loop
+          <br><br>Auto-feeder triggers at 30 completed conversations.
+        </div>
+        <div class="fld">
+          <label>Total Transcripts</label>
+          <input type="number" id="genTotal" value="30" min="8" max="200">
+        </div>
+        <div class="fld">
+          <label>Batch Size</label>
+          <input type="number" id="genBatch" value="8" min="4" max="50">
+        </div>
+        <div class="fld">
+          <label>Learning Agent Focus</label>
+          <select id="genAgent">
+            <option value="ResolutionAgent" selected>Resolution Agent</option>
+            <option value="AssessmentAgent">Assessment Agent</option>
+            <option value="FinalNoticeAgent">Final Notice Agent</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-ghost run-btn" id="btnGenerateOnly" onclick="triggerGeneration(false)">
+            ▶ Generate Synthetic Conversations
+          </button>
+          <button class="btn btn-primary run-btn" id="btnGenerateLearn" onclick="triggerGeneration(true)">
+            ▶ Generate + Run Improvement Pipeline
+          </button>
+        </div>
+      </div>
+
+      <!-- Persona distribution legend -->
+      <div class="stages-card">
+        <h3>Persona Distribution</h3>
+        <div class="stage-step">
+          <div class="stage-num done" style="background:#0d3021;color:var(--green)">C</div>
+          <div class="stage-info"><h4>Cooperative (25%)</h4><p>Agrees to terms → AGREEMENT</p></div>
+        </div>
+        <div class="stage-step">
+          <div class="stage-num done" style="background:#0d2a4a;color:#60a5fa">B</div>
+          <div class="stage-info"><h4>Broke (25%)</h4><p>Hardship plan → AGREEMENT</p></div>
+        </div>
+        <div class="stage-step">
+          <div class="stage-num done" style="background:#2d1660;color:#c084fc">S</div>
+          <div class="stage-info"><h4>Strategic (25%)</h4><p>Negotiates hard → AGREEMENT/LEGAL</p></div>
+        </div>
+        <div class="stage-step">
+          <div class="stage-num done" style="background:#3a0f0f;color:var(--red)">H</div>
+          <div class="stage-info"><h4>Hostile (25%)</h4><p>Refuses → LEGAL</p></div>
+        </div>
+      </div>
+
+      <!-- Job history -->
+      <div>
+        <div class="sec-hdr" style="margin-bottom:10px;">
+          <span class="sec-title">Job History</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="loadGenerationJobs()">Refresh</button>
+        </div>
+        <div class="run-history" id="genJobHistory">
+          <div class="empty" style="padding:20px">No jobs yet</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: live progress log -->
+    <div class="pipeline-main">
+      <div id="genEmpty" class="empty" style="margin-top:60px;">
+        <div class="icon">🔁</div>
+        <div>Configure and start the generation loop.<br>Progress will stream here in real time.</div>
+      </div>
+      <div id="genDetail" style="display:none;flex-direction:column;gap:12px;">
+
+        <!-- Progress card -->
+        <div class="detail-card">
+          <div class="detail-card-hdr" style="cursor:default">
+            <h4 id="genStatusTitle">⏳ Running…</h4>
+            <div id="genStatusBadge" class="run-decision pending">pending</div>
+          </div>
+          <div class="detail-card-body open" style="display:block">
+
+            <!-- Progress bar -->
+            <div style="margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px">
+                <span id="genProgressLabel">0 / 0 transcripts</span>
+                <span id="genBatchLabel">Batch 0/0</span>
+              </div>
+              <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                <div id="genProgressBar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width .4s"></div>
+              </div>
+            </div>
+
+            <!-- Stat tiles -->
+            <div class="score-grid" style="margin-bottom:0">
+              <div class="score-tile"><div class="label">Completed</div><div class="value c-green" id="genCompleted">0</div></div>
+              <div class="score-tile"><div class="label">Failed</div><div class="value c-red" id="genFailed">0</div></div>
+              <div class="score-tile"><div class="label">Pipeline Runs</div><div class="value c-accent" id="genPipelineRuns">0</div></div>
+              <div class="score-tile"><div class="label">Current Persona</div><div class="value" id="genCurrentPersona" style="font-size:13px">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live log -->
+        <div class="detail-card">
+          <div class="detail-card-hdr" onclick="toggleDetail('gen-log')">
+            <h4>Live Log</h4>
+            <span class="toggle-icon open" id="dti-gen-log">▼</span>
+          </div>
+          <div class="detail-card-body open" id="dbd-gen-log">
+            <div id="genLog" style="font-family:monospace;font-size:11px;line-height:1.8;
+                 max-height:480px;overflow-y:auto;color:var(--muted);">
+              Waiting for job to start…
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div><!-- /pane-generate -->
+
+<!-- ═══════════════════════════════════════════════════
+     PANE 3 — IMPROVEMENT PIPELINE
+════════════════════════════════════════════════════ -->
+<div class="pane" id="pane-pipeline">
+
+  <!-- Feeder status bar -->
+  <div class="feeder-bar" id="feederBar">
+    <div class="feeder-stat">
+      <div class="flbl">Calls since last trigger</div>
+      <div class="fval c-accent" id="fdrCount">—</div>
+    </div>
+    <div class="feeder-stat">
+      <div class="flbl">Trigger every</div>
+      <div class="fval" id="fdrThreshold">—</div>
+    </div>
+    <div class="feeder-prog">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+        <span>Progress to next auto-trigger</span>
+        <span id="fdrRemaining" style="font-weight:700"></span>
+      </div>
+      <div class="feeder-prog-track"><div class="feeder-prog-fill" id="fdrFill" style="width:0%"></div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" onclick="loadFeederStatus()" title="Refresh status">↻</button>
+      <button class="btn btn-primary" style="font-size:11px" onclick="triggerNow()">⚡ Trigger Now — All Agents</button>
+    </div>
+  </div>
+
+  <div class="pipeline-layout">
+    <!-- Left sidebar -->
+    <div class="pipeline-sidebar">
+
+      <!-- Trigger -->
+      <div class="trigger-card">
+        <h3>Run Improvement Pipeline</h3>
+        <div class="fld">
+          <label>Target Agent</label>
+          <select id="pipeAgent">
+            <option value="AssessmentAgent">Assessment Agent</option>
+            <option value="ResolutionAgent">Resolution Agent</option>
+            <option value="FinalNoticeAgent">Final Notice Agent</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Transcripts to analyze</label>
+          <input type="number" id="pipeLimit" value="10" min="3" max="50">
+        </div>
+        <button class="btn btn-primary run-btn" id="btnRunPipeline" onclick="triggerPipeline()">
+          ▶ Run Pipeline
+        </button>
+      </div>
+
+      <!-- Stage guide -->
+      <div class="stages-card">
+        <h3>Pipeline Stages</h3>
+        <div id="stageSteps">
+          <div class="stage-step"><div class="stage-num" id="sn1">1</div><div class="stage-info"><h4>Transcript Scoring</h4><p>LLM judge scores each transcript → structured binary JSON</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn2">2</div><div class="stage-info"><h4>Failure Analysis</h4><p>Finds top 3 recurring quality failure patterns</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn3">3</div><div class="stage-info"><h4>Compliance Check (Current Prompt)</h4><p>Audits current prompt against the 8 rules</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn4">4</div><div class="stage-info"><h4>Prompt Improvement</h4><p>Generates an improved prompt from failures + compliance findings</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn5">5</div><div class="stage-info"><h4>Compliance Check (New Prompt)</h4><p>Compliance verdict; non-compliant runs continue with caution but cannot promote</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn6">6</div><div class="stage-info"><h4>A/B Comparison</h4><p>Runs only if new-prompt compliance passes</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn7">7</div><div class="stage-info"><h4>Prompt Patches</h4><p>Concrete instructions to apply on the new prompt</p></div></div>
+        </div>
+      </div>
+
+      <!-- Run history -->
+      <div>
+        <div class="sec-hdr" style="margin-bottom:10px;">
+          <span class="sec-title">Run History</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="loadPipelineRuns()">Refresh</button>
+        </div>
+        <div class="run-history" id="runHistory">
+          <div class="empty" style="padding:20px;"><div class="spinner"></div>Loading…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right main area -->
+    <div class="pipeline-main">
+      <div class="detail-panel" id="detailPanel">
+        <!-- filled dynamically -->
+      </div>
+      <div id="detailEmpty" class="empty" style="margin-top:60px;">
+        <div class="icon">🔬</div>
+        <div>Select a pipeline run from the history,<br>or trigger a new one.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost breakdown -->
+  <div id="costSection" style="margin-top:16px">
+    <div class="sec-hdr" style="margin-bottom:10px">
+      <span class="sec-title">Cost Breakdown — Must Stay Under $20</span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="loadCostBreakdown()">↻ Refresh</button>
+    </div>
+    <div class="detail-card">
+      <div class="detail-card-body open" style="display:block">
+        <div id="costBudgetBar" style="margin-bottom:16px;display:none">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+            <span style="font-weight:700" id="costTotalLabel">$0.00 spent</span>
+            <span style="color:var(--muted)" id="costRemainingLabel">$20.00 remaining</span>
+          </div>
+          <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+            <div id="costBudgetFill" style="height:100%;border-radius:5px;transition:width .5s;background:var(--green)"></div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="trend-tbl" id="costTable">
+            <thead><tr>
+              <th>Operation</th><th>Model</th><th>Count</th><th style="text-align:right">Cost</th><th>Source</th>
+            </tr></thead>
+            <tbody id="costBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">
+                <div class="spinner" style="margin-bottom:8px"></div>Loading…
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score trend across all iterations -->
+  <div id="trendSection" style="margin-top:16px;display:none">
+    <div class="sec-hdr" style="margin-bottom:10px">
+      <span class="sec-title">Score Trend Across Iterations</span>
+    </div>
+    <div class="detail-card">
+      <div class="detail-card-body open" style="display:block;padding:0;overflow-x:auto">
+        <table class="trend-tbl" id="trendTable">
+          <thead><tr>
+            <th>#</th><th>Agent</th><th>Triggered By</th><th>Transcripts</th>
+            <th>v1 Resolution</th><th>v2 Resolution</th><th>Delta</th>
+            <th>p-value</th><th>Decision</th><th>Time</th>
+          </tr></thead>
+          <tbody id="trendBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /pane-pipeline -->
+
+<!-- ═══════════════════════════════════════════════════
+     PANE 4 — AGENT ANALYTICS
+════════════════════════════════════════════════════ -->
+<div class="pane" id="pane-analytics">
+  <div class="sec-hdr" style="margin-bottom:12px">
+    <span class="sec-title">Agent-Specific Prompt Analytics</span>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="loadAgentAnalytics(true)">Refresh</button>
+  </div>
+
+  <div class="agent-tabs" id="agentTabs">
+    <button class="agent-tab active" data-agent="AssessmentAgent" onclick="switchAgentTab('AssessmentAgent')">Agent 1 — Assessment</button>
+    <button class="agent-tab" data-agent="ResolutionAgent" onclick="switchAgentTab('ResolutionAgent')">Agent 2 — Resolution</button>
+    <button class="agent-tab" data-agent="FinalNoticeAgent" onclick="switchAgentTab('FinalNoticeAgent')">Agent 3 — Final Notice</button>
+  </div>
+
+  <div id="agentAnalyticsContent" class="detail-card-body open" style="display:block;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+    <div class="empty" style="padding:20px"><div class="spinner"></div>Loading agent analytics...</div>
+  </div>
+</div><!-- /pane-analytics -->
+
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── util ──────────────────────────────────────────────────
+function sc(v) { return v >= .75 ? 'var(--green)' : v >= .5 ? 'var(--amber)' : 'var(--red)'; }
+function scCls(v) { return v >= .75 ? 'high' : v >= .5 ? 'mid' : 'low'; }
+function pct(v) { return typeof v === 'number' ? Math.round(v*100)+'%' : '—'; }
+function fmt(v, d=1) { return typeof v === 'number' ? (v*100).toFixed(d)+'%' : '—'; }
+function fmtN(v) { return typeof v === 'number' ? v.toFixed(2) : '—'; }
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+  if (name === 'pipeline') { loadPipelineRuns(); loadFeederStatus(); loadCostBreakdown(); }
+  if (name === 'generate') loadGenerationJobs();
+  if (name === 'analytics') loadAgentAnalytics();
+}
+
+// ── STATS ─────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await fetch('/api/admin/stats').then(r=>r.json());
+    document.getElementById('stInt').textContent = d.total_interactions ?? '—';
+    document.getElementById('stOut').textContent = d.total_outcomes ?? '—';
+    document.getElementById('stAg').textContent  = d.outcome_counts?.AGREEMENT ?? 0;
+    document.getElementById('stLg').textContent  = d.outcome_counts?.LEGAL ?? 0;
+    document.getElementById('stAvg').textContent = d.average_llm_score != null ? Math.round(d.average_llm_score*100)+'%' : '—';
+    document.getElementById('stEv').textContent  = d.total_evals ?? '—';
+  } catch(e) {}
+}
+
+// ── EVAL CARDS ─────────────────────────────────────────────
+function ring(score, size=46) {
+  const r = size/2-3, c = 2*Math.PI*r, fill = c*score, col = sc(score);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)position:absolute;top:0;left:0">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#252839" stroke-width="3.5"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="3.5"
+            stroke-dasharray="${fill} ${c-fill}" stroke-linecap="round"/>
+  </svg>`;
+}
+function dimBar(v, name) {
+  const col = v>=.75?'var(--green)':v>=.5?'var(--amber)':'var(--red)';
+  return `<div class="dim-row">
+    <div class="dim-name">${name.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>
+    <div class="dim-bar-w"><div class="dim-bar" style="width:${Math.round(v*100)}%;background:${col}"></div></div>
+    <div class="dim-val" style="color:${col}">${Math.round(v*100)}%</div>
+  </div>`;
+}
+
+const _transcripts = {};
+function buildEvalCard(ev, idx) {
+  const cid = 'ec'+idx, overall = ev.overall_score;
+  _transcripts[cid] = ev.transcript_full || [];
+  const outcls = ev.outcome || 'unknown';
+  const dimHtml = Object.entries(ev.dimension_scores||{})
+    .filter(([k])=>k!=='goal_achieved')
+    .map(([k,v])=>dimBar(typeof v==='number'?v:0, k)).join('');
+  const rulesHtml = (ev.rule_checks||[]).map(c=>`
+    <div class="rule-row">
+      <div class="rule-dot ${c.passed?'p':'f'}">${c.passed?'✓':'✗'}</div>
+      <div><div style="font-weight:600">${c.name.replace(/_/g,' ')}</div><div style="color:var(--muted);font-size:10px">${c.detail}</div></div>
+    </div>`).join('');
+  const turns = (ev.transcript_preview||[]).map(t=>{
+    const cls = t.role==='user'?'bor':'agt';
+    return `<div class="turn ${cls}"><div class="turn-bub"><div class="turn-lbl">${t.role==='user'?'Borrower':'Agent'}</div>${(t.content||'').slice(0,200)}</div></div>`;
+  }).join('');
+  const goalBadge = ev.dimension_scores?.goal_achieved !== undefined
+    ? `<span class="badge ${ev.dimension_scores.goal_achieved?'pass':'fail'}">${ev.dimension_scores.goal_achieved?'Goal Met':'No Goal'}</span>` : '';
+  const cacheTag = ev.llm_from_cache ? `<span style="font-size:9px;background:var(--border);color:var(--muted2);padding:1px 6px;border-radius:8px;font-weight:700">CACHED</span>` : `<span style="font-size:9px;background:#0d3021;color:var(--green);padding:1px 6px;border-radius:8px;font-weight:700">LIVE</span>`;
+  return `
+<div class="eval-card ${ev.rule_passed?'pass':'fail'}" id="${cid}">
+  <div class="eval-card-hdr" onclick="toggleEval('${cid}')">
+    <div class="score-circle" style="border-color:${sc(overall)};color:${sc(overall)};position:relative;">
+      ${ring(overall)}
+      <span style="position:relative;z-index:1">${Math.round(overall*100)}%</span>
+    </div>
+    <div class="eval-meta">
+      <div class="eid">${ev.borrower_id}</div>
+      <div class="emeta">
+        <span>🕐 ${ev.timestamp_fmt}</span>
+        <span>🔄 ${ev.total_turns} turns</span>
+        <span>🤖 ${(ev.agents_seen||[]).join(', ').replace(/Agent/g,'')}</span>
+        ${goalBadge}
+      </div>
+    </div>
+    <div class="eval-scores">
+      <div class="sc-col"><div class="lbl">Rule</div><div class="val" style="color:${sc(ev.rule_score)}">${Math.round(ev.rule_score*100)}%</div></div>
+      <div class="sc-col"><div class="lbl">LLM ${cacheTag}</div><div class="val" style="color:${sc(ev.llm_score)}">${Math.round(ev.llm_score*100)}%</div></div>
+      <span class="badge ${outcls}">${ev.outcome||'pending'}</span>
+    </div>
+    <div class="toggle-icon" id="ti-${cid}">▼</div>
+  </div>
+  <div class="card-body" id="body-${cid}">
+    <div class="panel">
+      <div class="panel-title">LLM Dimensions</div>${dimHtml||'<div class="c-muted" style="font-size:11px">No scores</div>'}
+      <div class="panel-title" style="margin-top:14px">Rule Checks</div>${rulesHtml}
+    </div>
+    <div class="panel">
+      <div class="panel-title" style="display:flex;justify-content:space-between">
+        Transcript
+        <button onclick="expandTranscript('${cid}',event)" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline">See all</button>
+      </div>
+      <div id="turns-${cid}">${turns||'<div class="c-muted" style="font-size:11px">No transcript</div>'}</div>
+      ${ev.llm_feedback?`<div class="feedback-box"><strong>Judge reasoning:</strong> ${ev.llm_feedback}</div>`:''}
+    </div>
+  </div>
+</div>`;
+}
+function toggleEval(cid) {
+  document.getElementById('body-'+cid).classList.toggle('open');
+  document.getElementById('ti-'+cid).classList.toggle('open');
+}
+function expandTranscript(cid, e) {
+  e.stopPropagation();
+  const turns = _transcripts[cid]||[];
+  const html = turns.map(t=>{
+    const cls=t.role==='user'?'bor':'agt';
+    return `<div class="turn ${cls}"><div class="turn-bub"><div class="turn-lbl">${t.role==='user'?'Borrower':'Agent'}</div>${t.content||''}</div></div>`;
+  }).join('');
+  document.getElementById('turns-'+cid).innerHTML = html || '<div class="c-muted" style="font-size:11px">Empty</div>';
+  e.target.style.display='none';
+}
+
+let _evalLoading = false;
+async function loadEvals(force=false) {
+  if (_evalLoading) return;
+  _evalLoading = true;
+  const btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  const limit = document.getElementById('evalLimit').value;
+  const url = `/api/admin/evaluations${force?'/refresh':''}?limit=${limit}`;
+  document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="spinner"></div>${force?'Running LLM judge…':'Loading…'}</div>`;
+  try {
+    const d = await fetch(url).then(r=>r.json());
+    if (!d.evaluations?.length) {
+      document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="icon">📭</div>${d.message||'No transcripts found'}</div>`;
+      return;
+    }
+    document.getElementById('evalGenAt').textContent = 'Generated ' + new Date(d.generated_at).toLocaleTimeString();
+    document.getElementById('evalCards').innerHTML = d.evaluations.map((ev,i)=>buildEvalCard(ev,i)).join('');
+    loadStats();
+    toast(`Loaded ${d.evaluations.length} evaluations`);
+  } catch(e) {
+    document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="icon">❌</div>Error: ${e.message}</div>`;
+  } finally { _evalLoading=false; btn.disabled=false; }
+}
+
+// ── PIPELINE ──────────────────────────────────────────────
+let _pollTimer = null;
+let _selectedRun = null;
+
+async function triggerPipeline() {
+  const agent = document.getElementById('pipeAgent').value;
+  const limit = parseInt(document.getElementById('pipeLimit').value)||10;
+  const btn   = document.getElementById('btnRunPipeline');
+  btn.disabled = true; btn.textContent = '⏳ Starting…';
+  try {
+    const d = await fetch('/api/admin/pipeline/run', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agent_name:agent, limit, triggered_by:'admin_ui'})
+    }).then(r=>r.json());
+    if (d.error) { toast('Error: '+d.error); return; }
+    toast(`Pipeline started — ${d.transcript_count} transcripts`);
+    setTimeout(loadPipelineRuns, 1500);
+    // Start polling
+    _pollTimer && clearInterval(_pollTimer);
+    _pollTimer = setInterval(loadPipelineRuns, 4000);
+  } catch(e) { toast('Error: '+e.message); }
+  finally { btn.disabled=false; btn.innerHTML='▶ Run Pipeline'; }
+}
+
+async function loadPipelineRuns() {
+  try {
+    const d = await fetch('/api/admin/pipeline/runs?limit=30').then(r=>r.json());
+    const runs = d.runs || [];
+    if (!runs.length) {
+      document.getElementById('runHistory').innerHTML = `<div class="empty" style="padding:20px">No runs yet</div>`;
+      document.getElementById('trendSection').style.display = 'none';
+      return;
+    }
+    // Stop polling if no running runs
+    const anyRunning = runs.some(r=>r.status==='running');
+    if (!anyRunning && _pollTimer) { clearInterval(_pollTimer); _pollTimer=null; }
+
+    // Iteration numbers: oldest = #1. Runs arrive newest-first.
+    const total = runs.length;
+    document.getElementById('runHistory').innerHTML = runs.map((r, idx) => {
+      const dec     = r.decision || 'pending';
+      const ts      = r.started_at ? new Date(r.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
+      const sel     = _selectedRun === r.run_id ? 'selected' : '';
+      const iterNum = total - idx;
+      const by      = r.triggered_by || '';
+      const trigCls = by.includes('auto') ? 'auto' : 'manual';
+      return `<div class="run-row ${sel}" onclick="selectRun('${r.run_id}')">
+        <div class="run-status ${r.status}"></div>
+        <div class="iter-badge">#${iterNum}</div>
+        <div class="run-id" style="font-size:11px">${r.agent_target||''}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+          <div class="run-ts">${ts}</div>
+          <span class="trigger-badge ${trigCls}">${trigCls}</span>
+        </div>
+        <div class="run-decision ${dec}">${dec}</div>
+      </div>`;
+    }).join('');
+
+    // Auto-select most recent if nothing selected
+    if (!_selectedRun && runs.length) selectRun(runs[0].run_id, true);
+
+    // Render score trend table
+    renderScoreTrend(runs);
+  } catch(e) { console.warn('loadPipelineRuns error', e); }
+}
+
+async function selectRun(runId, silent=false) {
+  _selectedRun = runId;
+  document.querySelectorAll('.run-row').forEach(r => r.classList.toggle('selected', r.onclick?.toString().includes(runId)));
+
+  try {
+    const run = await fetch(`/api/admin/pipeline/runs/${runId}`).then(r=>r.json());
+    if (run.error) { toast(run.error); return; }
+    // Attach iteration number from the run-row iter-badge
+    const rows = document.querySelectorAll('.run-row');
+    rows.forEach(row => {
+      if (row.onclick?.toString().includes(runId)) {
+        const badge = row.querySelector('.iter-badge');
+        run._iterNum = badge ? badge.textContent : '';
+      }
+    });
+    renderRunDetail(run);
+  } catch(e) { if (!silent) toast('Error: '+e.message); }
+}
+
+function renderRunDetail(run) {
+  document.getElementById('detailEmpty').style.display = 'none';
+  const panel = document.getElementById('detailPanel');
+  panel.classList.add('open');
+
+  // Update stage step indicators
+  const scores    = run.transcript_scores?.length > 0;
+  const failures  = run.failure_analysis != null;
+  const complianceCurrent = run.compliance_check != null;
+  const promptImp = run.prompt_improvement != null;
+  const complianceNew = run.new_prompt_compliance != null;
+  const vcomp     = run.version_comparison != null;
+  const hyps      = run.hypothesis_set != null;
+  const isDone    = run.status !== 'running';
+
+  function stCls(done) { return isDone && done ? 'done' : run.status==='running' && done ? 'done' : run.status==='running' && !done ? 'running' : ''; }
+  for (let i=1; i<=7; i++) {
+    const done = [scores, failures, complianceCurrent, promptImp, complianceNew, vcomp, hyps][i-1];
+    const el = document.getElementById('sn'+i);
+    el.className = 'stage-num ' + (done ? 'done' : run.status==='running' ? 'running' : '');
+    el.textContent = done ? '✓' : i;
+  }
+
+  // Build detail cards
+  const cards = [];
+
+  // Overview
+  const decCol = run.decision==='adopt'?'green':run.decision==='reject'?'red':'amber';
+  const scoreSummary = run.transcript_scores?.length ? (() => {
+    const ss = run.transcript_scores;
+    const resRate = ss.filter(s=>s.resolution===1).length/ss.length;
+    const compRate = ss.filter(s=>s.compliance_violation===0).length/ss.length;
+    const avgTone = ss.reduce((a,s)=>a+s.tone_score,0)/ss.length;
+    const avgClarity = ss.reduce((a,s)=>a+s.next_step_clarity,0)/ss.length;
+    return `
+    <div class="score-grid">
+      <div class="score-tile"><div class="label">Resolution Rate</div><div class="value c-${resRate>=.7?'green':'red'}">${fmt(resRate)}</div></div>
+      <div class="score-tile"><div class="label">Compliance Rate</div><div class="value c-${compRate>=.9?'green':'amber'}">${fmt(compRate)}</div></div>
+      <div class="score-tile"><div class="label">Avg Tone</div><div class="value c-accent">${avgTone.toFixed(1)}/5</div></div>
+      <div class="score-tile"><div class="label">Next Step Clarity</div><div class="value c-accent">${avgClarity.toFixed(1)}/5</div></div>
+      <div class="score-tile"><div class="label">Transcripts</div><div class="value">${ss.length}</div></div>
+      <div class="score-tile"><div class="label">Decision</div><div class="value c-${decCol}" style="font-size:16px;text-transform:uppercase">${run.decision||'pending'}</div></div>
+    </div>`;
+  })() : '<div class="c-muted" style="font-size:12px">Scores not yet available</div>';
+
+  const iterLabel  = run._iterNum ? ` · Iteration ${run._iterNum}` : '';
+  const byLabel    = run.triggered_by ? ` · <span class="trigger-badge ${(run.triggered_by||'').includes('auto')?'auto':'manual'}">${(run.triggered_by||'').includes('auto')?'auto':'manual'}</span>` : '';
+  cards.push(detailCard('run-overview', `📋 Run Overview${iterLabel} — ${run.agent_target||run.run_id}${byLabel}`, scoreSummary, true));
+
+  // Stage 1 scores table
+  if (run.transcript_scores?.length) {
+    const rows = run.transcript_scores.map(s=>`
+      <tr>
+        <td style="font-family:monospace;font-size:11px">${s.borrower_id}</td>
+        <td style="text-align:center;color:${s.resolution?'var(--green)':'var(--red)'}">${s.resolution}</td>
+        <td style="text-align:center;color:${s.debt_collected?'var(--green)':'var(--muted)'}">${s.debt_collected}</td>
+        <td style="text-align:center;color:${s.compliance_violation?'var(--red)':'var(--green)'}">${s.compliance_violation}</td>
+        <td style="text-align:center">${s.tone_score}/5</td>
+        <td style="text-align:center">${s.next_step_clarity}/5</td>
+      </tr>`).join('');
+    const html = `<table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">
+        <th style="padding:4px 8px">Borrower</th><th style="text-align:center;padding:4px">Resolved</th>
+        <th style="text-align:center;padding:4px">Debt</th><th style="text-align:center;padding:4px">Violation</th>
+        <th style="text-align:center;padding:4px">Tone</th><th style="text-align:center;padding:4px">Clarity</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    cards.push(detailCard('s1-scores', '1. Transcript Scores', html));
+  }
+
+  // Stage 2 failure analysis
+  if (run.failure_analysis?.failure_patterns?.length) {
+    const pats = run.failure_analysis.failure_patterns.map((p,i)=>`
+      <div class="pattern-card">
+        <div class="ptitle">
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">${i+1}</span>
+          ${p.pattern}
+          <span class="badge ${p.frequency==='high'?'LEGAL':p.frequency==='medium'?'NO_DEAL':'unknown'}" style="margin-left:auto">${p.frequency}</span>
+        </div>
+        <div class="prow"><strong>Root cause:</strong> ${p.root_cause}</div>
+        <div class="prow"><strong>Should do instead:</strong> ${p.recommended_behavior}</div>
+      </div>`).join('');
+    cards.push(detailCard('s2-failures', `2. Failure Analysis — ${run.failure_analysis.total_failed} unresolved (no compliance violation)`, pats));
+  }
+
+  // Stage 3 compliance (current prompt)
+  if (run.compliance_check) {
+    const cc = run.compliance_check;
+    const ccAudit = `
+      <div style="font-size:10px;color:var(--muted);margin-top:8px">
+        checked_sha: <code>${escHtml(cc.checked_prompt_sha || 'n/a')}</code>
+        &nbsp;|&nbsp; model: <code>${escHtml(cc.primary_model || 'n/a')}</code>
+        ${cc.reviewed ? `&nbsp;|&nbsp; reviewer: <code>${escHtml(cc.review_model || 'n/a')}</code>` : ''}
+      </div>`;
+    const html = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:24px">${cc.compliant?'✅':'🚫'}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${cc.compliant?'var(--green)':'var(--red)'}">${cc.compliant?'COMPLIANT':'NON-COMPLIANT'}</div>
+          <div style="font-size:12px;color:var(--muted)">${cc.reason}</div>
+          ${ccAudit}
+        </div>
+      </div>
+      ${cc.risks?.length ? `<div class="panel-title">Risks Identified</div>` + cc.risks.map(r => {
+        const rule = typeof r === 'object' ? r.rule : r;
+        const violation = typeof r === 'object' ? r.violation : '';
+        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);border-left:3px solid var(--amber)">
+          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ ${escHtml(rule)}</div>
+          ${violation ? `<div style="font-size:11px;color:var(--muted)">${escHtml(violation)}</div>` : ''}
+        </div>`;
+      }).join('') : '<div style="font-size:12px;color:var(--muted)">No risks identified</div>'}`;
+    cards.push(detailCard('s3-compliance-current', '3. Compliance Check — Current Prompt', html));
+  }
+
+  // Stage 4 prompt improvement
+  if (run.prompt_improvement) {
+    const pi = run.prompt_improvement;
+    const changes = pi.changes_summary?.map(c=>`<div class="change-item"><span class="change-icon">→</span><span>${c}</span></div>`).join('')||'';
+    const oldPrompt = run.current_prompt_snapshot || '';
+    const newPrompt = pi.new_prompt || '';
+    const diffHtml = oldPrompt
+      ? buildPromptDiff(oldPrompt, newPrompt, 280)
+      : `<div style="font-size:12px;color:var(--muted)">No current prompt snapshot available for this run; diff unavailable.</div>`;
+    const html = `
+      <div style="margin-bottom:12px">
+        <div class="panel-title">Changes Summary</div>
+        ${changes}
+        ${pi.expected_impact?`<div style="margin-top:10px;padding:10px;background:var(--surface2);border-radius:var(--r2);font-size:12px"><strong>Expected impact:</strong> ${pi.expected_impact}</div>`:''}
+      </div>
+      <div class="panel-title">Prompt Diff (Current → Improved)</div>
+      <div class="prompt-diff">${diffHtml}</div>`;
+    cards.push(detailCard('s4-prompt', '4. Improved Prompt', html));
+  }
+
+  // Stage 5 compliance (new prompt gate)
+  if (run.new_prompt_compliance) {
+    const cc = run.new_prompt_compliance;
+    const ccAudit = `
+      <div style="font-size:10px;color:var(--muted);margin-top:8px">
+        checked_sha: <code>${escHtml(cc.checked_prompt_sha || 'n/a')}</code>
+        &nbsp;|&nbsp; model: <code>${escHtml(cc.primary_model || 'n/a')}</code>
+        ${cc.reviewed ? `&nbsp;|&nbsp; reviewer: <code>${escHtml(cc.review_model || 'n/a')}</code>` : ''}
+      </div>`;
+    const html = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:24px">${cc.compliant?'✅':'🚫'}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${cc.compliant?'var(--green)':'var(--red)'}">${cc.compliant?'COMPLIANT':'NON-COMPLIANT'}</div>
+          <div style="font-size:12px;color:var(--muted)">${cc.reason}</div>
+          ${ccAudit}
+        </div>
+      </div>
+      ${!cc.compliant ? '<div style="margin-bottom:10px;padding:10px 12px;background:#3a0f0f;border-radius:var(--r2);font-size:12px;color:#fecaca">Compliance failed. Pipeline continues with caution to surface patch suggestions, but promotion is blocked until compliance passes.</div>' : ''}
+      ${cc.risks?.length ? `<div class="panel-title">Risks Identified</div>` + cc.risks.map(r => {
+        const rule = typeof r === 'object' ? r.rule : r;
+        const violation = typeof r === 'object' ? r.violation : '';
+        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);border-left:3px solid var(--amber)">
+          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ ${escHtml(rule)}</div>
+          ${violation ? `<div style="font-size:11px;color:var(--muted)">${escHtml(violation)}</div>` : ''}
+        </div>`;
+      }).join('') : '<div style="font-size:12px;color:var(--muted)">No risks identified</div>'}`;
+    cards.push(detailCard('s5-compliance-new', '5. Compliance Check — New Prompt (Gate)', html));
+  }
+
+  // Stage 6 version comparison
+  if (run.version_comparison) {
+    const vc = run.version_comparison;
+    const delta = vc.v2_resolution_rate - vc.v1_resolution_rate;
+    const gates = vc.improvement || {};
+    const cohen = (typeof gates.cohen_d === 'number') ? gates.cohen_d.toFixed(3) : '—';
+    const minN = gates.min_sample_per_arm ?? 30;
+    const nOk = gates.enough_samples === true;
+    const dOk = gates.enough_delta === true;
+    const eOk = gates.enough_effect === true;
+    const cOk = gates.compliance_pass === true;
+    const promote = gates.promote === true;
+    const patchReadiness = typeof gates.patch_readiness_pct === 'number' ? gates.patch_readiness_pct : (promote ? 90 : 0);
+    const html = `
+      <div class="compare-row">
+        <div class="compare-side"><h5>v1 (Current)</h5><div class="big c-${vc.v1_resolution_rate>=.6?'green':'red'}">${fmt(vc.v1_resolution_rate)}</div><div style="font-size:11px;color:var(--muted)">resolution rate</div></div>
+        <div class="compare-arrow">→</div>
+        <div class="compare-side"><h5>v2 (Proposed)</h5><div class="big c-${vc.v2_resolution_rate>=.6?'green':'red'}">${fmt(vc.v2_resolution_rate)}</div><div style="font-size:11px;color:var(--muted)">resolution rate</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="score-tile" style="flex:1"><div class="label">Delta</div><div class="value c-${delta>=0?'green':'red'}">${delta>=0?'+':''}${fmt(delta)}</div></div>
+        <div class="score-tile" style="flex:1"><div class="label">p-value</div><div class="value">${fmtN(vc.p_value)}</div></div>
+        <div class="score-tile" style="flex:1"><div class="label">Cohen d</div><div class="value">${cohen}</div></div>
+        <div class="score-tile" style="flex:1"><div class="label">Significant</div><div class="value c-${vc.improvement?.significant?'green':'amber'}">${vc.improvement?.significant?'Yes':'No'}</div></div>
+        <div class="score-tile" style="flex:1"><div class="label">Patch Readiness</div><div class="value c-${promote?'green':'red'}" style="font-size:16px">${patchReadiness}%</div></div>
+        <div class="score-tile" style="flex:1"><div class="label">Decision</div><div class="value c-${vc.decision==='adopt'?'green':'red'}" style="font-size:16px;text-transform:uppercase">${vc.decision}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:11px">
+        <span class="badge ${nOk?'pass':'fail'}">n ≥ ${minN}/arm: ${nOk?'pass':'fail'}</span>
+        <span class="badge ${vc.improvement?.significant?'pass':'fail'}">p &lt; 0.05: ${vc.improvement?.significant?'pass':'fail'}</span>
+        <span class="badge ${dOk?'pass':'fail'}">delta &gt; 0.02: ${dOk?'pass':'fail'}</span>
+        <span class="badge ${eOk?'pass':'fail'}">cohen_d ≥ ${(gates.min_cohen_d ?? 0.2)}: ${eOk?'pass':'fail'}</span>
+        <span class="badge ${cOk?'pass':'fail'}">compliance_pass: ${cOk?'pass':'fail'}</span>
+        <span class="badge ${promote?'pass':'fail'}">promote (AND all gates): ${promote?'pass':'fail'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:monospace;line-height:1.5">
+promote = (
+  n >= 30 AND p_value &lt; 0.05 AND delta &gt; 0.02 AND cohen_d &gt;= 0.20 AND compliance_pass
+)
+      </div>
+      <div style="font-size:12px;line-height:1.6;color:var(--muted);padding:10px 12px;background:var(--surface2);border-radius:var(--r2)">
+        ${vc.summary}<br><strong style="color:var(--text)">Reason:</strong> ${vc.reason}
+      </div>`;
+    cards.push(detailCard('s6-compare', '6. A/B Comparison', html));
+  }
+
+  // Stage 7 hypotheses
+  if (run.hypothesis_set?.hypotheses?.length) {
+    const agentTarget = run.agent_target || '';
+    const caution = run.new_prompt_compliance && run.new_prompt_compliance.compliant === false
+      ? `<div style="margin-bottom:10px;padding:10px 12px;background:#3a0f0f;border-radius:var(--r2);font-size:12px;color:#fecaca">Caution: generated prompt failed compliance. Patches are shown for manual review only; do not promote until compliance passes.</div>`
+      : '';
+    const cardsHtml = run.hypothesis_set.hypotheses.map((h, i) => `
+      <div class="hyp-card" id="hyp-${run.run_id}-${i}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+          <h5>Patch ${i+1}</h5>
+          <button class="patch-btn"
+                  id="patchbtn-${run.run_id}-${i}"
+                  onclick="applyPatch('${run.run_id}', ${i}, '${agentTarget}', this)">
+            Apply Patch
+          </button>
+        </div>
+        <p>${h.hypothesis}</p>
+        <p><strong>Why it might work:</strong> ${h.why_it_might_work}</p>
+        <p><strong>How to test:</strong> ${h.how_to_test}</p>
+        <div id="patchmsg-${run.run_id}-${i}" style="font-size:10px;color:var(--muted);margin-top:6px"></div>
+      </div>`).join('');
+    cards.push(detailCard('s7-hyp', '7. Prompt Patches', caution + cardsHtml));
+  }
+
+  // Error
+  if (run.error) {
+    cards.push(detailCard('run-error', '❌ Pipeline Error', `<div style="color:var(--red);font-family:monospace;font-size:12px">${escHtml(run.error)}</div>`, true));
+  }
+
+  panel.innerHTML = cards.join('');
+}
+
+function detailCard(id, title, body, open=false) {
+  return `
+<div class="detail-card">
+  <div class="detail-card-hdr" onclick="toggleDetail('${id}')">
+    <h4>${title}</h4>
+    <span class="toggle-icon${open?' open':''}" id="dti-${id}">▼</span>
+  </div>
+  <div class="detail-card-body${open?' open':''}" id="dbd-${id}">${body}</div>
+</div>`;
+}
+function toggleDetail(id) {
+  document.getElementById('dbd-'+id).classList.toggle('open');
+  document.getElementById('dti-'+id).classList.toggle('open');
+}
+
+function escHtml(t) {
+  return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function buildPromptDiff(oldText, newText, maxLines=260) {
+  const a = String(oldText || '').split(/\r?\n/);
+  const b = String(newText || '').split(/\r?\n/);
+
+  // Guard browser performance for very large prompts.
+  if (a.length * b.length > 70000) {
+    return buildPromptDiffFast(a, b, maxLines);
+  }
+
+  const n = a.length;
+  const m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  const ops = [];
+  let i = n;
+  let j = m;
+  while (i > 0 && j > 0) {
+    if (a[i - 1] === b[j - 1]) {
+      ops.push({ t: 'same', line: a[i - 1] });
+      i--; j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      ops.push({ t: 'del', line: a[i - 1] });
+      i--;
+    } else {
+      ops.push({ t: 'add', line: b[j - 1] });
+      j--;
+    }
+  }
+  while (i > 0) { ops.push({ t: 'del', line: a[i - 1] }); i--; }
+  while (j > 0) { ops.push({ t: 'add', line: b[j - 1] }); j--; }
+  ops.reverse();
+
+  const rendered = ops.map(op => {
+    const line = escHtml(op.line);
+    if (op.t === 'add') return `<span style="color:var(--green)">+ ${line}</span>`;
+    if (op.t === 'del') return `<span style="color:var(--red)">- ${line}</span>`;
+    return `<span style="color:var(--muted)">  ${line}</span>`;
+  });
+
+  if (rendered.length > maxLines) {
+    const hidden = rendered.length - maxLines;
+    return rendered.slice(0, maxLines).join('\n') +
+      `\n<span style="color:var(--muted)">… diff truncated (${hidden} more lines)</span>`;
+  }
+  return rendered.join('\n');
+}
+
+function buildPromptDiffFast(oldLines, newLines, maxLines=260) {
+  const oldSet = new Set(oldLines);
+  const newSet = new Set(newLines);
+  const out = [];
+
+  for (const line of oldLines) {
+    if (!newSet.has(line)) out.push(`<span style="color:var(--red)">- ${escHtml(line)}</span>`);
+  }
+  for (const line of newLines) {
+    if (!oldSet.has(line)) out.push(`<span style="color:var(--green)">+ ${escHtml(line)}</span>`);
+  }
+
+  if (!out.length) return `<span style="color:var(--muted)">No textual changes detected.</span>`;
+  if (out.length > maxLines) {
+    const hidden = out.length - maxLines;
+    return out.slice(0, maxLines).join('\n') +
+      `\n<span style="color:var(--muted)">… diff truncated (${hidden} more lines)</span>`;
+  }
+  return out.join('\n');
+}
+
+// ── COST BREAKDOWN ────────────────────────────────────────
+async function loadCostBreakdown() {
+  try {
+    const d = await fetch('/api/admin/stats/cost-breakdown').then(r => r.json());
+    if (d.error) return;
+
+    const total   = d.total_cost_usd ?? 0;
+    const budget  = d.budget_usd ?? 20;
+    const pct     = Math.min(100, d.pct_used ?? 0);
+    const over    = total > budget;
+
+    // Budget bar
+    const bar = document.getElementById('costBudgetBar');
+    bar.style.display = 'block';
+    document.getElementById('costTotalLabel').innerHTML =
+      `<span style="color:${over?'var(--red)':'var(--text)'}">$${total.toFixed(4)} spent</span>` +
+      ` <span style="font-size:10px;color:var(--muted)">(${pct.toFixed(1)}%)</span>`;
+    document.getElementById('costRemainingLabel').textContent =
+      `$${(d.remaining_usd??0).toFixed(4)} remaining`;
+    const fill = document.getElementById('costBudgetFill');
+    fill.style.width  = pct + '%';
+    fill.style.background = over ? 'var(--red)' : pct > 75 ? 'var(--amber)' : 'var(--green)';
+
+    // Table rows
+    const rows = (d.rows || []).map(r => {
+      const srcBadge = r.source === 'actual'
+        ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:#0d2240;color:var(--accent);font-weight:700">actual</span>`
+        : `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--border);color:var(--muted);font-weight:700">est.</span>`;
+      const modelShort = r.model.replace('claude-','').replace('-4-5','').replace('-4-7','');
+      return `<tr>
+        <td style="color:var(--text)">${r.operation}</td>
+        <td style="color:var(--muted);font-family:monospace;font-size:10px">${modelShort}</td>
+        <td style="color:var(--muted)">${r.count.toLocaleString()} <span style="font-size:9px">${r.count_unit||''}</span></td>
+        <td style="text-align:right;font-weight:700;color:${r.cost_usd>1?'var(--amber)':'var(--text)'}">~$${r.cost_usd.toFixed(4)}</td>
+        <td>${srcBadge}</td>
+      </tr>`;
+    }).join('');
+
+    const totalRow = `<tr style="border-top:2px solid var(--border2)">
+      <td colspan="3" style="font-weight:800;padding-top:10px">Total</td>
+      <td style="text-align:right;font-weight:800;font-size:14px;color:${over?'var(--red)':total>15?'var(--amber)':'var(--green)'};padding-top:10px">~$${total.toFixed(4)}</td>
+      <td style="padding-top:10px">
+        <span style="font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;
+          background:${over?'#3a0f0f':'#0d3021'};color:${over?'var(--red)':'var(--green)'}">
+          ${over ? 'OVER BUDGET' : 'WITHIN $20'}
+        </span>
+      </td>
+    </tr>`;
+
+    document.getElementById('costBody').innerHTML = rows + totalRow;
+  } catch(e) { console.warn('loadCostBreakdown error', e); }
+}
+
+// ── FEEDER STATUS ─────────────────────────────────────────
+async function loadFeederStatus() {
+  try {
+    const d = await fetch('/api/admin/pipeline/feeder-status').then(r=>r.json());
+    const count     = d.call_count ?? 0;
+    const threshold = d.trigger_every_n ?? 30;
+    const perAgentRemaining = d.transcripts_until_next_by_agent || {};
+    const perAgentCounts = d.agent_transcript_counts || {};
+    const nextIn = (typeof d.next_trigger_in === 'number' && d.next_trigger_in >= 0)
+      ? d.next_trigger_in
+      : (d.calls_until_next ?? threshold);
+    const nextAgent = d.next_trigger_agent || '';
+    const progressCount = Math.max(0, threshold - nextIn);
+    const pct = threshold > 0
+      ? Math.min(100, Math.round((progressCount / threshold) * 100))
+      : 0;
+
+    const shortAgent = (name) => {
+      if (!name) return '';
+      return name.replace('Agent', '').replace('FinalNotice', 'Final Notice');
+    };
+
+    document.getElementById('fdrCount').textContent     = count < 0 ? '—' : count;
+    document.getElementById('fdrThreshold').textContent = threshold;
+    const remEl = document.getElementById('fdrRemaining');
+    remEl.textContent = nextIn <= 0
+      ? 'triggering…'
+      : nextAgent
+        ? `${nextIn} more (${shortAgent(nextAgent)})`
+        : `${nextIn} more`;
+    const breakdown = Object.entries(perAgentRemaining)
+      .filter(([, n]) => typeof n === 'number' && n >= 0)
+      .map(([agent, n]) => `${shortAgent(agent)}: ${perAgentCounts[agent] ?? 0}/${threshold} (${n} more)`)
+      .join(' | ');
+    remEl.title = breakdown;
+    document.getElementById('fdrFill').style.width      = pct + '%';
+    document.getElementById('fdrFill').style.background = pct >= 100 ? 'var(--green)' : 'var(--accent)';
+  } catch(e) { console.warn('loadFeederStatus error', e); }
+}
+
+async function triggerNow(agentName) {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Starting…'; }
+  try {
+    const body = agentName ? { agent_name: agentName, triggered_by: 'admin_ui_manual' }
+                           : { triggered_by: 'admin_ui_manual' };
+    const d = await fetch('/api/admin/pipeline/trigger-now', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    }).then(r=>r.json());
+    toast(`Pipeline triggered for: ${(d.triggered||[]).join(', ')}`);
+    setTimeout(() => { loadPipelineRuns(); loadFeederStatus(); }, 1500);
+    _pollTimer && clearInterval(_pollTimer);
+    _pollTimer = setInterval(loadPipelineRuns, 4000);
+  } catch(e) { toast('Error: ' + e.message); }
+  finally { if (btn) { btn.disabled=false; btn.innerHTML='⚡ Trigger Now — All Agents'; } }
+}
+
+function renderScoreTrend(runs) {
+  const section = document.getElementById('trendSection');
+  const body    = document.getElementById('trendBody');
+  const total   = runs.length;
+
+  const rows = runs.map((r, idx) => {
+    const iterNum = total - idx;
+    const vc      = r.version_comparison;
+    const v1      = vc?.v1_resolution_rate;
+    const v2      = vc?.v2_resolution_rate;
+    const delta   = (v1 != null && v2 != null) ? (v2 - v1) : null;
+    const pVal    = vc?.p_value;
+    const dec     = r.decision || 'pending';
+    const ts      = r.started_at ? new Date(r.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '—';
+    const by      = (r.triggered_by||'').includes('auto') ? 'auto' : 'manual';
+    const nTx     = r.transcript_scores?.length ?? '—';
+
+    const deltaHtml = delta == null ? '<span class="delta-flat">—</span>'
+      : delta > 0  ? `<span class="delta-up">+${fmt(delta)}</span>`
+      : delta < 0  ? `<span class="delta-down">${fmt(delta)}</span>`
+      :              `<span class="delta-flat">0%</span>`;
+
+    const decColor = dec==='adopt' ? 'var(--green)' : dec==='reject' ? 'var(--red)' : 'var(--muted)';
+
+    return `<tr>
+      <td><span class="iter-badge">#${iterNum}</span></td>
+      <td style="color:var(--text)">${r.agent_target||'—'}</td>
+      <td><span class="trigger-badge ${by}">${by}</span></td>
+      <td style="text-align:center">${nTx}</td>
+      <td style="text-align:center">${v1 != null ? fmt(v1) : '—'}</td>
+      <td style="text-align:center">${v2 != null ? fmt(v2) : '—'}</td>
+      <td style="text-align:center">${deltaHtml}</td>
+      <td style="text-align:center;color:var(--muted)">${pVal != null ? pVal.toFixed(3) : '—'}</td>
+      <td style="text-align:center;font-weight:700;color:${decColor};text-transform:uppercase">${dec}</td>
+      <td style="color:var(--muted)">${ts}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = rows;
+  section.style.display = total > 0 ? 'block' : 'none';
+}
+
+// ── GENERATION ────────────────────────────────────────────
+let _genPollTimer = null;
+let _currentJobId = null;
+
+async function triggerGeneration(runPipeline) {
+  const btnOnly = document.getElementById('btnGenerateOnly');
+  const btnLearn = document.getElementById('btnGenerateLearn');
+  const activeBtn = runPipeline ? btnLearn : btnOnly;
+
+  btnOnly.disabled = true;
+  btnLearn.disabled = true;
+  activeBtn.textContent = '⏳ Starting…';
+
+  const pipelineEvery = parseInt(document.getElementById('genBatch').value) || 8;
+  const body = {
+    total:              parseInt(document.getElementById('genTotal').value) || 30,
+    batch_size:         parseInt(document.getElementById('genBatch').value) || 8,
+    agent_target:       document.getElementById('genAgent').value,
+    run_pipeline_every: pipelineEvery,
+    run_pipeline:       !!runPipeline,
+  };
+
+  try {
+    const d = await fetch('/api/admin/generate/run', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+
+    if (d.error) { toast('Error: ' + d.error); return; }
+    _currentJobId = d.job_id;
+    toast(`Generation started (${runPipeline ? 'generate+pipeline' : 'generate-only'}) — job ${d.job_id}`);
+
+    document.getElementById('genEmpty').style.display = 'none';
+    document.getElementById('genDetail').style.display = 'flex';
+
+    _genPollTimer && clearInterval(_genPollTimer);
+    _genPollTimer = setInterval(() => pollGenerationJob(_currentJobId), 1500);
+
+    loadGenerationJobs();
+  } catch(e) { toast('Error: ' + e.message); }
+  finally {
+    btnOnly.disabled = false;
+    btnLearn.disabled = false;
+    btnOnly.innerHTML = '▶ Generate Synthetic Conversations';
+    btnLearn.innerHTML = '▶ Generate + Run Improvement Pipeline';
+  }
+}
+
+async function pollGenerationJob(jobId) {
+  try {
+    const job = await fetch(`/api/admin/generate/jobs/${jobId}`).then(r => r.json());
+    if (job.error) return;
+    updateGenerationUI(job);
+    if (job.status !== 'running') {
+      clearInterval(_genPollTimer);
+      _genPollTimer = null;
+      loadGenerationJobs();
+      loadStats();
+    }
+  } catch(e) {}
+}
+
+function updateGenerationUI(job) {
+  const pct = job.total > 0 ? Math.round((job.completed / job.total) * 100) : 0;
+  document.getElementById('genProgressBar').style.width = pct + '%';
+  document.getElementById('genProgressLabel').textContent = `${job.completed} / ${job.total} transcripts`;
+  document.getElementById('genBatchLabel').textContent = `Batch ${job.current_batch}/${job.total_batches}`;
+  document.getElementById('genCompleted').textContent = job.completed;
+  document.getElementById('genFailed').textContent = job.failed;
+  document.getElementById('genPipelineRuns').textContent = job.pipeline_runs;
+  document.getElementById('genCurrentPersona').textContent = job.current_persona || '—';
+
+  const isDone = job.status !== 'running';
+  const statusTitle = document.getElementById('genStatusTitle');
+  const statusBadge = document.getElementById('genStatusBadge');
+
+  if (job.status === 'completed') {
+    statusTitle.textContent = `✅ Complete — ${job.completed} transcripts generated`;
+    statusBadge.className = 'run-decision adopt'; statusBadge.textContent = 'completed';
+  } else if (job.status === 'failed') {
+    statusTitle.textContent = `❌ Failed: ${job.error || 'unknown error'}`;
+    statusBadge.className = 'run-decision reject'; statusBadge.textContent = 'failed';
+  } else {
+    statusTitle.textContent = `⏳ Running — batch ${job.current_batch}/${job.total_batches}`;
+    statusBadge.className = 'run-decision pending'; statusBadge.textContent = 'running';
+  }
+
+  // Update log
+  if (job.log?.length) {
+    const logEl = document.getElementById('genLog');
+    logEl.innerHTML = job.log.map(line => {
+      let color = 'var(--muted)';
+      if (line.includes('✅') || line.includes('✓') || line.includes('AGREEMENT')) color = 'var(--green)';
+      else if (line.includes('✗') || line.includes('FAILED') || line.includes('LEGAL')) color = 'var(--red)';
+      else if (line.includes('Pipeline run') || line.includes('pipeline')) color = 'var(--accent)';
+      else if (line.includes('───')) color = 'var(--text)';
+      else if (line.includes('Patch')) color = 'var(--purple)';
+      return `<div style="color:${color}">${escHtml(line)}</div>`;
+    }).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+async function loadGenerationJobs() {
+  try {
+    const d = await fetch('/api/admin/generate/jobs').then(r => r.json());
+    const jobs = d.jobs || [];
+    if (!jobs.length) {
+      document.getElementById('genJobHistory').innerHTML = `<div class="empty" style="padding:20px">No jobs yet</div>`;
+      return;
+    }
+    document.getElementById('genJobHistory').innerHTML = jobs.map(j => {
+      const ts = j.started_at ? new Date(j.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
+      const cls = j.status === 'completed' ? 'completed' : j.status === 'running' ? 'running' : 'failed';
+      const sel = _currentJobId === j.job_id ? 'selected' : '';
+      return `<div class="run-row ${sel}" onclick="selectGenerationJob('${j.job_id}')">
+        <div class="run-status ${cls}"></div>
+        <div class="run-id">${j.job_id}</div>
+        <div style="font-size:10px;color:var(--muted)">${j.completed}/${j.total}</div>
+        <div class="run-ts">${ts}</div>
+        <div class="run-decision ${j.status === 'completed' ? 'adopt' : j.status === 'running' ? 'pending' : 'reject'}">${j.status}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function selectGenerationJob(jobId) {
+  _currentJobId = jobId;
+  document.getElementById('genEmpty').style.display = 'none';
+  document.getElementById('genDetail').style.display = 'flex';
+  const job = await fetch(`/api/admin/generate/jobs/${jobId}`).then(r => r.json());
+  if (!job.error) updateGenerationUI(job);
+
+  // Start polling if still running
+  if (job.status === 'running') {
+    _genPollTimer && clearInterval(_genPollTimer);
+    _genPollTimer = setInterval(() => pollGenerationJob(jobId), 1500);
+  }
+}
+
+// ── AGENT ANALYTICS ──────────────────────────────────────
+let _agentAnalytics = null;
+let _activeAgentTab = 'AssessmentAgent';
+
+function switchAgentTab(agentName) {
+  _activeAgentTab = agentName;
+  document.querySelectorAll('.agent-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.agent === agentName);
+  });
+  renderAgentAnalytics();
+}
+
+function _fmtMetricValue(card) {
+  const v = card?.value;
+  const t = card?.type || '';
+  if (v == null) return '—';
+  if (t === 'bool') return Number(v) >= 0.5 ? 'true' : 'false';
+  if (t === 'int') return String(Math.round(Number(v)));
+  if (t.includes('0-1') || t.includes('0/')) return Number(v).toFixed(2);
+  return String(v);
+}
+
+function _decisionClass(decision) {
+  const d = String(decision || '').toLowerCase();
+  if (d.includes('baseline')) return 'dec-baseline';
+  if (d.includes('adopt')) return 'dec-adopted';
+  if (d.includes('reject')) return 'dec-rejected';
+  if (d.includes('roll')) return 'dec-rolled';
+  return 'dec-observed';
+}
+
+function renderAgentAnalytics() {
+  const host = document.getElementById('agentAnalyticsContent');
+  if (!host) return;
+  const agent = _agentAnalytics?.agents?.[_activeAgentTab];
+  if (!agent) {
+    host.innerHTML = `<div class="empty" style="padding:20px">No analytics data yet.</div>`;
+    return;
+  }
+
+  const cards = (agent.cards || []).map(card => `
+    <div class="agent-metric-card">
+      <div class="k">${card.label}</div>
+      <div class="v">${_fmtMetricValue(card)}</div>
+      <div class="h">${card.type} · ${card.hint}</div>
+    </div>
+  `).join('');
+
+  const rows = (agent.version_history || []).map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td>${r.n}</td>
+      <td>${typeof r.mean==='number' ? r.mean.toFixed(3) : '—'}</td>
+      <td>${typeof r.sd==='number' ? r.sd.toFixed(3) : '—'}</td>
+      <td>[${typeof r.ci_low==='number' ? r.ci_low.toFixed(3) : '—'}, ${typeof r.ci_high==='number' ? r.ci_high.toFixed(3) : '—'}]</td>
+      <td>${typeof r.p_vs_prev==='number' ? r.p_vs_prev.toFixed(4) : '—'}</td>
+      <td>${typeof r.cohen_d==='number' ? r.cohen_d.toFixed(3) : '—'}</td>
+      <td>${escHtml(r.primary_change || '—')}</td>
+      <td><span class="dec-chip ${_decisionClass(r.decision)}">${r.decision || 'Observed'}</span></td>
+    </tr>
+  `).join('');
+
+  const descHtml = escHtml(agent.description || '').replace(/\n/g, '<br>');
+  const pr = agent.patch_readiness || {};
+  const prReady = pr.patch_ready === true;
+  const prColor = prReady ? 'var(--green)' : 'var(--amber)';
+  const prWhen = pr.started_at ? new Date(pr.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '—';
+  const patchReadinessHtml = `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:12px;font-weight:700;color:${prColor}">
+          ${prReady ? 'Patch Ready' : 'Patch Not Ready'}
+          <span style="color:var(--muted);font-weight:600"> · ${pr.patch_readiness_pct || 0}%</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted)">latest run: ${escHtml(pr.run_id || '—')} · ${prWhen}</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">
+        decision=${escHtml(pr.decision || 'pending')} | promote=${pr.promote===true?'pass':'fail'} | compliance_pass=${pr.compliance_pass===true?'pass':'fail'} | manual_patch_required=${pr.manual_patch_required===true?'yes':'no'}
+      </div>
+    </div>
+  `;
+
+  host.innerHTML = `
+    <div class="agent-banner"><strong>${agent.title}:</strong> ${descHtml}</div>
+    <div class="agent-metric-grid">${cards}</div>
+    <div class="formula-bar">${escHtml(agent.formula || '')}</div>
+    ${patchReadinessHtml}
+    <div class="sec-title" style="margin-bottom:8px">Prompt Version History</div>
+    <div class="analytics-table-wrap">
+      <table class="analytics-table">
+        <thead>
+          <tr>
+            <th>Version</th><th>n</th><th>Mean</th><th>SD</th><th>95% CI</th><th>p vs prev</th><th>Cohen's d</th><th>Primary change</th><th>Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="9" style="color:var(--muted);text-align:center">No prompt-version samples found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="agent-insight">${escHtml(agent.insight || '')}</div>
+  `;
+}
+
+async function loadAgentAnalytics(force=false) {
+  try {
+    if (!force && _agentAnalytics) {
+      renderAgentAnalytics();
+      return;
+    }
+    const data = await fetch('/api/admin/analytics/agents').then(r => r.json());
+    if (data.error) {
+      document.getElementById('agentAnalyticsContent').innerHTML = `<div class="empty" style="padding:20px">${escHtml(data.error)}</div>`;
+      return;
+    }
+    _agentAnalytics = data;
+    renderAgentAnalytics();
+  } catch (e) {
+    document.getElementById('agentAnalyticsContent').innerHTML = `<div class="empty" style="padding:20px">Failed to load analytics: ${escHtml(e.message || String(e))}</div>`;
+  }
+}
+
+// ── APPLY PATCH ───────────────────────────────────────────
+async function applyPatch(runId, patchIndex, agentName, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳…';
+  const msgEl = document.getElementById(`patchmsg-${runId}-${patchIndex}`);
+
+  try {
+    const r = await fetch('/api/admin/pipeline/apply-patch', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ run_id: runId, patch_index: patchIndex, agent_name: agentName }),
+    }).then(res => res.json());
+
+    if (r.error) throw new Error(r.error);
+
+    btn.textContent = `✅ Applied v${r.version}`;
+    btn.classList.add('applied');
+    msgEl.innerHTML =
+      `<span style="color:var(--green)">Written to <code>${r.file}</code></span>`
+      + ` &nbsp;|&nbsp; `
+      + `<span style="color:var(--muted2)">Backup: <code>${r.backup_path}</code></span>`;
+    toast(`Patch v${r.version} applied to ${r.agent_name}`);
+  } catch(e) {
+    btn.textContent = '❌ Failed';
+    btn.classList.add('failed');
+    btn.disabled = false;
+    if (msgEl) msgEl.textContent = e.message;
+    toast('Patch failed: ' + e.message);
+  }
+}
+
+// ── init ──────────────────────────────────────────────────
+loadStats();
+</script>
+</body>
+</html>

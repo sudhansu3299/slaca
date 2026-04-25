@@ -1,0 +1,103 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-23T03:40:26.250684+00:00",
+  "borrower_id": "BRW-7166E186",
+  "loan_id": "LN-A178F9",
+  "workflow_id": "collections-BRW-7166E186",
+  "call_id": "019db86a-616d-7000-8df5-a870d0f6e498",
+  "offer": {
+    "deadline_days": 3,
+    "discount_percentage": 0.0,
+    "monthly_payment": 3364.58,
+    "path": "hardship",
+    "tenure_months": 6,
+    "upfront_required": 4250.0,
+    "valid_until": "2026-04-26T03:37:52.849555+00:00"
+  },
+  "conversation": [
+    {
+      "content": "Yeah.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:07.815485+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "This call is being recorded. I am an AI collections agent acting on behalf of Riverline.\n\nHere is the offer: $4,250 down payment, then $3,364.58 per month for 6 months. This offer expires April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:10.900533+00:00"
+    },
+    {
+      "content": "What's the offer?",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:10.900849+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "$4,250 down payment, then $3,364.58 per month for 6 months. Offer expires April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:12.935195+00:00"
+    },
+    {
+      "content": "Yeah. In how many days, you're not mentioning anything.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:12.935321+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The deadline is 3 days from today\u2014April 26th. Can you confirm you agree to this plan: $4,250 down payment, then $3,364.58 per month for 6 months?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:15.698004+00:00"
+    },
+    {
+      "content": "But how... in how many days?",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:15.698083+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The down payment of $4,250 is due within 3 days\u2014by April 26th. After that, you pay $3,364.58 monthly for 6 months. Can you commit to this?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:18.077733+00:00"
+    },
+    {
+      "content": "Not today. I cannot pay today.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:18.077795+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The down payment isn't due today\u2014it's due by April 26th, 3 days from now. Can you confirm you agree to this plan?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:22.730527+00:00"
+    },
+    {
+      "content": "Yeah.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:22.730854+00:00"
+    },
+    {
+      "advanced": true,
+      "content": "The borrower has confirmed agreement to the plan.\n\n****\n\nConfirmed terms:\n- Down payment: $4,250 due by April 26th\n- Monthly payments: $3,364.58 for 6 months\n- Total commitment confirmed",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T03:40:25.399336+00:00"
+    }
+  ]
+}

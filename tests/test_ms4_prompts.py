@@ -10,8 +10,12 @@ import pytest
 from src.prompts import (
     assessment_system_prompt, resolution_system_prompt, final_notice_system_prompt,
     check_tone, ASSESSMENT_FORBIDDEN, RESOLUTION_FORBIDDEN, FINAL_NOTICE_FORBIDDEN,
-    ASSESSMENT_PERSONA, RESOLUTION_PERSONA, FINAL_NOTICE_PERSONA,
 )
+
+# Persona text is now file-based — derive from the prompt functions for tests
+ASSESSMENT_PERSONA  = assessment_system_prompt("No facts yet.")
+RESOLUTION_PERSONA  = resolution_system_prompt("No facts.", "No offer.")
+FINAL_NOTICE_PERSONA = final_notice_system_prompt("No facts.", "No offer.")
 from src.models import ConversationContext, Stage, AssessmentData, ResolutionPath, ResolutionOffer
 
 

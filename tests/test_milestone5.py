@@ -3,7 +3,7 @@ Milestone 5 validation tests — Final Notice Agent.
 """
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from src.agents.final_notice import FinalNoticeAgent, CONSEQUENCES, ESCALATION_SIGNALS
 from src.models import (
@@ -132,7 +132,7 @@ class TestFinalNoticeProcess:
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "Noted. COLLECTIONS_COMPLETE"
         )):
             response = await agent.process(ctx, "Okay, I'll pay.")
@@ -146,7 +146,7 @@ class TestFinalNoticeProcess:
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "COLLECTIONS_ESCALATED"
         )):
             response = await agent.process(ctx, "I have no intention of paying.")
@@ -161,7 +161,7 @@ class TestFinalNoticeProcess:
         ctx = make_final_notice_context()
 
         # Claude says nothing special, but user input is a hard refusal
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "This account will be referred to legal."
         )):
             response = await agent.process(ctx, "Sue me. I refuse to pay.")
@@ -174,7 +174,7 @@ class TestFinalNoticeProcess:
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "The offer expires on 24 April. Do you accept?"
         )):
             response = await agent.process(ctx, "I need more time to think.")
@@ -187,7 +187,7 @@ class TestFinalNoticeProcess:
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "Payment confirmed. COLLECTIONS_COMPLETE"
         )):
             response = await agent.process(ctx, "Yes, I accept.")
@@ -199,13 +199,68 @@ class TestFinalNoticeProcess:
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
 
-        with patch.object(agent, "_call_claude", mock_claude_response(
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
             "The offer expires on 24 April.", input_tokens=200, output_tokens=40
         )):
             response = await agent.process(ctx, "What happens if I don't pay?")
 
         assert response.tokens_used.input_tokens == 200
         assert response.tokens_used.output_tokens == 40
+
+    @pytest.mark.asyncio
+    async def test_refusal_allows_three_attempts_then_escalates(self):
+        agent = FinalNoticeAgent()
+        ctx = make_final_notice_context()
+        ctx.final_notice_confirmation_asked = True
+        ctx.final_notice_confirmation_attempts = 1
+
+        llm_mock = AsyncMock(return_value=("unused", TokenUsage(input_tokens=1, output_tokens=1)))
+        with patch.object(agent, "_call_claude_with_tools", llm_mock):
+            first = await agent.process(ctx, "no")
+            second = await agent.process(ctx, "no")
+            third = await agent.process(ctx, "no")
+
+        assert first.should_advance is False
+        assert "final offer remains unchanged" in first.message.lower()
+        assert second.should_advance is False
+        assert "final confirmation" in second.message.lower()
+        assert "legal consequences notice" in second.message.lower()
+        assert ctx.final_notice_reask_used is True
+        assert third.should_advance is True
+        assert ctx.final_notice_outcome == "escalated"
+        llm_mock.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_second_attempt_renegotiation_gets_hard_warning(self):
+        agent = FinalNoticeAgent()
+        ctx = make_final_notice_context()
+        ctx.final_notice_confirmation_asked = True
+        ctx.final_notice_confirmation_attempts = 2
+
+        llm_mock = AsyncMock(return_value=("unused", TokenUsage(input_tokens=1, output_tokens=1)))
+        with patch.object(agent, "_call_claude_with_tools", llm_mock):
+            response = await agent.process(ctx, "Can you reduce the monthly amount?")
+
+        assert response.should_advance is False
+        assert "renegotiation is not available" in response.message.lower()
+        assert "escalated" in response.message.lower()
+        assert "legal consequences notice" in response.message.lower()
+        llm_mock.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_yes_after_confirmation_resolves_and_returns_contract(self):
+        agent = FinalNoticeAgent()
+        ctx = make_final_notice_context()
+        ctx.final_notice_confirmation_asked = True
+
+        llm_mock = AsyncMock(return_value=("unused", TokenUsage(input_tokens=1, output_tokens=1)))
+        with patch.object(agent, "_call_claude_with_tools", llm_mock):
+            response = await agent.process(ctx, "yes")
+
+        assert response.should_advance is True
+        assert ctx.final_notice_outcome == "resolved"
+        assert response.metadata.get("contract_html")
+        llm_mock.assert_not_called()
 
 
 # ------------------------------------------------------------------ #

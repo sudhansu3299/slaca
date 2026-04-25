@@ -20,6 +20,7 @@ Both return a structured EvalReport.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -258,11 +259,11 @@ class RuleBasedEvaluator:
 class LLMJudge:
     """
     LLM-as-judge for subjective conversation quality.
-    Uses a cheaper model (haiku) to keep cost low.
+    Uses a cheaper mini model to keep cost low.
     Can be skipped in unit tests via SKIP_LLM_JUDGE env var.
     """
 
-    JUDGE_MODEL = "claude-haiku-4-5"  # cheap model for evaluation
+    JUDGE_MODEL = os.getenv("EVAL_MODEL", "gpt-4o-mini")  # cheap model for evaluation
     JUDGE_PROMPT = evaluator_judge_prompt()
 
     async def judge(
@@ -275,53 +276,74 @@ class LLMJudge:
         if os.getenv("SKIP_LLM_JUDGE"):
             return 0.85, "skipped (SKIP_LLM_JUDGE set)"
 
-        from anthropic import AsyncAnthropic
+        from openai import AsyncOpenAI
         api_key = _first_nonempty_env(
             "OPENCODE_API_KEY",
             "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
         )
         base_url = _normalize_base_url(_first_nonempty_env(
             "OPENCODE_BASE_URL",
             "OPENAI_BASE_URL",
-            "ANTHROPIC_BASE_URL",
         ))
         # Some SDKs also read env vars directly; blank values can produce
         # malformed request URLs. Clear them to avoid accidental overrides.
-        for env_name in ("OPENCODE_BASE_URL", "OPENAI_BASE_URL", "ANTHROPIC_BASE_URL"):
+        for env_name in ("OPENCODE_BASE_URL", "OPENAI_BASE_URL"):
             if not os.getenv(env_name, "").strip():
                 os.environ.pop(env_name, None)
         if not api_key:
             raise RuntimeError(
-                "Missing LLM API key. Set one of OPENCODE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY."
+                "Missing LLM API key. Set one of OPENCODE_API_KEY or OPENAI_API_KEY."
             )
         client_kwargs = {"api_key": api_key} if api_key else {}
         if base_url:
             client_kwargs["base_url"] = base_url
-        client = AsyncAnthropic(**client_kwargs)
+        client = AsyncOpenAI(**client_kwargs)
 
         convo = "\n".join(
             f"{'Borrower' if m['role'] == 'user' else 'Agent'}: {m.get('content', '')}"
             for m in conversation_history[-8:]
         )
 
-        response = await client.messages.create(
+        response = await client.chat.completions.create(
             model=self.JUDGE_MODEL,
-            max_tokens=100,
+            max_tokens=512,
             temperature=0.0,
-            system=self.JUDGE_PROMPT,
-            messages=[{"role": "user", "content": f"Agent: {agent_name}\n\n{convo}"}],
+            messages=[
+                {"role": "system", "content": self.JUDGE_PROMPT},
+                {"role": "user", "content": f"Agent: {agent_name}\n\n{convo}"},
+            ],
         )
 
-        text = response.content[0].text
+        text = (response.choices[0].message.content or "").strip()
+
+        # The judge prompt instructs JSON output — parse it first
+        import json as _json
         score = 0.5
         reason = text
         try:
-            score_part = [p for p in text.split() if p.startswith("SCORE:")][0]
-            score = float(score_part.replace("SCORE:", ""))
-            reason_part = text.split("REASON:")[-1].strip()
-            reason = reason_part
-        except (IndexError, ValueError):
+            # Strip markdown fences if present
+            clean = text.strip("` \n")
+            if clean.startswith("json"):
+                clean = clean[4:].strip()
+            parsed = _json.loads(clean)
+            # Current judge schema:
+            #   resolution            0|1
+            #   resolution_confidence 0.0-1.0
+            #   debt_collected        0|1
+            #   compliance_violation  0|1  (0 = compliant = good)
+            #   tone_score            1-5
+            #   next_step_clarity     1-5
+            #
+            # Normalise all to 0-1, higher = better, then average.
+            tone_norm        = (parsed.get("tone_score", 3) - 1) / 4          # 1-5 → 0-1
+            clarity_norm     = (parsed.get("next_step_clarity", 3) - 1) / 4   # 1-5 → 0-1
+            resolution_conf  = float(parsed.get("resolution_confidence", 0.5))
+            compliance_norm  = 1.0 - int(parsed.get("compliance_violation", 0))  # 0=good→1.0
+            debt_norm        = float(parsed.get("debt_collected", 0))
+
+            score = (tone_norm + clarity_norm + resolution_conf + compliance_norm + debt_norm) / 5
+            reason = text   # return full JSON string so admin_api.py can re-parse
+        except (_json.JSONDecodeError, TypeError):
             pass
 
         return min(1.0, max(0.0, score)), reason

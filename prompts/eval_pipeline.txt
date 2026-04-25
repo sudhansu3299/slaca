@@ -1,0 +1,24 @@
+Transcripts (MongoDB)
+       ↓
+Stage 1 — Transcript Scoring       gpt-4o-mini → {resolution, debt_collected,
+                                                     compliance_violation, tone_score,
+                                                     next_step_clarity}  (binary JSON)
+       ↓
+Stage 2 — Failure Analysis         gpt-4o-mini → top 3 failure patterns
+           (only resolution=0, compliance=0 failures)  with root_cause + recommended_behavior
+       ↓
+Stage 3 — Compliance Check (Current Prompt)   gpt-4o-mini → {compliant, risks, reason}
+       ↓
+Stage 4 — Prompt Improvement       gpt-4o-mini → new_prompt + changes_summary + expected_impact
+       ↓
+Stage 5 — Compliance Check (New Prompt)       gpt-4o-mini → {compliant, risks, reason}  ← HARD GATE
+          if non-compliant → decision=reject, pipeline stops
+       ↓
+Stage 6 — A/B Comparison           Fisher exact p-value + hard gates
+          gates: n≥30/arm, p<0.05, delta>0.02, cohen_d≥0.20
+          + gpt-4o-mini → {summary, reason}
+       ↓
+Stage 7 — Hypothesis Generation    gpt-4o-mini → 2-3 testable hypotheses with A/B test design
+       ↓
+MongoDB eval_pipeline collection   full audit trail of every run
+prompts/versions/                  automatic backup before any prompt is updated

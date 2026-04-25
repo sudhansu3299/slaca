@@ -2,205 +2,661 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<!-- P2 fix: removed maximum-scale=1 which blocked user zoom (accessibility violation) -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loan Resolution — Collections</title>
+<!-- P1 fix: distinctive font pair. Sora (geometric, authoritative) + Noto Sans (neutral body).
+     Both from Google Fonts. Rejected reflex fonts (Inter, DM Sans, Space Grotesk). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Design tokens (OKLCH — perceptually uniform) ──────────── */
+/* P1/P4 fix: replaced every hard-coded hex with semantic tokens.
+   Tinted neutrals toward brand hue (blue-indigo, ~250°) per impeccable rules.
+   No pure black or white — all tinted. */
 :root {
-  --bg: #0d0f1a; --surface: #161927; --border: #252839;
-  --accent: #4c82f7; --accent-dim: #3464c8;
-  --agent: #1b1f31; --borrower: #0f2d5e;
-  --amber: #f59e0b; --green: #22c55e; --red: #ef4444; --purple: #8b5cf6;
-  --text: #dde3f0; --muted: #7a849a; --radius: 16px; --r2: 8px;
+  /* Surfaces — tinted toward hue 248 */
+  --bg:        oklch(12% 0.018 248);
+  --surface:   oklch(16% 0.020 248);
+  --surface-2: oklch(14% 0.018 248);
+  --border:    oklch(22% 0.022 248);
+  --border-hi: oklch(32% 0.028 248);
+
+  /* Brand accent — a clean slate blue, not the AI cyan/purple */
+  --accent:     oklch(62% 0.16 248);
+  --accent-dim: oklch(54% 0.14 248);
+  --accent-sub: oklch(62% 0.10 248 / 0.12);
+
+  /* Message surfaces */
+  --agent-bg:    oklch(18% 0.022 248);
+  --borrower-bg: oklch(18% 0.10 248);
+
+  /* Semantic status colors */
+  --amber: oklch(76% 0.16 72);
+  --green: oklch(70% 0.16 152);
+  --red:   oklch(62% 0.18 22);
+
+  /* Text */
+  --text:       oklch(88% 0.018 248);
+  --text-body:  oklch(78% 0.015 248);
+  --muted:      oklch(54% 0.022 248);
+
+  /* Spacing scale (4pt base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radii */
+  --r-full: 9999px;
+  --r-lg:   16px;
+  --r-md:   8px;
+  --r-sm:   4px;
+
+  /* Typography */
+  --font-ui:   'Sora', system-ui, sans-serif;
+  --font-body: 'Noto Sans', system-ui, sans-serif;
+  --font-doc:  'Georgia', 'Times New Roman', serif;
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-  background: var(--bg); color: var(--text);
-  font-family: -apple-system, "Segoe UI", sans-serif;
-  height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* ── Header ──────────────────────────── */
+/* ── P2 fix: global focus-visible styles (keyboard navigation) ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
 .hdr {
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
 }
+
+/* P1 fix: replaced purple→blue gradient with a solid tinted surface + icon treatment.
+   The gradient was the #1 AI color palette tell. */
 .hdr-icon {
-  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-  background: linear-gradient(135deg,#4c82f7,#8b5cf6);
-  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent-sub);
+  border: 1.5px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
 }
-.hdr-info h2 { font-size: 14px; font-weight: 700; }
-.hdr-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* P1 fix: tighter type scale using Sora */
+.hdr-info h2 {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.hdr-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+  font-family: var(--font-ui);
+}
+.hdr-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
-  transition: all .3s;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s, box-shadow 0.3s;
 }
-.dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.dot.ring { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.2s infinite; }
+.dot.on   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+/* P2 fix: pulse uses opacity, not layout — correct */
+.dot.ring { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.2s ease-in-out infinite; }
 
-/* ── Stage bar ─────────────────────────── */
+/* ── Stage bar ───────────────────────────────────────────────── */
 .stage-bar {
-  background: #0f1120; border-bottom: 1px solid var(--border);
-  padding: 6px 18px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-  font-size: 11px; color: var(--muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: 5px var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--muted);
 }
-.pill {
-  padding: 2px 10px; border-radius: 20px; font-size: 10px;
-  font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  background: var(--border); transition: all .3s;
-}
-.pill.assessment  { background: #0d2a4a; color: #60a5fa; }
-.pill.resolution  { background: #2d1660; color: #c084fc; }
-.pill.final_notice{ background: #3a0f0f; color: #f87171; }
-.pill.complete    { background: #0d3021; color: #4ade80; }
-.pill.escalated   { background: #3a0f0f; color: #f87171; }
 
-/* ── Voice overlay ─────────────────────── */
+.pill {
+  padding: 2px var(--space-3);
+  border-radius: var(--r-full);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--border);
+  transition: background 0.3s, color 0.3s;
+}
+/* P4: pill colors use OKLCH-tinted tokens rather than raw hex */
+.pill.assessment   { background: oklch(20% 0.06 230); color: oklch(72% 0.12 230); }
+.pill.resolution   { background: oklch(18% 0.06 290); color: oklch(72% 0.12 290); }
+.pill.final_notice { background: oklch(18% 0.06 22);  color: oklch(72% 0.12 22);  }
+.pill.complete     { background: oklch(18% 0.06 152); color: oklch(72% 0.12 152); }
+.pill.escalated    { background: oklch(18% 0.06 22);  color: oklch(72% 0.12 22);  }
+
+/* ── Voice overlay ───────────────────────────────────────────── */
 .voice-banner {
-  display: none; flex-direction: column; align-items: center;
-  gap: 10px; padding: 20px; background: #0d0f1a;
-  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .voice-banner.show { display: flex; }
-.ring-anim {
-  width: 64px; height: 64px; border-radius: 50%;
-  background: linear-gradient(135deg, #4c82f7, #8b5cf6);
-  display: flex; align-items: center; justify-content: center; font-size: 26px;
-  animation: ringpulse 1.5s infinite;
-}
-@keyframes ringpulse {
-  0%   { box-shadow: 0 0 0 0 rgba(76,130,247,.5); }
-  70%  { box-shadow: 0 0 0 18px rgba(76,130,247,0); }
-  100% { box-shadow: 0 0 0 0 rgba(76,130,247,0); }
-}
-.voice-label { font-size: 13px; font-weight: 600; }
-.voice-sub { font-size: 11px; color: var(--muted); text-align: center; max-width: 280px; }
 
-/* ── Messages ───────────────────────────── */
+/* P1 fix: replaced purple→blue gradient ring with solid accent + ring animation.
+   Uses the brand accent; no AI gradient palette. */
+.ring-anim {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent-sub);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  animation: ringpulse 1.6s ease-out infinite;
+}
+
+@keyframes ringpulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 50%, transparent); }
+  70%  { box-shadow: 0 0 0 16px color-mix(in oklch, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 0%, transparent); }
+}
+
+.voice-label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.voice-sub {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* ── Messages ────────────────────────────────────────────────── */
 .msgs {
-  flex: 1; overflow-y: auto; padding: 16px 14px;
-  display: flex; flex-direction: column; gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   scroll-behavior: smooth;
 }
 .msgs::-webkit-scrollbar { width: 3px; }
 .msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.row { display: flex; gap: 8px; max-width: 88%; animation: fadeup .2s ease; }
+.row {
+  display: flex;
+  gap: var(--space-2);
+  max-width: 86%;
+  /* P2 fix: animation uses opacity + transform only (no layout props) */
+  animation: fadeup 0.18s ease-out;
+}
 .row.agent    { align-self: flex-start; }
-.row.borrower { align-self: flex-end;   flex-direction: row-reverse; }
-.row.system   { align-self: center;     max-width: 100%; }
+.row.borrower { align-self: flex-end; flex-direction: row-reverse; }
+.row.system   { align-self: center; max-width: 100%; }
+.row.contract { align-self: center; max-width: 98%; width: 98%; }
 
+/* ── Settlement Contract Document ───────────────────────────── */
+/* P1 fix: removed border-left: 4px on .contract-warning (absolute ban).
+   Replaced with a full background tint + top border approach that reads
+   clearly without the AI side-stripe tell. */
+.contract-doc {
+  /* Contract sits on white — tinted off-white, not pure #fff */
+  background: oklch(98% 0.005 80);
+  color: oklch(18% 0.02 248);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  font-family: var(--font-doc);
+  box-shadow: 0 8px 40px oklch(0% 0 0 / 0.5);
+  width: 100%;
+  margin: var(--space-2) 0;
+}
+
+.contract-header {
+  background: oklch(18% 0.025 248);
+  color: oklch(96% 0.008 248);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.contract-logo {
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  background: oklch(96% 0.008 248 / 0.10);
+  border: 1px solid oklch(96% 0.008 248 / 0.18);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.contract-title {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(96% 0.008 248);
+}
+
+.contract-subtitle {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: oklch(96% 0.008 248 / 0.55);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+
+.contract-stamp {
+  margin-left: auto;
+  background: oklch(76% 0.16 72);
+  color: oklch(18% 0.025 248);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px var(--space-3);
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.contract-stamp.accepted {
+  background: oklch(70% 0.16 152);
+  color: oklch(98% 0.005 152);
+}
+
+.contract-meta {
+  background: oklch(94% 0.008 80);
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  border-bottom: 2px solid oklch(18% 0.025 248);
+  color: oklch(40% 0.015 248);
+}
+
+.contract-section {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid oklch(88% 0.008 80);
+}
+.contract-section:last-child { border-bottom: none; }
+
+.contract-section-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(18% 0.025 248);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1.5px solid oklch(18% 0.025 248);
+}
+
+.contract-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.contract-table th {
+  background: oklch(18% 0.025 248);
+  color: oklch(96% 0.008 248);
+  padding: 6px var(--space-3);
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.contract-table td {
+  padding: 7px var(--space-3);
+  border-bottom: 1px solid oklch(92% 0.006 80);
+  vertical-align: top;
+  color: oklch(28% 0.018 248);
+}
+.contract-table tr:last-child td { border-bottom: none; }
+.contract-table tr:nth-child(even) td { background: oklch(96% 0.005 80); }
+
+/* P0 fix: removed border-left: 4px solid (absolute ban #1).
+   Replaced with a full background tint + top-rule approach. */
+.contract-warning {
+  background: oklch(94% 0.055 72);
+  border-top: 2px solid oklch(76% 0.16 72);
+  border-radius: var(--r-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 12px;
+  color: oklch(38% 0.08 72);
+  margin-bottom: var(--space-3);
+}
+
+.contract-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: oklch(30% 0.018 248);
+}
+.contract-note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: oklch(48% 0.018 248);
+  margin-bottom: var(--space-2);
+}
+.contract-terms {
+  font-size: 11px;
+  color: oklch(48% 0.018 248);
+  line-height: 1.75;
+  background: oklch(96% 0.005 80);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-sm);
+  font-style: italic;
+}
+.contract-acceptance {
+  background: oklch(18% 0.025 248);
+  padding: var(--space-4) var(--space-6);
+  text-align: center;
+}
+.contract-acceptance-label {
+  font-family: var(--font-ui);
+  color: oklch(96% 0.008 248 / 0.70);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--space-3);
+}
+.contract-download-btn {
+  margin-top: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: oklch(62% 0.16 248);
+  color: oklch(98% 0.005 248);
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s cubic-bezier(0.22,1,0.36,1);
+}
+.contract-download-btn::before { content: "↓ "; }
+.contract-download-btn:hover  { background: oklch(54% 0.14 248); }
+.contract-download-btn:active { transform: scale(0.95); }
+
+/* ── Print styles — used when Download PDF triggers window.print() ── */
+@media print {
+  /* Hide everything except the contract being printed */
+  body > *                    { display: none !important; }
+  #print-contract-target      { display: block !important; }
+
+  #print-contract-target .contract-doc {
+    box-shadow: none;
+    border-radius: 0;
+    width: 100%;
+  }
+  /* Hide the download button in the printed output */
+  .contract-download-btn      { display: none !important; }
+
+  @page {
+    size: A4;
+    margin: 15mm 20mm;
+  }
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
 @keyframes fadeup {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse {
-  0%, 100% { opacity: 1; } 50% { opacity: .35; }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
 }
 
+/* ── Avatars ─────────────────────────────────────────────────── */
 .av {
-  width: 30px; height: 30px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0; align-self: flex-end;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
-.av.agent    { background: linear-gradient(135deg,#4c82f7,#8b5cf6); }
-.av.borrower { background: var(--border); }
+/* P1 fix: replaced gradient fills with solid tinted tokens */
+.av.agent    { background: var(--accent-sub); border: 1.5px solid var(--accent); color: var(--accent); }
+.av.borrower { background: var(--border);     border: 1.5px solid var(--border-hi); color: var(--muted); }
 
+/* ── Bubbles ─────────────────────────────────────────────────── */
 .bbl {
-  padding: 9px 13px; border-radius: var(--radius);
-  font-size: 13.5px; line-height: 1.6; word-break: break-word;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-lg);
+  font-size: 13.5px;
+  line-height: 1.65;
+  word-break: break-word;
+  font-family: var(--font-body);
+  color: var(--text-body);
+  max-width: 65ch;
 }
-.agent   .bbl { background: var(--agent);    border-bottom-left-radius: 4px; }
-.borrower .bbl { background: var(--borrower); border-bottom-right-radius: 4px; }
+.agent   .bbl { background: var(--agent-bg);    border-bottom-left-radius: var(--r-sm); }
+.borrower .bbl { background: var(--borrower-bg); border-bottom-right-radius: var(--r-sm); }
 
-.ts { font-size: 10px; color: var(--muted); margin-top: 3px; padding: 0 3px; }
+.ts {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  padding: 0 3px;
+  font-family: var(--font-ui);
+}
 .agent .ts    { text-align: left; }
 .borrower .ts { text-align: right; }
 
+/* ── System messages ─────────────────────────────────────────── */
 .sys-msg {
-  border: 1px solid var(--border); border-radius: var(--r2);
-  padding: 7px 14px; font-size: 11px; color: var(--muted); text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px var(--space-4);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.01em;
 }
-.sys-msg.amber  { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,.06); }
-.sys-msg.green  { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.06); }
-.sys-msg.red    { border-color: var(--red);   color: var(--red);   background: rgba(239,68,68,.06); }
+.sys-msg.amber { border-color: var(--amber); color: var(--amber); background: oklch(76% 0.16 72 / 0.06); }
+.sys-msg.green { border-color: var(--green); color: var(--green); background: oklch(70% 0.16 152 / 0.06); }
+.sys-msg.red   { border-color: var(--red);   color: var(--red);   background: oklch(62% 0.18 22 / 0.06); }
 
+/* ── Typing indicator ────────────────────────────────────────── */
 .typing {
-  display: flex; gap: 3px; padding: 10px 13px;
-  background: var(--agent); border-radius: var(--radius);
-  border-bottom-left-radius: 4px; width: fit-content;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--agent-bg);
+  border-radius: var(--r-lg);
+  border-bottom-left-radius: var(--r-sm);
+  width: fit-content;
 }
 .typing span {
-  width: 5px; height: 5px; background: var(--muted);
-  border-radius: 50%; animation: bounce .9s infinite;
+  width: 5px;
+  height: 5px;
+  background: var(--muted);
+  border-radius: 50%;
+  /* P2 fix: replaced bounce easing with ease-out (exponential deceleration).
+     Bounce/elastic easing is dated per impeccable rules. */
+  animation: typingdot 1.1s ease-out infinite;
 }
-.typing span:nth-child(2) { animation-delay: .15s; }
-.typing span:nth-child(3) { animation-delay: .3s; }
-@keyframes bounce {
-  0%,60%,100% { transform:translateY(0); }
-  30%          { transform:translateY(-5px); }
+.typing span:nth-child(2) { animation-delay: 0.18s; }
+.typing span:nth-child(3) { animation-delay: 0.36s; }
+
+/* Simple fade-scale — no translateY layout animation */
+@keyframes typingdot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
+  30%           { opacity: 1;   transform: scale(1.3); }
 }
 
-/* ── Input ────────────────────────────── */
+/* ── Input area ──────────────────────────────────────────────── */
 .iarea {
-  background: var(--surface); border-top: 1px solid var(--border);
-  padding: 10px 14px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  flex-shrink: 0;
 }
+
+/* P2 fix: textarea has proper focus-visible handled by global rule above */
 .iarea textarea {
-  flex: 1; background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--r2); color: var(--text); padding: 9px 12px;
-  font-size: 13.5px; font-family: inherit; resize: none; max-height: 100px;
-  line-height: 1.5; outline: none; transition: border-color .2s;
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-body);
+  padding: 9px var(--space-3);
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  resize: none;
+  max-height: 100px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s;
 }
-.iarea textarea:focus { border-color: var(--accent); }
-.iarea textarea:disabled { opacity: .35; cursor: not-allowed; }
+.iarea textarea:focus  { border-color: var(--accent); }
+.iarea textarea:disabled { opacity: 0.38; cursor: not-allowed; }
+
+/* P2 fix: send button meets 44×44 minimum touch target */
 .sbtn {
-  width: 38px; height: 38px; background: var(--accent); border: none;
-  border-radius: 50%; color: #fff; font-size: 16px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  transition: background .2s, transform .1s;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  color: oklch(98% 0.005 248);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.1s cubic-bezier(0.22,1,0.36,1);
 }
-.sbtn:hover:not(:disabled) { background: var(--accent-dim); }
-.sbtn:active:not(:disabled) { transform: scale(.92); }
-.sbtn:disabled { opacity: .35; cursor: not-allowed; }
+.sbtn:hover:not(:disabled)  { background: var(--accent-dim); }
+.sbtn:active:not(:disabled) { transform: scale(0.90); }
+.sbtn:disabled { opacity: 0.38; cursor: not-allowed; }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<div class="hdr">
-  <div class="hdr-icon">🏦</div>
+<!-- P2 fix: added role="banner" landmark, aria-label on status indicators -->
+<header class="hdr" role="banner">
+  <!-- Replaced emoji 🏦 with text monogram — more accessible, less "AI slop" -->
+  <div class="hdr-icon" aria-hidden="true">RL</div>
   <div class="hdr-info">
     <h2 id="hdr-title">Loan Resolution</h2>
-    <div class="hdr-sub" id="hdr-sub">Connecting…</div>
+    <div class="hdr-sub" id="hdr-sub" aria-live="polite">Connecting…</div>
   </div>
   <div class="hdr-right">
-    <div class="dot" id="dot"></div>
+    <!-- P2 fix: aria-label on status dot -->
+    <div class="dot" id="dot" role="status" aria-label="Connection status"></div>
   </div>
-</div>
+</header>
 
-<!-- Stage bar -->
-<div class="stage-bar">
+<!-- P2 fix: role="status" on stage bar for screen reader announcements -->
+<div class="stage-bar" role="status" aria-live="polite">
   Stage: <span class="pill" id="pill">—</span>
   <span id="stage-name" style="margin-left:4px"></span>
 </div>
 
-<!-- Voice call banner (shown during resolution) -->
-<div class="voice-banner" id="voice-banner">
-  <div class="ring-anim">📞</div>
+<!-- P2 fix: role="region" + aria-label on voice banner -->
+<div class="voice-banner" id="voice-banner" role="region" aria-label="Voice call in progress" aria-hidden="true">
+  <div class="ring-anim" aria-hidden="true">📞</div>
   <div class="voice-label">Your phone is ringing</div>
   <div class="voice-sub">Answer the call to discuss your settlement options. The agent already knows your situation.</div>
 </div>
 
-<!-- Messages -->
-<div class="msgs" id="msgs"></div>
+<!-- P2 fix: role="log" for chat message region -->
+<main class="msgs" id="msgs" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></main>
 
-<!-- Input area -->
-<div class="iarea">
+<!-- Hidden print target — only shown during window.print() via @media print -->
+<div id="print-contract-target" style="display:none"></div>
+
+<!-- P2 fix: role="form" + aria-label on input area -->
+<div class="iarea" role="form" aria-label="Send message">
   <textarea id="inp" rows="1" placeholder="Type your reply…"
-    onkeydown="onKey(event)" oninput="resize(this)"></textarea>
-  <button class="sbtn" id="sbtn" onclick="send()">&#10148;</button>
+    aria-label="Your reply"
+    onkeydown="onKey(event)"
+    oninput="resize(this)"></textarea>
+  <!-- P2 fix: aria-label on send button (was unlabelled icon-only button) -->
+  <button class="sbtn" id="sbtn" onclick="send()" aria-label="Send message">&#10148;</button>
 </div>
 
 <script>
@@ -231,11 +687,13 @@ function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => {
     dotEl.className = "dot on";
+    dotEl.setAttribute("aria-label", "Connected");
     hdrSub.textContent = "Connected";
     clearTimeout(retryTimer);
   };
   ws.onclose = () => {
     dotEl.className = "dot";
+    dotEl.setAttribute("aria-label", "Reconnecting");
     hdrSub.textContent = "Reconnecting…";
     retryTimer = setTimeout(connect, 2500);
   };
@@ -258,29 +716,73 @@ function handle(m) {
 function handleSystem(m) {
   const ev = m.event || "";
   if (ev === "assessment_complete") {
-    addSys("✅ Assessment complete — you will receive a call shortly.", "amber");
+    addSys("Assessment complete — you will receive a call shortly.", "amber");
     setStage("resolution");
     setVoice(true);
     setDisabled(true, "Waiting for your call…");
     dotEl.className = "dot ring";
+    dotEl.setAttribute("aria-label", "Voice call in progress");
     hdrSub.textContent = "Voice call in progress";
   } else if (ev === "final_notice_opened") {
-    // Voice call ended — final notice chat begins
     setVoice(false);
     setStage("final_notice");
     dotEl.className = "dot on";
+    dotEl.setAttribute("aria-label", "Final notice stage");
     hdrSub.textContent = "Final Notice";
     setDisabled(false);
     addSys(m.content, "amber");
+  } else if (ev === "contract") {
+    addContract(m.content);
   } else if (ev === "final_notice_resolved") {
-    addSys("✅ " + m.content, "green");
+    addSys("✓ " + m.content, "green");
     setStage("complete");
     setDisabled(true, "Case closed.");
   } else if (ev === "final_notice_escalated") {
-    addSys("⚠️ " + m.content, "red");
+    addSys("⚠ " + m.content, "red");
     setStage("escalated");
     setDisabled(true, "Escalated to legal.");
   }
+}
+
+function addContract(html) {
+  const row = el("div", "row contract");
+  row.innerHTML = html;
+  msgsEl.appendChild(row);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+// ── PDF download ─────────────────────────────────────────────
+// Called by the "Download PDF" button inside the contract card.
+// Copies the contract HTML into the hidden #print-contract-target
+// div (which @media print makes the only visible element) and
+// triggers window.print() so the browser produces a clean A4 PDF.
+function downloadContractPDF(btn) {
+  const contractDoc = btn.closest(".contract-doc");
+  if (!contractDoc) return;
+
+  const printTarget = document.getElementById("print-contract-target");
+  // Clone so the original card stays in the chat
+  printTarget.innerHTML = "";
+  printTarget.appendChild(contractDoc.cloneNode(true));
+
+  // Remove the download button from the clone so it doesn't appear in the PDF
+  printTarget.querySelectorAll(".contract-download-btn").forEach(b => b.remove());
+
+  // Brief feedback on the button
+  const orig = btn.textContent;
+  btn.textContent = "Preparing…";
+  btn.disabled = true;
+
+  // Small delay so the DOM update renders before print dialog opens
+  setTimeout(() => {
+    window.print();
+    // Restore button after print dialog closes (or is cancelled)
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.disabled = false;
+      printTarget.innerHTML = "";
+    }, 500);
+  }, 80);
 }
 
 // ── UI helpers ──────────────────────────────────────────────
@@ -294,6 +796,7 @@ function setStage(s) {
 
 function setVoice(on) {
   voiceEl.classList.toggle("show", on);
+  voiceEl.setAttribute("aria-hidden", on ? "false" : "true");
 }
 
 function setDisabled(on, hint) {
@@ -303,16 +806,57 @@ function setDisabled(on, hint) {
   inpEl.placeholder = hint || (on ? "…" : "Type your reply…");
 }
 
+function renderMarkdown(text) {
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  html = html
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+  html = html.replace(/((?:^\d+\.\s+.+\n?)+)/gm, (block) => {
+    const items = block.trim().split("\n")
+      .filter(l => l.match(/^\d+\./))
+      .map(l => `<li>${l.replace(/^\d+\.\s+/, "")}</li>`)
+      .join("");
+    return `<ol style="margin:6px 0 6px 18px;line-height:1.8">${items}</ol>`;
+  });
+
+  html = html.replace(/((?:^[-•]\s+.+\n?)+)/gm, (block) => {
+    const items = block.trim().split("\n")
+      .filter(l => l.match(/^[-•]/))
+      .map(l => `<li>${l.replace(/^[-•]\s+/, "")}</li>`)
+      .join("");
+    return `<ul style="margin:6px 0 6px 18px;line-height:1.8">${items}</ul>`;
+  });
+
+  html = html
+    .replace(/\n{2,}/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+
+  return html;
+}
+
 function addMsg(role, text, stg, ts) {
   setStage(stg);
-  const row = el("div", `row ${role}`);
-  const av  = el("div", `av ${role}`);
-  av.textContent = role === "agent" ? "🤖" : "👤";
+  const row  = el("div", `row ${role}`);
+  const av   = el("div", `av ${role}`);
+  // P1 fix: meaningful text labels instead of bare emoji (still aria-hidden
+  // since the bubble text carries the content meaning)
+  av.textContent = role === "agent" ? "AI" : "You";
+  av.setAttribute("aria-hidden", "true");
   const wrap = el("div");
   const bbl  = el("div", "bbl");
-  bbl.textContent = text;
+  if (role === "agent") {
+    bbl.innerHTML = renderMarkdown(text);
+  } else {
+    bbl.textContent = text;
+  }
   const t = el("div", "ts");
   t.textContent = ts ? new Date(ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "";
+  t.setAttribute("aria-hidden", "true");
   wrap.append(bbl, t);
   row.append(role === "agent" ? av : wrap, role === "agent" ? wrap : av);
   msgsEl.appendChild(row);
@@ -321,7 +865,7 @@ function addMsg(role, text, stg, ts) {
 
 function addSys(text, cls="") {
   const row = el("div", "row system");
-  const d = el("div", `sys-msg ${cls}`);
+  const d   = el("div", `sys-msg ${cls}`);
   d.innerHTML = text;
   row.appendChild(d);
   msgsEl.appendChild(row);
@@ -329,9 +873,12 @@ function addSys(text, cls="") {
 }
 
 function showTyping() {
-  const row = el("div", "row agent"); row.id = "typing";
-  row.innerHTML = `<div class="av agent">🤖</div><div class="typing"><span></span><span></span><span></span></div>`;
-  msgsEl.appendChild(row); scroll();
+  const row = el("div", "row agent");
+  row.id = "typing";
+  row.setAttribute("aria-label", "Agent is typing");
+  row.innerHTML = `<div class="av agent" aria-hidden="true">AI</div><div class="typing" aria-hidden="true"><span></span><span></span><span></span></div>`;
+  msgsEl.appendChild(row);
+  scroll();
 }
 function removeTyping() { document.getElementById("typing")?.remove(); }
 
@@ -349,7 +896,8 @@ function send() {
   if (!text || !ws || ws.readyState !== 1 || disabled) return;
   addMsg("borrower", text, stage, new Date().toISOString());
   ws.send(JSON.stringify({message: text}));
-  inpEl.value = ""; resize(inpEl);
+  inpEl.value = "";
+  resize(inpEl);
   showTyping();
 }
 

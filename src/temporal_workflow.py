@@ -50,6 +50,18 @@ from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
     from src.models import Stage
+    # These modules use threading, httpx, asyncpg, or other non-deterministic
+    # primitives that Temporal's workflow sandbox cannot safely import.
+    # They are only used in activities (not in workflow code itself) but the
+    # sandbox's import tracker sees them transitively — marking them as
+    # pass-through keeps the sandbox happy.
+    import openai
+    import httpx
+    import sniffio
+    try:
+        import asyncpg
+    except ImportError:
+        pass
 
 
 # ──────────────────────────── Data types ──────────────────── #

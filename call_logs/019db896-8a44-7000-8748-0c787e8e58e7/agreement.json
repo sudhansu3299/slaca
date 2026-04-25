@@ -1,0 +1,75 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-23T04:27:48.452280+00:00",
+  "borrower_id": "BRW-5DA6E01A",
+  "loan_id": "LN-C086DB",
+  "workflow_id": "collections-BRW-5DA6E01A",
+  "call_id": "019db896-8a44-7000-8748-0c787e8e58e7",
+  "offer": {
+    "deadline_days": 3,
+    "discount_percentage": 0.0,
+    "monthly_payment": 7225.0,
+    "path": "installment",
+    "tenure_months": 10,
+    "upfront_required": 12750.0,
+    "valid_until": "2026-04-26T04:26:06.904646+00:00"
+  },
+  "conversation": [
+    {
+      "content": "Yeah.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:38.010908+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "This call is being recorded. I am an AI collections agent acting on behalf of Riverline.\n\nHere is the offer: a down payment of 12,750, followed by 10 monthly payments of 7,225. This must be accepted by April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:40.828764+00:00"
+    },
+    {
+      "content": "What's the installation plan?",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:40.828955+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The installment plan is a down payment of 12,750, followed by 10 monthly payments of 7,225. Total paid over 10 months. Deadline to accept is April 26th.\n\nCan you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:43.199504+00:00"
+    },
+    {
+      "content": "I'm glad it was. What's the installation plan? I want to know more about it.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:43.199614+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "The installment plan is exactly as stated: 12,750 down payment, then 7,225 per month for 10 months. Deadline to accept is April 26th.\n\nCan you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:45.061705+00:00"
+    },
+    {
+      "content": "Yes.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:45.061881+00:00"
+    },
+    {
+      "advanced": true,
+      "content": "The borrower has confirmed commitment to the installment plan.\n\n****\n\nDown payment of 12,750 due by April 26th, followed by 10 monthly payments of 7,225. Agreement confirmed.",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T04:27:47.584738+00:00"
+    }
+  ]
+}

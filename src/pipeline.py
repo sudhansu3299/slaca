@@ -100,6 +100,10 @@ class CollectionsPipeline:
             result.outcome = "assessment_incomplete"
             result.total_cost_usd = self.cost_tracker.total_cost_usd
             result.conversation = ctx.conversation_history
+            self._schedule_learning_followups(
+                resolved=False,
+                agents_seen=self._agents_seen_from_conversation(result.conversation),
+            )
             return result
 
         # Handoff: Assessment → Resolution
@@ -124,6 +128,10 @@ class CollectionsPipeline:
             result.outcome = "resolution_no_outcome"
             result.total_cost_usd = self.cost_tracker.total_cost_usd
             result.conversation = ctx.conversation_history
+            self._schedule_learning_followups(
+                resolved=False,
+                agents_seen=self._agents_seen_from_conversation(result.conversation),
+            )
             return result
 
         # Handoff: Resolution → Final Notice
@@ -147,7 +155,46 @@ class CollectionsPipeline:
         result.outcome = ctx.final_notice_outcome or ctx.resolution_outcome or "unresolved"
         result.total_cost_usd = self.cost_tracker.total_cost_usd
         result.conversation = ctx.conversation_history
+        resolved = result.outcome in ("AGREEMENT", "resolved", "committed", "advance")
+        self._schedule_learning_followups(
+            resolved=resolved,
+            agents_seen=self._agents_seen_from_conversation(result.conversation),
+        )
+
         return result
+
+    @staticmethod
+    def _agents_seen_from_conversation(conversation: list[dict]) -> list[str]:
+        stage_to_agent = {
+            Stage.ASSESSMENT.value: "AssessmentAgent",
+            Stage.RESOLUTION.value: "ResolutionAgent",
+            Stage.FINAL_NOTICE.value: "FinalNoticeAgent",
+        }
+        seen: set[str] = set()
+        for msg in conversation:
+            if msg.get("role") != "assistant":
+                continue
+            agent_name = stage_to_agent.get(msg.get("stage", ""))
+            if agent_name:
+                seen.add(agent_name)
+        return sorted(seen)
+
+    def _schedule_learning_followups(self, resolved: bool, agents_seen: list[str]) -> None:
+        """Fan out completion signals to feeder + regression monitor."""
+        try:
+            from src.self_learning.feeder import on_conversation_complete
+
+            asyncio.create_task(on_conversation_complete(agents_seen=agents_seen))
+        except Exception:
+            pass
+
+        try:
+            from src.self_learning.regression_monitor import record_outcome
+
+            for agent_name in ("AssessmentAgent", "ResolutionAgent", "FinalNoticeAgent"):
+                asyncio.create_task(record_outcome(agent_name, resolved))
+        except Exception:
+            pass
 
     async def _run_stage(
         self,

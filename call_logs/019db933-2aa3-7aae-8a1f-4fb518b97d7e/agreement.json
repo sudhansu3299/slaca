@@ -1,0 +1,47 @@
+{
+  "event": "agreement_logged",
+  "timestamp": "2026-04-23T07:18:11.638629+00:00",
+  "borrower_id": "BRW-7C6704CA",
+  "loan_id": "LN-995BAF",
+  "workflow_id": "collections-BRW-7C6704CA",
+  "call_id": "019db933-2aa3-7aae-8a1f-4fb518b97d7e",
+  "offer": {
+    "deadline_days": 3,
+    "discount_percentage": 0.0,
+    "monthly_payment": 7225.0,
+    "path": "installment",
+    "tenure_months": 10,
+    "upfront_required": 12750.0,
+    "valid_until": "2026-04-26T07:17:11.576767+00:00"
+  },
+  "conversation": [
+    {
+      "content": "Yes.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:18:05.038436+00:00"
+    },
+    {
+      "advanced": false,
+      "content": "This call is being recorded. I am an AI collections agent acting on behalf of Riverline.\n\nHere is the offer: a down payment of $12,750, followed by 10 monthly payments of $7,225. This offer is valid for 3 days, expiring April 26th. Can you commit to this today?",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:18:08.416119+00:00"
+    },
+    {
+      "content": "Yes.",
+      "role": "user",
+      "source": "voice_transcript",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:18:08.416216+00:00"
+    },
+    {
+      "advanced": true,
+      "content": "The borrower has confirmed commitment to the offer.\n\n****\n\nDown payment of $12,750 due within 3 days (by April 26th), followed by 10 monthly payments of $7,225. Agreement confirmed.",
+      "role": "assistant",
+      "stage": "resolution",
+      "timestamp": "2026-04-23T07:18:10.635264+00:00"
+    }
+  ]
+}

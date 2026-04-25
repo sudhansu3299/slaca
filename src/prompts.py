@@ -68,6 +68,9 @@ def vapi_first_message_prompt(
     employment_status: str,
     monthly_income: str,
     resolution_path: str,
+    offer_upfront: str = "",
+    offer_monthly: str = "",
+    offer_tenure_months: str = "",
 ) -> str:
     template = _read_prompt_template("vapi_first_message_prompt.txt")
     return template.format(
@@ -75,6 +78,9 @@ def vapi_first_message_prompt(
         employment_status=employment_status,
         monthly_income=monthly_income,
         resolution_path=resolution_path,
+        offer_upfront=offer_upfront or outstanding_amount,
+        offer_monthly=offer_monthly,
+        offer_tenure_months=offer_tenure_months,
     )
 
 

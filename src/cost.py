@@ -2,7 +2,7 @@
 Cost Optimization (MS10)
 
 Strategies:
-1. Model tiering      — strong model (Opus) for agents, cheap model (Haiku) for simulation & eval
+1. Model tiering      — stronger model for agents, mini model for simulation & eval
 2. Summary caching    — cache handoff summaries by context hash to avoid recomputation
 3. Batch processing   — process multiple borrowers in parallel
 4. Token compression  — PromptBuilder trims history before API calls
@@ -17,6 +17,7 @@ Cost report:
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -29,6 +30,18 @@ from src.token_budget import (
 
 # Model pricing (per million tokens)
 MODEL_PRICING: dict[str, dict[str, float]] = {
+    "gpt-4o": {
+        "input": 2.50,
+        "output": 10.00,
+    },
+    "gpt-4o-mini": {
+        "input": 0.15,
+        "output": 0.60,
+    },
+    "gpt-4.1-mini": {
+        "input": 0.40,
+        "output": 1.60,
+    },
     "claude-opus-4-5": {
         "input": OPUS_INPUT_COST_PER_M,
         "output": OPUS_OUTPUT_COST_PER_M,
@@ -44,13 +57,14 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
 }
 
 # Model assignments
-AGENT_MODEL = "claude-opus-4-5"          # production agents
-SIMULATION_MODEL = "claude-haiku-4-5"     # synthetic borrower simulation
-EVAL_MODEL = "claude-haiku-4-5"           # LLM-as-judge evaluation
+AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4o")               # production agents
+SIMULATION_MODEL = os.getenv("SIMULATION_MODEL", "gpt-4o-mini") # synthetic borrower simulation
+EVAL_MODEL = os.getenv("EVAL_MODEL", "gpt-4o-mini")             # LLM-as-judge evaluation
 
 
 def cost_for_model(model: str, input_tokens: int, output_tokens: int) -> float:
-    pricing = MODEL_PRICING.get(model, MODEL_PRICING["claude-opus-4-5"])
+    fallback = MODEL_PRICING.get(AGENT_MODEL) or MODEL_PRICING["gpt-4o-mini"]
+    pricing = MODEL_PRICING.get(model, fallback)
     return (
         input_tokens / 1_000_000 * pricing["input"]
         + output_tokens / 1_000_000 * pricing["output"]
@@ -115,9 +129,9 @@ SUMMARY_CACHE = SummaryCache()
 class TieredCostTracker:
     """
     Tracks cost separately for:
-    - Production agent calls (Opus)
-    - Simulation calls (Haiku)
-    - Evaluation calls (Haiku)
+    - Production agent calls (AGENT_MODEL)
+    - Simulation calls (SIMULATION_MODEL)
+    - Evaluation calls (EVAL_MODEL)
     """
     production: CostTracker = field(default_factory=CostTracker)
     simulation: CostTracker = field(default_factory=CostTracker)
@@ -156,7 +170,7 @@ class TieredCostTracker:
             "=== COST REPORT ===",
             f"Budget: ${TOTAL_COST_BUDGET_USD}",
             f"",
-            "--- Production (Opus) ---",
+            f"--- Production ({AGENT_MODEL}) ---",
         ]
         for agent, usage in self.production.per_agent.items():
             lines.append(
@@ -167,11 +181,11 @@ class TieredCostTracker:
 
         lines += [
             f"",
-            "--- Simulation (Haiku) ---",
+            f"--- Simulation ({SIMULATION_MODEL}) ---",
             f"  Tokens: {self.simulation.total_tokens.input_tokens} in / {self.simulation.total_tokens.output_tokens} out",
             f"  Subtotal: ${cost_for_model(SIMULATION_MODEL, self.simulation.total_tokens.input_tokens, self.simulation.total_tokens.output_tokens):.4f}",
             f"",
-            "--- Evaluation (Haiku) ---",
+            f"--- Evaluation ({EVAL_MODEL}) ---",
             f"  Tokens: {self.evaluation.total_tokens.input_tokens} in / {self.evaluation.total_tokens.output_tokens} out",
             f"  Subtotal: ${cost_for_model(EVAL_MODEL, self.evaluation.total_tokens.input_tokens, self.evaluation.total_tokens.output_tokens):.4f}",
             f"",

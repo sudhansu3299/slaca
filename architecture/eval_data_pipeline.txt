@@ -1,0 +1,13 @@
+[Agents]
+   ↓
+[Event Stream / Logs]
+   ↓
+[Storage]
+   - Redis (session)
+   - MongoDB (long-term)
+   ↓
+[Eval Pipeline]
+   ↓
+[Insights Store]
+   ↓
+[Prompt Optimizer / Human-in-loop]

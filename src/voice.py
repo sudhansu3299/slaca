@@ -19,6 +19,7 @@ Implementation:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -26,6 +27,8 @@ from typing import Optional
 
 from src.handoff import HandoffSummary
 from src.prompts import vapi_first_message_prompt, vapi_system_override_prompt
+
+log = logging.getLogger(__name__)
 
 
 class VoiceProviderName(str, Enum):
@@ -75,8 +78,12 @@ def build_voice_metadata(summary: HandoffSummary) -> dict:
         # Intent signal from chat
         "intent": summary.intent or "unknown",
         "borrower_attitude": summary.borrower_attitude or "neutral",
-        # Resolution path
+        # Resolution path and computed offer amounts
         "resolution_path": summary.resolution_path or "",
+        "offer_upfront": summary.offer_upfront or summary.outstanding_amount,
+        "offer_monthly": summary.offer_monthly or "",
+        "offer_discount_pct": summary.offer_discount_pct or 0,
+        "offer_tenure_months": getattr(summary, "offer_tenure_months", 0) or 0,
         # Objections from chat (comma-separated for voice metadata)
         "prior_objections": "; ".join(summary.objections[:3]),
         # Handoff prompt block (used by Retell's dynamic_data injection)
@@ -145,8 +152,45 @@ class VoiceProvider:
         return ""
 
     async def end_call(self, call_record: CallRecord) -> None:
-        """Signal call end (used for mock/cleanup)."""
+        """
+        Terminate a live call via the provider API.
+        Called immediately after a terminal outcome (committed / refused / escalated)
+        so the call hangs up rather than waiting for the borrower to disconnect.
+        """
         call_record.status = "completed"
+
+        if call_record.provider == VoiceProviderName.VAPI and call_record.call_id:
+            await self._vapi_end_call(call_record.call_id)
+        elif call_record.provider == VoiceProviderName.RETELL and call_record.call_id:
+            await self._retell_end_call(call_record.call_id)
+
+    async def _vapi_end_call(self, call_id: str) -> None:
+        """DELETE /call/{id} terminates the Vapi call immediately."""
+        import httpx, os
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.delete(
+                    f"https://api.vapi.ai/call/{call_id}",
+                    headers={"Authorization": f"Bearer {os.getenv('VAPI_API_KEY', '')}"},
+                    timeout=10,
+                )
+                log.info("[voice] Vapi call %s terminated (status %d)", call_id, r.status_code)
+        except Exception as e:
+            log.warning("[voice] _vapi_end_call failed for %s: %s", call_id, e)
+
+    async def _retell_end_call(self, call_id: str) -> None:
+        """POST /v2/call/{id}/stop terminates a Retell call."""
+        import httpx, os
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    f"https://api.retellai.com/v2/call/{call_id}/stop",
+                    headers={"Authorization": f"Bearer {os.getenv('RETELL_API_KEY', '')}"},
+                    timeout=10,
+                )
+                log.info("[voice] Retell call %s terminated (status %d)", call_id, r.status_code)
+        except Exception as e:
+            log.warning("[voice] _retell_end_call failed for %s: %s", call_id, e)
 
     # ──────────────────────────────── Provider implementations ─────── #
 
@@ -194,15 +238,21 @@ class VoiceProvider:
     async def _vapi_call(self, phone_number: str, metadata: dict) -> CallRecord:
         import httpx, os
         # Build a compact opening line so the agent starts mid-context
-        outstanding = metadata.get("outstanding_amount", "")
-        path = metadata.get("resolution_path", "")
-        income = metadata.get("monthly_income", "")
-        employment = metadata.get("employment_status", "")
+        outstanding      = metadata.get("outstanding_amount", "")
+        path             = metadata.get("resolution_path", "")
+        income           = metadata.get("monthly_income", "")
+        employment       = metadata.get("employment_status", "")
+        offer_upfront    = metadata.get("offer_upfront", outstanding)
+        offer_monthly    = metadata.get("offer_monthly", "")
+        offer_tenure     = metadata.get("offer_tenure_months", "")
         first_msg = vapi_first_message_prompt(
             outstanding_amount=str(outstanding),
             employment_status=str(employment),
             monthly_income=str(income),
             resolution_path=str(path),
+            offer_upfront=str(offer_upfront),
+            offer_monthly=str(offer_monthly),
+            offer_tenure_months=str(offer_tenure),
         )
         # System prompt override injects the full handoff block
         system_override = vapi_system_override_prompt(
@@ -219,7 +269,7 @@ class VoiceProvider:
                         "firstMessage": first_msg,
                         "model": {
                         "provider": "openai",
-                        "model": "gpt-4o-mini",
+                        "model": os.getenv("AGENT_MODEL", "gpt-4o"),
                         "messages": [
                             {"role": "system", "content": system_override}
                         ]
@@ -230,7 +280,14 @@ class VoiceProvider:
                 headers={"Authorization": f"Bearer {self.config.api_key}"},
                 timeout=15,
             )
-            data = r.json()
+            # Guard: parse JSON safely — an empty or malformed body should raise
+            # a clean RuntimeError so the caller can decide how to handle it.
+            if not r.content:
+                raise RuntimeError(f"Vapi call failed {r.status_code}: empty response body")
+            try:
+                data = r.json()
+            except Exception as exc:
+                raise RuntimeError(f"Vapi call failed {r.status_code}: non-JSON body — {exc}") from exc
             if r.status_code not in (200, 201):
                 raise RuntimeError(f"Vapi call failed {r.status_code}: {data}")
             return CallRecord(
@@ -249,7 +306,18 @@ class VoiceProvider:
                 headers={"Authorization": f"Bearer {self.config.api_key}"},
                 timeout=10,
             )
-            data = r.json()
+            # Guard: Vapi sometimes returns an empty body (e.g. during call setup
+            # or on transient 5xx). Treat that as "still in progress" rather than crash.
+            if not r.content:
+                log.warning("[voice] _vapi_transcript: empty response body for call %s (status %d)",
+                            call_id, r.status_code)
+                return ""
+            try:
+                data = r.json()
+            except Exception as exc:
+                log.warning("[voice] _vapi_transcript: non-JSON response for call %s: %s",
+                            call_id, exc)
+                return ""
             status = data.get("status", "")
             if status not in ("ended", "completed"):
                 return ""   # still in progress — caller will retry
