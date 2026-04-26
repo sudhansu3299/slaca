@@ -113,7 +113,7 @@ If admin panel looks stale:
 6. Admin UI: `static/admin.html`
 7. Docker setup: `docker-compose.yml`, `Dockerfile`
 
-UI Screenshots
+# UI Screenshots
 Home Page:
 
 <img width="1062" height="828" alt="image" src="https://github.com/user-attachments/assets/e936b763-b202-46f7-8a31-b50b5ea7ade1" />
@@ -128,7 +128,7 @@ Home Page:
 <img width="1261" height="742" alt="image" src="https://github.com/user-attachments/assets/007053aa-aa03-423f-af21-fe667b1c318e" />
 
 
-Admin Panel
+## Admin Panel
 
 Chat-wise scores and trends
 <img width="1771" height="963" alt="image" src="https://github.com/user-attachments/assets/3614d778-f7a4-4f55-937c-b7f6080d438d" />
