@@ -9,13 +9,13 @@ Self-learning 3-agent collections workflow with a chat UI, admin panel, Temporal
 
 ## 1) Set Your Environment
 
-Create a `.env` file in the project root:
+Before running anything, create a new `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and set at least:
+Then open `.env` and set at least:
 
 ```bash
 OPENAI_API_KEY=your_openai_key_here
@@ -24,7 +24,10 @@ OPENAI_API_KEY=your_openai_key_here
 Notes:
 
 1. Mock mode can run without a real key in some paths, but set `OPENAI_API_KEY` anyway so live/eval paths work cleanly.
-2. If you plan to use live voice integrations, also set `VAPI_*` keys from `docker-compose.yml` comments.
+2. If you plan to use live voice integrations, also set `VAPI_*` keys in `.env`.
+3. `BORROWER_PHONE` is read from `.env` and should be set to your target number for live calling tests.
+4. Current Twilio/Vapi integration in this repo is wired for a single configured borrower number flow, so use your own number in `BORROWER_PHONE`.
+5. `.env.example` now includes the key variables you can copy and edit.
 
 ## 2) Start the Stack with Docker Compose
 
