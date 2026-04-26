@@ -1,4 +1,10 @@
-1. Say good bye and cut the call (Either in resolution or non resolution)
-2. Explain a bit more if someone wants to know about the hardship offer or if installment options in details
-and let them know that more details will be in the settlement offer
-3.
+1. show that the patches are coming through themselves (self learning loop) and a new v2 , v3 are getting generated
+2. do a L3 audit and show that a meta evaluation was not accounted for and has to be taken into account
+3. Refine per conversation (distribution of outcomes, variance) (1st tab)
+
+
+MORE?
+1. Flow of Meta evaluation
+2. how did you choose the parameters (tradeoffs in agent 1,2,3, meta-evaluation)
+3. Cost breakdown of learning loop
+4. Decision journal

@@ -4,39 +4,86 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Collections AI — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg:#0d0f1a; --surface:#161927; --surface2:#1c2035; --surface3:#212640;
-  --border:#252839; --border2:#2e3450;
-  --accent:#4c82f7; --accent-dim:#3464c8;
-  --text:#dde3f0; --muted:#7a849a; --muted2:#515a72;
-  --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --purple:#8b5cf6; --cyan:#06b6d4;
-  --r:14px; --r2:8px; --r3:6px;
+  --bg: oklch(96% 0.012 242);
+  --surface: oklch(99% 0.004 242);
+  --surface2: oklch(97% 0.012 242);
+  --surface3: oklch(95% 0.02 242);
+  --border: oklch(86% 0.02 242);
+  --border2: oklch(78% 0.02 242);
+  --accent: oklch(61% 0.11 247);
+  --accent-dim: oklch(55% 0.12 247);
+  --accent-soft: oklch(91% 0.04 247);
+  --text: oklch(28% 0.02 255);
+  --muted: oklch(52% 0.018 250);
+  --muted2: oklch(64% 0.015 250);
+  --green: oklch(65% 0.16 150);
+  --red: oklch(58% 0.17 30);
+  --amber: oklch(72% 0.14 80);
+  --purple: oklch(60% 0.16 305);
+  --cyan: oklch(68% 0.11 205);
+  --r:14px; --r2:10px; --r3:7px;
 }
-body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",sans-serif; min-height:100vh; }
+body { background:var(--bg); color:var(--text); font-family:'Public Sans','Helvetica Neue',sans-serif; min-height:100vh; }
 
 /* ── header ─────────────────────────────────────────── */
 .hdr {
-  background:var(--surface); border-bottom:1px solid var(--border);
-  padding:12px 24px; display:flex; align-items:center; gap:12px;
-  position:sticky; top:0; z-index:200;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  position:sticky;
+  top:0;
+  z-index:200;
+  box-shadow:0 10px 30px rgba(18,34,68,0.05);
 }
-.hdr-icon { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#4c82f7,#8b5cf6);
-            display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.hdr-icon {
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:var(--accent-soft);
+  border:1px solid color-mix(in oklch, var(--accent) 35%, var(--border));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+  color:var(--accent);
+  flex-shrink:0;
+  font-family:'Spectral','Times New Roman',serif;
+  letter-spacing:0.08em;
+}
 .hdr-title { font-size:14px; font-weight:700; }
-.hdr-sub   { font-size:11px; color:var(--muted); margin-top:1px; }
+.hdr-sub   { font-size:11px; color:var(--muted); margin-top:1px; letter-spacing:.08em; text-transform:uppercase; }
 .hdr-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
-.btn { border:none; border-radius:var(--r3); cursor:pointer; font-size:12px; font-weight:700;
-       padding:7px 14px; display:flex; align-items:center; gap:5px; transition:all .2s; }
-.btn-primary  { background:var(--accent); color:#fff; }
+.btn { border:1px solid transparent; border-radius:var(--r3); cursor:pointer; font-size:12px; font-weight:600;
+       padding:8px 16px; display:flex; align-items:center; gap:5px; transition:all .2s; }
+.btn-primary  { background:var(--accent); color:oklch(98% 0.005 250); box-shadow:0 10px 24px rgba(18,34,68,0.15); }
 .btn-primary:hover:not(:disabled) { background:var(--accent-dim); }
 .btn-ghost    { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
-.btn-ghost:hover:not(:disabled) { border-color:var(--accent); }
+.btn-ghost:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+.btn-stop {
+  font-size:11px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--red);
+  background:transparent;
+  color:var(--red);
+  cursor:pointer;
+  transition:all .2s;
+}
+.btn-stop:hover:not(:disabled) { background:color-mix(in oklch, var(--red) 12%, white); }
+.btn-stop:disabled { opacity:0.5; cursor:not-allowed; }
 .btn:disabled { opacity:.45; cursor:not-allowed; }
 .hdr-link { font-size:12px; color:var(--muted); text-decoration:none;
-            padding:5px 12px; border:1px solid var(--border); border-radius:var(--r3); transition:all .2s; }
-.hdr-link:hover { color:var(--text); border-color:var(--accent); }
+            padding:6px 14px; border:1px solid var(--border); border-radius:999px; transition:all .2s; }
+.hdr-link:hover { color:var(--accent); border-color:var(--accent); }
 
 /* ── tabs ────────────────────────────────────────────── */
 .tabs { background:var(--surface); border-bottom:1px solid var(--border);
@@ -60,14 +107,15 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .stat-val.purple { color:var(--purple); }
 
 /* ── section header ──────────────────────────────────── */
-.sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
 .sec-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+.sec-note { font-size:11px; color:var(--muted); }
 
 /* ── eval cards ──────────────────────────────────────── */
 .eval-cards { display:flex; flex-direction:column; gap:12px; }
-.eval-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
-.eval-card.pass { border-left:3px solid var(--green); }
-.eval-card.fail { border-left:3px solid var(--red); }
+.eval-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:0 14px 30px rgba(18,34,68,0.05); }
+.eval-card.pass { box-shadow:0 0 0 1px color-mix(in oklch, var(--green) 30%, transparent), inset 0 3px 0 color-mix(in oklch, var(--green) 40%, transparent); }
+.eval-card.fail { box-shadow:0 0 0 1px color-mix(in oklch, var(--red) 30%, transparent), inset 0 3px 0 color-mix(in oklch, var(--red) 40%, transparent); }
 .eval-card-hdr { padding:14px 18px; display:flex; align-items:center; gap:12px; cursor:pointer; }
 .eval-card-hdr:hover { background:var(--surface2); }
 .score-circle { width:46px; height:46px; border-radius:50%; border:3px solid var(--border); flex-shrink:0;
@@ -79,13 +127,13 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .sc-col { text-align:center; }
 .sc-col .lbl { font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin-bottom:2px; }
 .sc-col .val { font-size:14px; font-weight:800; }
-.badge { font-size:10px; font-weight:700; padding:2px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.3px; }
-.badge.AGREEMENT { background:#0d3021; color:var(--green); }
-.badge.NO_DEAL   { background:#3a0f0f; color:var(--red); }
-.badge.LEGAL     { background:#3a1a0f; color:#fb923c; }
-.badge.unknown   { background:var(--border); color:var(--muted); }
-.badge.pass { background:#0d3021; color:var(--green); }
-.badge.fail { background:#3a0f0f; color:var(--red); }
+.badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:.3px; background:var(--surface2); color:var(--muted); }
+.badge.AGREEMENT { background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); }
+.badge.NO_DEAL   { background:color-mix(in oklch, var(--red) 18%, white); color:var(--red); }
+.badge.LEGAL     { background:color-mix(in oklch, var(--amber) 18%, white); color:var(--amber); }
+.badge.unknown   { background:var(--surface2); color:var(--muted); }
+.badge.pass { background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); }
+.badge.fail { background:color-mix(in oklch, var(--red) 18%, white); color:var(--red); }
 .toggle-icon { color:var(--muted); font-size:14px; transition:transform .2s; }
 .toggle-icon.open { transform:rotate(180deg); }
 .card-body { display:none; border-top:1px solid var(--border); }
@@ -102,17 +150,34 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .rule-row  { display:flex; gap:7px; margin-bottom:7px; font-size:11px; align-items:flex-start; }
 .rule-dot  { width:14px; height:14px; border-radius:50%; flex-shrink:0; margin-top:1px;
              display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; }
-.rule-dot.p { background:#0d3021; color:var(--green); }
-.rule-dot.f { background:#3a0f0f; color:var(--red); }
+.rule-dot.p { background:color-mix(in oklch, var(--green) 22%, white); color:var(--green); }
+.rule-dot.f { background:color-mix(in oklch, var(--red) 22%, white); color:var(--red); }
+.calc-box { margin-top:12px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--r2); background:var(--surface2); }
+.calc-head { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.35px; color:var(--muted); margin-bottom:6px; }
+.calc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+@media(max-width:520px){.calc-grid{grid-template-columns:1fr;}}
+.calc-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--r3); padding:8px 10px; }
+.calc-stat .k { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.35px; margin-bottom:2px; font-weight:700; }
+.calc-stat .v { font-size:15px; font-weight:800; }
+.calc-eqn { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:10px; line-height:1.5; color:var(--muted2); }
 .turn { display:flex; gap:7px; margin-bottom:7px; }
 .turn.bor  { flex-direction:row-reverse; }
 .turn-bub  { max-width:80%; padding:7px 11px; border-radius:10px; font-size:11px; line-height:1.5; }
-.turn.agt  .turn-bub { background:#1b1f31; border-radius:3px 10px 10px 10px; }
-.turn.bor  .turn-bub { background:#0f2d5e; border-radius:10px 3px 10px 10px; }
+.turn.agt  .turn-bub { background:var(--surface); border:1px solid var(--border); border-radius:3px 10px 10px 10px; }
+.turn.bor  .turn-bub { background:color-mix(in oklch, var(--accent) 12%, white); border-radius:10px 3px 10px 10px; color:var(--text); }
 .turn-lbl  { font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin-bottom:2px; }
-.feedback-box { margin-top:12px; padding:10px 12px; background:#0f1120; border:1px solid var(--border2);
-                border-radius:var(--r2); font-size:11px; line-height:1.6; color:var(--muted); }
-.feedback-box strong { color:var(--text); }
+.feedback-box { margin-top:12px; padding:12px 14px; background:var(--surface2); border:1px solid var(--border);
+                border-radius:var(--r2); font-size:11px; line-height:1.6; color:var(--text); box-shadow:0 8px 20px rgba(18,34,68,0.05); }
+.feedback-box strong { color:var(--accent); }
+.metric-plot-wrap { margin-top:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; box-shadow:0 10px 24px rgba(18,34,68,0.05); }
+.metric-plot-title { font-size:10px; text-transform:uppercase; letter-spacing:.45px; color:var(--muted); font-weight:700; margin-bottom:8px; }
+.metric-plot-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap; }
+.metric-legend { display:flex; gap:10px; flex-wrap:wrap; }
+.metric-legend .item { font-size:11px; color:var(--muted2); display:flex; align-items:center; gap:6px; }
+.metric-legend .dot { width:10px; height:10px; border-radius:50%; }
+.metric-plot-canvas { width:100%; height:250px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); position:relative; overflow:hidden; }
+.metric-plot-canvas svg { width:100%; height:100%; display:block; }
+.metric-plot-foot { margin-top:8px; font-size:10px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 
 /* ── pipeline pane ───────────────────────────────────── */
 .pipeline-layout { display:grid; grid-template-columns:340px 1fr; gap:16px; }
@@ -137,9 +202,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .stage-step { display:flex; gap:10px; margin-bottom:12px; align-items:flex-start; }
 .stage-num  { width:22px; height:22px; border-radius:50%; background:var(--border); flex-shrink:0;
               display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--muted); }
-.stage-num.done    { background:#0d3021; color:var(--green); }
-.stage-num.running { background:#1a2240; color:var(--accent); animation:pulse .8s infinite; }
-.stage-num.fail    { background:#3a0f0f; color:var(--red); }
+.stage-num.done    { background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); }
+.stage-num.running { background:color-mix(in oklch, var(--accent) 18%, white); color:var(--accent); animation:pulse .8s infinite; }
+.stage-num.fail    { background:color-mix(in oklch, var(--red) 18%, white); color:var(--red); }
 .stage-info h4 { font-size:12px; font-weight:600; margin-bottom:2px; }
 .stage-info p  { font-size:11px; color:var(--muted); }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
@@ -158,14 +223,16 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .run-id   { font-size:12px; font-weight:700; flex:1; font-family:monospace; }
 .run-ts   { font-size:10px; color:var(--muted); }
 .run-decision { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; }
-.run-decision.adopt  { background:#0d3021; color:var(--green); }
-.run-decision.reject { background:#3a0f0f; color:var(--red); }
-.run-decision.pending{ background:var(--border); color:var(--muted); }
+.run-decision.adopt  { background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); }
+.run-decision.reject { background:color-mix(in oklch, var(--red) 18%, white); color:var(--red); }
+.run-decision.pending{ background:var(--surface2); color:var(--muted); }
+.run-decision.patched{ background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); }
+.run-actions { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
 .iter-badge { font-size:9px; font-weight:800; background:var(--surface3); color:var(--muted);
               padding:2px 7px; border-radius:10px; flex-shrink:0; font-family:monospace; }
 .trigger-badge { font-size:9px; padding:1px 6px; border-radius:8px; font-weight:700; text-transform:uppercase; }
-.trigger-badge.auto   { background:#0d2240; color:var(--accent); }
-.trigger-badge.manual { background:#1c1230; color:var(--purple); }
+.trigger-badge.auto   { background:color-mix(in oklch, var(--accent) 14%, white); color:var(--accent); }
+.trigger-badge.manual { background:color-mix(in oklch, var(--purple) 14%, white); color:var(--purple); }
 
 /* feeder status bar */
 .feeder-bar { background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
@@ -210,7 +277,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .pattern-card .prow strong { color:var(--text); }
 
 /* hypothesis cards */
-.hyp-card { background:var(--surface2); border-radius:var(--r2); padding:12px 14px; margin-bottom:10px; border-left:3px solid var(--accent); }
+.hyp-card { background:var(--surface2); border-radius:var(--r2); padding:12px 14px; margin-bottom:10px; box-shadow:inset 0 2px 0 color-mix(in oklch, var(--accent) 40%, transparent); }
 .hyp-card h5 { font-size:12px; font-weight:700; color:var(--accent); margin:0; }
 .hyp-card p  { font-size:11px; color:var(--muted); margin-bottom:4px; line-height:1.5; }
 .hyp-card p strong { color:var(--text); }
@@ -219,10 +286,10 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   border:1px solid var(--accent); background:transparent; color:var(--accent);
   cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0;
 }
-.patch-btn:hover:not(:disabled) { background:var(--accent); color:#fff; }
+.patch-btn:hover:not(:disabled) { background:var(--accent); color:oklch(98% 0.005 250); }
 .patch-btn:disabled { opacity:.6; cursor:not-allowed; }
-.patch-btn.applied { background:#0d3021; color:var(--green); border-color:var(--green); }
-.patch-btn.failed  { background:#3a0f0f; color:var(--red);   border-color:var(--red); }
+.patch-btn.applied { background:color-mix(in oklch, var(--green) 18%, white); color:var(--green); border-color:var(--green); }
+.patch-btn.failed  { background:color-mix(in oklch, var(--red) 18%, white); color:var(--red);   border-color:var(--red); }
 
 /* comparison block */
 .compare-row { display:flex; gap:12px; margin-bottom:12px; }
@@ -232,9 +299,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .compare-arrow { display:flex; align-items:center; color:var(--muted); font-size:18px; }
 
 /* prompt diff */
-.prompt-diff { background:#0a0c14; border:1px solid var(--border); border-radius:var(--r2);
+.prompt-diff { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r2);
                padding:12px 14px; font-family:monospace; font-size:11px; line-height:1.6;
-               white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto; color:var(--text); }
+               white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto; color:var(--text); box-shadow:inset 0 0 30px rgba(18,34,68,0.05); }
 
 /* changes list */
 .change-item { display:flex; gap:8px; margin-bottom:6px; font-size:12px; }
@@ -245,25 +312,25 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 .agent-tab { flex:1; background:var(--surface); color:var(--muted); border:none; border-right:1px solid var(--border); padding:10px 12px; font-size:12px; font-weight:700; cursor:pointer; }
 .agent-tab:last-child { border-right:none; }
 .agent-tab.active { background:var(--surface2); color:var(--text); }
-.agent-banner { background:#1b3d66; border:1px solid #274f7f; color:#d8e7fa; border-radius:var(--r2); padding:10px 12px; font-size:13px; line-height:1.5; margin-bottom:12px; }
+.agent-banner { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:var(--r2); padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:12px; box-shadow:0 10px 24px rgba(18,34,68,0.06); }
 .agent-metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:12px; }
-.agent-metric-card { background:#202124; border:1px solid #2d2f36; border-radius:10px; padding:12px; }
-.agent-metric-card .k { font-size:11px; color:#b8bac1; margin-bottom:4px; }
-.agent-metric-card .v { font-size:31px; font-weight:800; color:#ffffff; line-height:1; margin-bottom:4px; }
-.agent-metric-card .h { font-size:11px; color:#9ca3af; }
-.formula-bar { background:#202124; border:1px solid #2d2f36; border-radius:10px; padding:10px 12px; font-family:monospace; font-size:14px; color:#f5f5f5; margin-bottom:12px; }
-.analytics-table-wrap { background:#202124; border:1px solid #2d2f36; border-radius:10px; overflow:hidden; }
+.agent-metric-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:0 12px 26px rgba(18,34,68,0.05); }
+.agent-metric-card .k { font-size:11px; color:var(--muted); margin-bottom:4px; letter-spacing:.1em; text-transform:uppercase; }
+.agent-metric-card .v { font-size:30px; font-weight:700; color:var(--text); line-height:1; margin-bottom:4px; }
+.agent-metric-card .h { font-size:11px; color:var(--muted2); }
+.formula-bar { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-family:monospace; font-size:13px; color:var(--text); margin-bottom:12px; }
+.analytics-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 10px 24px rgba(18,34,68,0.05); }
 .analytics-table { width:100%; border-collapse:collapse; font-size:12px; }
-.analytics-table th { color:#9ca3af; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:10px 12px; border-bottom:1px solid #2d2f36; }
-.analytics-table td { padding:10px 12px; border-bottom:1px solid #2d2f36; color:#e5e7eb; }
+.analytics-table th { color:var(--muted); text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.3px; padding:10px 12px; border-bottom:1px solid var(--border); }
+.analytics-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
 .analytics-table tr:last-child td { border-bottom:none; }
-.dec-chip { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; text-transform:capitalize; white-space:nowrap; }
-.dec-baseline { background:#1e3a5f; color:#93c5fd; }
-.dec-adopted { background:#16381e; color:#86efac; }
-.dec-rejected { background:#4b1f1f; color:#fca5a5; }
-.dec-rolled { background:#5a430f; color:#fcd34d; }
-.dec-observed { background:#2d2f36; color:#9ca3af; }
-.agent-insight { margin-top:10px; background:#5b4512; border:1px solid #7a5d18; color:#fde68a; border-radius:8px; padding:10px 12px; font-size:12px; line-height:1.5; }
+.dec-chip { font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; text-transform:capitalize; white-space:nowrap; background:var(--surface2); }
+.dec-baseline { color:var(--accent); }
+.dec-adopted { color:var(--green); }
+.dec-rejected { color:var(--red); }
+.dec-rolled { color:var(--amber); }
+.dec-observed { color:var(--muted); }
+.agent-insight { margin-top:10px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; }
 
 /* empty / loading */
 .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
@@ -302,6 +369,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   <div class="tab active" data-tab="scores" onclick="switchTab('scores')">Transcript Scores</div>
   <div class="tab" data-tab="generate" onclick="switchTab('generate')">Generate + Learn</div>
   <div class="tab" data-tab="pipeline" onclick="switchTab('pipeline')">Improvement Pipeline</div>
+  <div class="tab" data-tab="meta" onclick="switchTab('meta')">Meta Evaluator</div>
   <div class="tab" data-tab="analytics" onclick="switchTab('analytics')">Agent Analytics</div>
 </div>
 
@@ -339,6 +407,23 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   <div class="eval-cards" id="evalCards">
     <div class="empty"><div class="icon">📋</div>Click <strong>Load</strong> to fetch and score transcripts.</div>
   </div>
+  <div class="metric-plot-wrap" id="sdVarWrap">
+    <div class="metric-plot-title">Score Dispersion Trend</div>
+    <div class="metric-plot-head">
+      <div class="metric-legend">
+        <div class="item"><span class="dot" style="background:var(--accent)"></span>Variance</div>
+        <div class="item"><span class="dot" style="background:var(--green)"></span>Standard Deviation</div>
+      </div>
+      <div id="sdVarMeta" style="font-size:11px;color:var(--muted2)">Last 40 conversations</div>
+    </div>
+    <div class="metric-plot-canvas" id="sdVarChart">
+      <div class="empty" style="padding:32px 16px">Click <strong>Load</strong> to draw SD / variance trend.</div>
+    </div>
+    <div class="metric-plot-foot">
+      <span id="sdVarLeft">Oldest → Newest</span>
+      <span id="sdVarRight"></span>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════
@@ -352,15 +437,15 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
 
       <div class="trigger-card">
         <h3>Generate Synthetic Conversations</h3>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          Use one of the two actions below:
-          <br>1) Generate synthetic transcripts only (increments Redis call counter)
-          <br>2) Generate transcripts and run the improvement pipeline loop
-          <br><br>Auto-feeder triggers at 30 completed conversations.
-        </div>
-        <div class="fld">
-          <label>Total Transcripts</label>
-          <input type="number" id="genTotal" value="30" min="8" max="200">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+            Use one of the two actions below:
+            <br>1) Generate synthetic transcripts only (increments Redis call counter)
+            <br>2) Generate transcripts and run the improvement pipeline loop
+            <br><br>Auto-feeder triggers at 60 completed conversations.
+          </div>
+          <div class="fld">
+            <label>Total Transcripts</label>
+            <input type="number" id="genTotal" value="60" min="8" max="200">
         </div>
         <div class="fld">
           <label>Batch Size</label>
@@ -388,19 +473,19 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
       <div class="stages-card">
         <h3>Persona Distribution</h3>
         <div class="stage-step">
-          <div class="stage-num done" style="background:#0d3021;color:var(--green)">C</div>
+          <div class="stage-num done" style="background:color-mix(in oklch, var(--green) 18%, white);color:var(--green)">C</div>
           <div class="stage-info"><h4>Cooperative (25%)</h4><p>Agrees to terms → AGREEMENT</p></div>
         </div>
         <div class="stage-step">
-          <div class="stage-num done" style="background:#0d2a4a;color:#60a5fa">B</div>
+          <div class="stage-num done" style="background:color-mix(in oklch, var(--accent) 18%, white);color:var(--accent)">B</div>
           <div class="stage-info"><h4>Broke (25%)</h4><p>Hardship plan → AGREEMENT</p></div>
         </div>
         <div class="stage-step">
-          <div class="stage-num done" style="background:#2d1660;color:#c084fc">S</div>
+          <div class="stage-num done" style="background:color-mix(in oklch, var(--purple) 18%, white);color:var(--purple)">S</div>
           <div class="stage-info"><h4>Strategic (25%)</h4><p>Negotiates hard → AGREEMENT/LEGAL</p></div>
         </div>
         <div class="stage-step">
-          <div class="stage-num done" style="background:#3a0f0f;color:var(--red)">H</div>
+          <div class="stage-num done" style="background:color-mix(in oklch, var(--red) 18%, white);color:var(--red)">H</div>
           <div class="stage-info"><h4>Hostile (25%)</h4><p>Refuses → LEGAL</p></div>
         </div>
       </div>
@@ -536,15 +621,19 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
           <div class="stage-step"><div class="stage-num" id="sn3">3</div><div class="stage-info"><h4>Compliance Check (Current Prompt)</h4><p>Audits current prompt against the 8 rules</p></div></div>
           <div class="stage-step"><div class="stage-num" id="sn4">4</div><div class="stage-info"><h4>Prompt Improvement</h4><p>Generates an improved prompt from failures + compliance findings</p></div></div>
           <div class="stage-step"><div class="stage-num" id="sn5">5</div><div class="stage-info"><h4>Compliance Check (New Prompt)</h4><p>Compliance verdict; non-compliant runs continue with caution but cannot promote</p></div></div>
-          <div class="stage-step"><div class="stage-num" id="sn6">6</div><div class="stage-info"><h4>A/B Comparison</h4><p>Runs only if new-prompt compliance passes</p></div></div>
-          <div class="stage-step"><div class="stage-num" id="sn7">7</div><div class="stage-info"><h4>Prompt Patches</h4><p>Concrete instructions to apply on the new prompt</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn6">6</div><div class="stage-info"><h4>Real v2 Execution</h4><p>Re-runs the proposed prompt on the same synthetic conversations used for v1</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn7">7</div><div class="stage-info"><h4>A/B Comparison</h4><p>Computes p-value, delta, effect size, and promotion gates on v1 vs executed v2</p></div></div>
+          <div class="stage-step"><div class="stage-num" id="sn8">8</div><div class="stage-info"><h4>Prompt Patches</h4><p>Concrete instructions to apply on the new prompt</p></div></div>
         </div>
       </div>
 
       <!-- Run history -->
       <div>
         <div class="sec-hdr" style="margin-bottom:10px;">
-          <span class="sec-title">Run History</span>
+          <div>
+            <span class="sec-title">Run History</span>
+            <span class="sec-note">Last 10 runs</span>
+          </div>
           <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="loadPipelineRuns()">Refresh</button>
         </div>
         <div class="run-history" id="runHistory">
@@ -569,7 +658,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   <!-- Cost breakdown -->
   <div id="costSection" style="margin-top:16px">
     <div class="sec-hdr" style="margin-bottom:10px">
-      <span class="sec-title">Cost Breakdown — Must Stay Under $20</span>
+      <span class="sec-title">Cost Breakdown (Latest Loop) — Must Stay Under $20 <span id="costScope" style="text-transform:none;letter-spacing:0;color:var(--muted);font-weight:500"></span></span>
       <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="loadCostBreakdown()">↻ Refresh</button>
     </div>
     <div class="detail-card">
@@ -602,7 +691,10 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   <!-- Score trend across all iterations -->
   <div id="trendSection" style="margin-top:16px;display:none">
     <div class="sec-hdr" style="margin-bottom:10px">
-      <span class="sec-title">Score Trend Across Iterations</span>
+      <div>
+        <span class="sec-title">Score Trend Across Iterations</span>
+        <span class="sec-note">Last 10 iterations</span>
+      </div>
     </div>
     <div class="detail-card">
       <div class="detail-card-body open" style="display:block;padding:0;overflow-x:auto">
@@ -619,6 +711,92 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe
   </div>
 
 </div><!-- /pane-pipeline -->
+
+<!-- ═══════════════════════════════════════════════════
+     PANE 4 — META EVALUATOR
+════════════════════════════════════════════════════ -->
+<div class="pane" id="pane-meta">
+
+  <div class="feeder-bar">
+    <div class="feeder-stat">
+      <div class="flbl">Calls since last L3 run</div>
+      <div class="fval c-accent" id="metaCount">—</div>
+    </div>
+    <div class="feeder-stat">
+      <div class="flbl">Auto-trigger every</div>
+      <div class="fval" id="metaThreshold">—</div>
+    </div>
+    <div class="feeder-stat">
+      <div class="flbl">Audit sample</div>
+      <div class="fval" id="metaSample">—</div>
+    </div>
+    <div class="feeder-prog">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+        <span>Progress to next L3 auto-run</span>
+        <span id="metaRemaining" style="font-weight:700"></span>
+      </div>
+      <div class="feeder-prog-track"><div class="feeder-prog-fill" id="metaFill" style="width:0%"></div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 10px" onclick="loadMetaStatus(); loadMetaRuns()">↻</button>
+      <button class="btn btn-primary" style="font-size:11px" onclick="triggerMetaEvaluation()">⚡ Run L3 Audit</button>
+    </div>
+  </div>
+
+  <div class="pipeline-layout">
+    <div class="pipeline-sidebar">
+      <div class="trigger-card">
+        <h3>Run Scoring Consistency Audit</h3>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          L3 re-checks the L2 <code>resolution</code> label on recent transcripts using an alternate anchored judge prompt.
+          If Cohen's κ drops below <strong>0.60</strong>, the L2 rubric is treated as ambiguous.
+        </div>
+        <div class="fld">
+          <label>Target</label>
+          <select id="metaAgent">
+            <option value="" selected>All Agents</option>
+            <option value="AssessmentAgent">Assessment Agent</option>
+            <option value="ResolutionAgent">Resolution Agent</option>
+            <option value="FinalNoticeAgent">Final Notice Agent</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Sample size per agent</label>
+          <input type="number" id="metaSampleSize" value="20" min="5" max="40">
+        </div>
+        <button class="btn btn-primary run-btn" id="btnRunMeta" onclick="triggerMetaEvaluation()">
+          ▶ Run Meta-Evaluation
+        </button>
+      </div>
+
+      <div class="stages-card">
+        <h3>L3 Audit Policy</h3>
+        <div class="stage-step"><div class="stage-num done">κ</div><div class="stage-info"><h4>Metric</h4><p>Scoring consistency on the L2 <code>resolution</code> label.</p></div></div>
+        <div class="stage-step"><div class="stage-num done">1</div><div class="stage-info"><h4>Poor</h4><p><code>κ &lt; 0.40</code> → rubric unreliable, tighten L2 definition.</p></div></div>
+        <div class="stage-step"><div class="stage-num done">2</div><div class="stage-info"><h4>Moderate</h4><p><code>0.40 ≤ κ &lt; 0.60</code> → review disagreement cases and re-anchor.</p></div></div>
+        <div class="stage-step"><div class="stage-num done">3</div><div class="stage-info"><h4>Acceptable</h4><p><code>κ ≥ 0.60</code> → current L2 rubric is stable enough.</p></div></div>
+      </div>
+
+      <div>
+        <div class="sec-hdr" style="margin-bottom:10px;">
+          <span class="sec-title">L3 Run History</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="loadMetaRuns()">Refresh</button>
+        </div>
+        <div class="run-history" id="metaRunHistory">
+          <div class="empty" style="padding:20px;"><div class="spinner"></div>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-main">
+      <div class="detail-panel" id="metaDetailPanel"></div>
+      <div id="metaDetailEmpty" class="empty" style="margin-top:60px;">
+        <div class="icon">🧭</div>
+        <div>Select an L3 run from the history,<br>or trigger a new audit.</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /pane-meta -->
 
 <!-- ═══════════════════════════════════════════════════
      PANE 4 — AGENT ANALYTICS
@@ -656,6 +834,23 @@ function toast(msg) {
   t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
+async function stopPipelineRun(ev, runId) {
+  ev?.stopPropagation();
+  const btn = ev?.currentTarget;
+  if (btn) { btn.disabled = true; btn.textContent = 'Stopping…'; }
+  try {
+    const res = await fetch(`/api/admin/pipeline/runs/${runId}/stop`, {method:'POST'});
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed to stop');
+    toast(`Stopping ${runId}…`);
+    setTimeout(loadPipelineRuns, 400);
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✕ Stop'; }
+  }
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
@@ -682,7 +877,7 @@ async function loadStats() {
 function ring(score, size=46) {
   const r = size/2-3, c = 2*Math.PI*r, fill = c*score, col = sc(score);
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)position:absolute;top:0;left:0">
-    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#252839" stroke-width="3.5"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="oklch(78% 0.02 242)" stroke-width="3.5"/>
     <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="3.5"
             stroke-dasharray="${fill} ${c-fill}" stroke-linecap="round"/>
   </svg>`;
@@ -695,15 +890,105 @@ function dimBar(v, name) {
     <div class="dim-val" style="color:${col}">${Math.round(v*100)}%</div>
   </div>`;
 }
+function llmStatsBox(values) {
+  if (!values.length) {
+    return `<div class="calc-box"><div class="calc-head">LLM Score Dispersion</div><div class="c-muted" style="font-size:11px">Not enough numeric LLM dimensions.</div></div>`;
+  }
+  const n = values.length;
+  const mean = values.reduce((a,b)=>a+b,0) / n;
+  const sqDiffs = values.map(v => (v - mean) * (v - mean));
+  const variance = sqDiffs.reduce((a,b)=>a+b,0) / n; // population variance per transcript
+  const stdDev = Math.sqrt(variance);
+  const vals = values.map(v=>v.toFixed(3)).join(', ');
+  return `<div class="calc-box">
+    <div class="calc-head">LLM Score Dispersion (Per Transcript)</div>
+    <div class="calc-grid">
+      <div class="calc-stat"><div class="k">Variance</div><div class="v">${variance.toFixed(4)}</div></div>
+      <div class="calc-stat"><div class="k">Std Dev</div><div class="v">${stdDev.toFixed(4)}</div></div>
+    </div>
+    <div class="calc-eqn">x = [${vals}]</div>
+    <div class="calc-eqn">μ = Σx / n = ${mean.toFixed(4)} (n=${n})</div>
+    <div class="calc-eqn">Variance = Σ(x-μ)<sup>2</sup> / n = ${variance.toFixed(4)}</div>
+    <div class="calc-eqn">Std Dev = √Variance = ${stdDev.toFixed(4)}</div>
+  </div>`;
+}
+function calcDispersionFromEval(ev) {
+  const vals = Object.entries(ev.dimension_scores || {})
+    .filter(([k,v]) => k !== 'goal_achieved' && typeof v === 'number')
+    .map(([,v]) => v);
+  if (!vals.length) return null;
+  const n = vals.length;
+  const mean = vals.reduce((a,b)=>a+b,0) / n;
+  const variance = vals.map(v => (v-mean)*(v-mean)).reduce((a,b)=>a+b,0) / n;
+  const stdDev = Math.sqrt(variance);
+  return { variance, stdDev, n };
+}
+function _buildLinePoints(series, width, height, minY, maxY, padX=28, padY=18) {
+  const innerW = Math.max(1, width - padX * 2);
+  const innerH = Math.max(1, height - padY * 2);
+  const den = Math.max(1e-9, maxY - minY);
+  return series.map((v, i) => {
+    const x = padX + (innerW * (series.length <= 1 ? 0 : i / (series.length - 1)));
+    const y = padY + innerH - ((v - minY) / den) * innerH;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(' ');
+}
+function renderSdVarianceTrend(data) {
+  const chartEl = document.getElementById('sdVarChart');
+  const metaEl = document.getElementById('sdVarMeta');
+  const rightEl = document.getElementById('sdVarRight');
+  if (!data.length) {
+    chartEl.innerHTML = `<div class="empty" style="padding:32px 16px">No numeric LLM dimensions found in last 40 conversations.</div>`;
+    metaEl.textContent = 'Last 40 conversations';
+    rightEl.textContent = '';
+    return;
+  }
+  const width = Math.max(640, chartEl.clientWidth || 640);
+  const height = 250;
+  const variances = data.map(d => d.variance);
+  const stds = data.map(d => d.stdDev);
+  const all = variances.concat(stds);
+  const minY = Math.min(...all, 0);
+  const maxY = Math.max(...all, 0.001);
+  const vPts = _buildLinePoints(variances, width, height, minY, maxY);
+  const sPts = _buildLinePoints(stds, width, height, minY, maxY);
+  const latest = data[data.length - 1];
+  metaEl.textContent = `Last ${data.length} conversations`;
+  rightEl.textContent = `Latest: variance=${latest.variance.toFixed(4)}, sd=${latest.stdDev.toFixed(4)}`;
+  chartEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Variance and SD trend">
+      <line x1="28" y1="${height-18}" x2="${width-28}" y2="${height-18}" stroke="var(--border2)" stroke-width="1"/>
+      <line x1="28" y1="18" x2="28" y2="${height-18}" stroke="var(--border2)" stroke-width="1"/>
+      <polyline fill="none" stroke="var(--accent)" stroke-width="2.2" points="${vPts}"></polyline>
+      <polyline fill="none" stroke="var(--green)" stroke-width="2.2" points="${sPts}"></polyline>
+    </svg>`;
+}
+async function loadSdVarianceTrend(force=false) {
+  const chartEl = document.getElementById('sdVarChart');
+  chartEl.innerHTML = `<div class="empty" style="padding:32px 16px"><div class="spinner"></div>Loading SD / variance trend…</div>`;
+  const url = `/api/admin/evaluations${force?'/refresh':''}?limit=40`;
+  try {
+    const d = await fetch(url).then(r=>r.json());
+    const evals = (d.evaluations || []).slice().reverse();
+    const series = evals
+      .map(ev => calcDispersionFromEval(ev))
+      .filter(Boolean);
+    renderSdVarianceTrend(series);
+  } catch(e) {
+    chartEl.innerHTML = `<div class="empty" style="padding:32px 16px">Error loading trend: ${e.message}</div>`;
+  }
+}
 
 const _transcripts = {};
 function buildEvalCard(ev, idx) {
   const cid = 'ec'+idx, overall = ev.overall_score;
   _transcripts[cid] = ev.transcript_full || [];
   const outcls = ev.outcome || 'unknown';
-  const dimHtml = Object.entries(ev.dimension_scores||{})
+  const dimEntries = Object.entries(ev.dimension_scores||{})
     .filter(([k])=>k!=='goal_achieved')
-    .map(([k,v])=>dimBar(typeof v==='number'?v:0, k)).join('');
+    .filter(([,v])=>typeof v==='number');
+  const dimHtml = dimEntries.map(([k,v])=>dimBar(v, k)).join('');
+  const statsHtml = llmStatsBox(dimEntries.map(([,v])=>v));
   const rulesHtml = (ev.rule_checks||[]).map(c=>`
     <div class="rule-row">
       <div class="rule-dot ${c.passed?'p':'f'}">${c.passed?'✓':'✗'}</div>
@@ -715,7 +1000,7 @@ function buildEvalCard(ev, idx) {
   }).join('');
   const goalBadge = ev.dimension_scores?.goal_achieved !== undefined
     ? `<span class="badge ${ev.dimension_scores.goal_achieved?'pass':'fail'}">${ev.dimension_scores.goal_achieved?'Goal Met':'No Goal'}</span>` : '';
-  const cacheTag = ev.llm_from_cache ? `<span style="font-size:9px;background:var(--border);color:var(--muted2);padding:1px 6px;border-radius:8px;font-weight:700">CACHED</span>` : `<span style="font-size:9px;background:#0d3021;color:var(--green);padding:1px 6px;border-radius:8px;font-weight:700">LIVE</span>`;
+  const cacheTag = ev.llm_from_cache ? `<span style="font-size:9px;background:var(--surface2);color:var(--muted2);padding:1px 6px;border-radius:8px;font-weight:700">CACHED</span>` : `<span style="font-size:9px;background:color-mix(in oklch, var(--green) 18%, white);color:var(--green);padding:1px 6px;border-radius:8px;font-weight:700">LIVE</span>`;
   return `
 <div class="eval-card ${ev.rule_passed?'pass':'fail'}" id="${cid}">
   <div class="eval-card-hdr" onclick="toggleEval('${cid}')">
@@ -742,6 +1027,7 @@ function buildEvalCard(ev, idx) {
   <div class="card-body" id="body-${cid}">
     <div class="panel">
       <div class="panel-title">LLM Dimensions</div>${dimHtml||'<div class="c-muted" style="font-size:11px">No scores</div>'}
+      ${statsHtml}
       <div class="panel-title" style="margin-top:14px">Rule Checks</div>${rulesHtml}
     </div>
     <div class="panel">
@@ -779,18 +1065,22 @@ async function loadEvals(force=false) {
   const limit = document.getElementById('evalLimit').value;
   const url = `/api/admin/evaluations${force?'/refresh':''}?limit=${limit}`;
   document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="spinner"></div>${force?'Running LLM judge…':'Loading…'}</div>`;
+  document.getElementById('sdVarChart').innerHTML = `<div class="empty" style="padding:32px 16px"><div class="spinner"></div>Loading SD / variance trend…</div>`;
   try {
     const d = await fetch(url).then(r=>r.json());
     if (!d.evaluations?.length) {
       document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="icon">📭</div>${d.message||'No transcripts found'}</div>`;
+      document.getElementById('sdVarChart').innerHTML = `<div class="empty" style="padding:32px 16px">No transcripts available for trend.</div>`;
       return;
     }
     document.getElementById('evalGenAt').textContent = 'Generated ' + new Date(d.generated_at).toLocaleTimeString();
     document.getElementById('evalCards').innerHTML = d.evaluations.map((ev,i)=>buildEvalCard(ev,i)).join('');
+    await loadSdVarianceTrend(force);
     loadStats();
     toast(`Loaded ${d.evaluations.length} evaluations`);
   } catch(e) {
     document.getElementById('evalCards').innerHTML = `<div class="empty"><div class="icon">❌</div>Error: ${e.message}</div>`;
+    document.getElementById('sdVarChart').innerHTML = `<div class="empty" style="padding:32px 16px">Error loading trend.</div>`;
   } finally { _evalLoading=false; btn.disabled=false; }
 }
 
@@ -831,32 +1121,56 @@ async function loadPipelineRuns() {
     const anyRunning = runs.some(r=>r.status==='running');
     if (!anyRunning && _pollTimer) { clearInterval(_pollTimer); _pollTimer=null; }
 
-    // Iteration numbers: oldest = #1. Runs arrive newest-first.
     const total = runs.length;
-    document.getElementById('runHistory').innerHTML = runs.map((r, idx) => {
-      const dec     = r.decision || 'pending';
+    const visibleRuns = runs.slice(0, 10);
+    const visibleIds = new Set(visibleRuns.map(r => r.run_id));
+    if (_selectedRun && !visibleIds.has(_selectedRun)) {
+      _selectedRun = visibleRuns[0]?.run_id || null;
+    }
+
+    // Iteration numbers: oldest = #1. Runs arrive newest-first.
+    document.getElementById('runHistory').innerHTML = visibleRuns.map((r, idx) => {
+      const decRaw  = (r.decision_display || r.decision || 'pending');
+      const dec     = String(decRaw).toLowerCase();
       const ts      = r.started_at ? new Date(r.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
+      const v2Mode  = r.v2_execution_mode || 'pending';
+      const v2Exec  = Number.isFinite(r.v2_executed_count) ? r.v2_executed_count : 0;
+      const v2Res   = Number.isFinite(r.v2_resolved_count) ? r.v2_resolved_count : 0;
+      const v2Meta  = `v2 ${v2Mode} • ${v2Res}/${v2Exec} resolved`;
       const sel     = _selectedRun === r.run_id ? 'selected' : '';
       const iterNum = total - idx;
       const by      = r.triggered_by || '';
       const trigCls = by.includes('auto') ? 'auto' : 'manual';
+      const cancellable = r.status === 'running';
+      const stopBtn = cancellable
+        ? `<button class="btn-stop" onclick="stopPipelineRun(event, '${r.run_id}')">✕ Stop</button>`
+        : '';
       return `<div class="run-row ${sel}" onclick="selectRun('${r.run_id}')">
         <div class="run-status ${r.status}"></div>
         <div class="iter-badge">#${iterNum}</div>
         <div class="run-id" style="font-size:11px">${r.agent_target||''}</div>
         <div style="display:flex;flex-direction:column;gap:2px;flex:1">
           <div class="run-ts">${ts}</div>
+          <div class="run-ts" style="font-size:10px;color:var(--muted)">${v2Meta}</div>
           <span class="trigger-badge ${trigCls}">${trigCls}</span>
         </div>
-        <div class="run-decision ${dec}">${dec}</div>
+        <div class="run-actions">
+          <div class="run-decision ${dec}">${dec}</div>
+          ${stopBtn}
+        </div>
       </div>`;
     }).join('');
 
     // Auto-select most recent if nothing selected
-    if (!_selectedRun && runs.length) selectRun(runs[0].run_id, true);
+    if (!_selectedRun && visibleRuns.length) selectRun(visibleRuns[0].run_id, true);
+    // Refresh selected run detail during polling so stage logs stream live.
+    const selectedSummary = runs.find(r => r.run_id === _selectedRun);
+    if (_selectedRun && selectedSummary && selectedSummary.status === 'running') {
+      selectRun(_selectedRun, true);
+    }
 
-    // Render score trend table
-    renderScoreTrend(runs);
+    // Render score trend table (last 10)
+    renderScoreTrend(visibleRuns, total);
   } catch(e) { console.warn('loadPipelineRuns error', e); }
 }
 
@@ -884,19 +1198,25 @@ function renderRunDetail(run) {
   const panel = document.getElementById('detailPanel');
   panel.classList.add('open');
 
+  const v1Scores = [
+    ...(run.transcript_scores || []),
+    ...(run.held_out_scores || []),
+  ];
+
   // Update stage step indicators
-  const scores    = run.transcript_scores?.length > 0;
+  const scores    = v1Scores.length > 0;
   const failures  = run.failure_analysis != null;
   const complianceCurrent = run.compliance_check != null;
   const promptImp = run.prompt_improvement != null;
   const complianceNew = run.new_prompt_compliance != null;
+  const v2exec = (run.executed_v2_scores?.length || 0) > 0 || (run.v2_execution_mode && run.v2_execution_mode !== 'pending');
   const vcomp     = run.version_comparison != null;
   const hyps      = run.hypothesis_set != null;
   const isDone    = run.status !== 'running';
 
   function stCls(done) { return isDone && done ? 'done' : run.status==='running' && done ? 'done' : run.status==='running' && !done ? 'running' : ''; }
-  for (let i=1; i<=7; i++) {
-    const done = [scores, failures, complianceCurrent, promptImp, complianceNew, vcomp, hyps][i-1];
+  for (let i=1; i<=8; i++) {
+    const done = [scores, failures, complianceCurrent, promptImp, complianceNew, v2exec, vcomp, hyps][i-1];
     const el = document.getElementById('sn'+i);
     el.className = 'stage-num ' + (done ? 'done' : run.status==='running' ? 'running' : '');
     el.textContent = done ? '✓' : i;
@@ -907,8 +1227,8 @@ function renderRunDetail(run) {
 
   // Overview
   const decCol = run.decision==='adopt'?'green':run.decision==='reject'?'red':'amber';
-  const scoreSummary = run.transcript_scores?.length ? (() => {
-    const ss = run.transcript_scores;
+  const scoreSummary = v1Scores.length ? (() => {
+    const ss = v1Scores;
     const resRate = ss.filter(s=>s.resolution===1).length/ss.length;
     const compRate = ss.filter(s=>s.compliance_violation===0).length/ss.length;
     const avgTone = ss.reduce((a,s)=>a+s.tone_score,0)/ss.length;
@@ -916,7 +1236,7 @@ function renderRunDetail(run) {
     return `
     <div class="score-grid">
       <div class="score-tile"><div class="label">Resolution Rate</div><div class="value c-${resRate>=.7?'green':'red'}">${fmt(resRate)}</div></div>
-      <div class="score-tile"><div class="label">Compliance Rate</div><div class="value c-${compRate>=.9?'green':'amber'}">${fmt(compRate)}</div></div>
+      <div class="score-tile"><div class="label">Transcript Compliance Rate</div><div class="value c-${compRate>=.9?'green':'amber'}">${fmt(compRate)}</div></div>
       <div class="score-tile"><div class="label">Avg Tone</div><div class="value c-accent">${avgTone.toFixed(1)}/5</div></div>
       <div class="score-tile"><div class="label">Next Step Clarity</div><div class="value c-accent">${avgClarity.toFixed(1)}/5</div></div>
       <div class="score-tile"><div class="label">Transcripts</div><div class="value">${ss.length}</div></div>
@@ -929,8 +1249,8 @@ function renderRunDetail(run) {
   cards.push(detailCard('run-overview', `📋 Run Overview${iterLabel} — ${run.agent_target||run.run_id}${byLabel}`, scoreSummary, true));
 
   // Stage 1 scores table
-  if (run.transcript_scores?.length) {
-    const rows = run.transcript_scores.map(s=>`
+  if (v1Scores.length) {
+    const rows = v1Scores.map(s=>`
       <tr>
         <td style="font-family:monospace;font-size:11px">${s.borrower_id}</td>
         <td style="text-align:center;color:${s.resolution?'var(--green)':'var(--red)'}">${s.resolution}</td>
@@ -945,7 +1265,7 @@ function renderRunDetail(run) {
         <th style="text-align:center;padding:4px">Debt</th><th style="text-align:center;padding:4px">Violation</th>
         <th style="text-align:center;padding:4px">Tone</th><th style="text-align:center;padding:4px">Clarity</th>
       </tr></thead><tbody>${rows}</tbody></table>`;
-    cards.push(detailCard('s1-scores', '1. Transcript Scores', html));
+    cards.push(detailCard('s1-scores', '1. Transcript Scores (v1 all transcripts)', html));
   }
 
   // Stage 2 failure analysis
@@ -984,7 +1304,7 @@ function renderRunDetail(run) {
       ${cc.risks?.length ? `<div class="panel-title">Risks Identified</div>` + cc.risks.map(r => {
         const rule = typeof r === 'object' ? r.rule : r;
         const violation = typeof r === 'object' ? r.violation : '';
-        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);border-left:3px solid var(--amber)">
+        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);box-shadow:inset 0 2px 0 color-mix(in oklch, var(--amber) 50%, transparent)">
           <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ ${escHtml(rule)}</div>
           ${violation ? `<div style="font-size:11px;color:var(--muted)">${escHtml(violation)}</div>` : ''}
         </div>`;
@@ -1030,19 +1350,77 @@ function renderRunDetail(run) {
           ${ccAudit}
         </div>
       </div>
-      ${!cc.compliant ? '<div style="margin-bottom:10px;padding:10px 12px;background:#3a0f0f;border-radius:var(--r2);font-size:12px;color:#fecaca">Compliance failed. Pipeline continues with caution to surface patch suggestions, but promotion is blocked until compliance passes.</div>' : ''}
+      ${!cc.compliant ? '<div style="margin-bottom:10px;padding:10px 12px;background:color-mix(in oklch, var(--red) 18%, white);border-radius:var(--r2);font-size:12px;color:var(--red)">Compliance failed. Pipeline continues with caution to surface patch suggestions, but promotion is blocked until compliance passes.</div>' : ''}
       ${cc.risks?.length ? `<div class="panel-title">Risks Identified</div>` + cc.risks.map(r => {
         const rule = typeof r === 'object' ? r.rule : r;
         const violation = typeof r === 'object' ? r.violation : '';
-        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);border-left:3px solid var(--amber)">
+        return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);box-shadow:inset 0 2px 0 color-mix(in oklch, var(--amber) 50%, transparent)">
           <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ ${escHtml(rule)}</div>
           ${violation ? `<div style="font-size:11px;color:var(--muted)">${escHtml(violation)}</div>` : ''}
         </div>`;
       }).join('') : '<div style="font-size:12px;color:var(--muted)">No risks identified</div>'}`;
-    cards.push(detailCard('s5-compliance-new', '5. Compliance Check — New Prompt (Gate)', html));
+    cards.push(detailCard('s5-compliance-new', '5. Compliance Check — New Prompt', html));
   }
 
-  // Stage 6 version comparison
+  // Stage 6 real v2 execution (always show this section)
+  {
+    const executedScores = run.executed_v2_scores || [];
+    const legacyFallback = run.rescored_held_out || [];
+    const hasExecuted = executedScores.length > 0;
+    const hasLegacyFallback = !hasExecuted && legacyFallback.length > 0;
+
+    let mode = run.v2_execution_mode || 'pending';
+    if (mode === 'pending' && hasLegacyFallback) mode = 'legacy_counterfactual';
+
+    const v2Scores = hasExecuted ? executedScores : (hasLegacyFallback ? legacyFallback : []);
+    const count = Number.isFinite(run.v2_executed_count) ? run.v2_executed_count : v2Scores.length;
+    const v2Res = (typeof run.v2_resolution_rate_executed === 'number')
+      ? run.v2_resolution_rate_executed
+      : (count ? (v2Scores.filter(s=>s.resolution===1).length / count) : 0);
+    const v2Comp = (typeof run.v2_compliance_rate_executed === 'number')
+      ? run.v2_compliance_rate_executed
+      : (count ? (v2Scores.filter(s=>s.compliance_violation===0).length / count) : 0);
+    const resolvedCount = Number.isFinite(run.v2_resolved_count)
+      ? run.v2_resolved_count
+      : (v2Scores.filter(s=>s.resolution===1).length);
+
+    const noDataMsg = (!count && mode === 'pending')
+      ? '<div style="font-size:11px;color:var(--muted)">No v2 execution data was recorded for this run. This can happen for older runs created before the Step 6 rollout, or if the run ended early.</div>'
+      : '';
+
+    const fallbackMsg = (mode === 'fallback_counterfactual' || mode === 'legacy_counterfactual')
+      ? '<div style="font-size:11px;color:var(--amber)">Real execution was unavailable; this run used counterfactual fallback scoring for v2.</div>'
+      : '';
+    const execLogs = Array.isArray(run.v2_execution_logs) ? run.v2_execution_logs : [];
+    const logBody = execLogs.length
+      ? execLogs.map(line => `<div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:11px;line-height:1.5;color:var(--text)">${escHtml(line)}</div>`).join('')
+      : '<div style="font-size:11px;color:var(--muted)">No execution logs yet.</div>';
+    const liveHint = run.status === 'running'
+      ? '<div style="font-size:10px;color:var(--muted);margin:6px 0 0">Live logs update every ~4s while this run is active.</div>'
+      : '';
+
+    const html = `
+      <div style="margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--r2);font-size:12px;line-height:1.6">
+        <strong>Execution mode:</strong> <code>${escHtml(mode)}</code><br>
+        <strong>Transcripts executed:</strong> ${count}<br>
+        <strong>Resolved count:</strong> ${resolvedCount}/${count}<br>
+        <strong>v2 resolution rate:</strong> ${count ? fmt(v2Res) : '—'}<br>
+        <strong>v2 compliance rate:</strong> ${count ? fmt(v2Comp) : '—'}<br>
+        <strong>Note:</strong> ${escHtml(run.v2_execution_note || '—')}
+      </div>
+      ${fallbackMsg}
+      ${noDataMsg}
+      <div style="margin-top:10px">
+        <div class="panel-title">Execution Log Stream</div>
+        <div style="max-height:220px;overflow:auto;padding:10px;background:var(--surface);border-radius:var(--r2);border:1px solid color-mix(in oklch, var(--muted) 25%, transparent)">
+          ${logBody}
+        </div>
+        ${liveHint}
+      </div>`;
+    cards.push(detailCard('s6-v2-exec', '6. Real v2 Execution', html));
+  }
+
+  // Stage 7 version comparison
   if (run.version_comparison) {
     const vc = run.version_comparison;
     const delta = vc.v2_resolution_rate - vc.v1_resolution_rate;
@@ -1053,7 +1431,11 @@ function renderRunDetail(run) {
     const dOk = gates.enough_delta === true;
     const eOk = gates.enough_effect === true;
     const cOk = gates.compliance_pass === true;
+    const complianceImprovedAny = gates.compliance_improved_any === true;
+    const resolutionSame = gates.resolution_same === true;
     const promote = gates.promote === true;
+    const promoteResolution = gates.promote_resolution === true;
+    const promoteCompliance = gates.promote_compliance === true;
     const patchReadiness = typeof gates.patch_readiness_pct === 'number' ? gates.patch_readiness_pct : (promote ? 90 : 0);
     const html = `
       <div class="compare-row">
@@ -1074,25 +1456,33 @@ function renderRunDetail(run) {
         <span class="badge ${vc.improvement?.significant?'pass':'fail'}">p &lt; 0.05: ${vc.improvement?.significant?'pass':'fail'}</span>
         <span class="badge ${dOk?'pass':'fail'}">delta &gt; 0.02: ${dOk?'pass':'fail'}</span>
         <span class="badge ${eOk?'pass':'fail'}">cohen_d ≥ ${(gates.min_cohen_d ?? 0.2)}: ${eOk?'pass':'fail'}</span>
-        <span class="badge ${cOk?'pass':'fail'}">compliance_pass: ${cOk?'pass':'fail'}</span>
-        <span class="badge ${promote?'pass':'fail'}">promote (AND all gates): ${promote?'pass':'fail'}</span>
+        <span class="badge ${cOk?'pass':'fail'}">compliance non-regression: ${cOk?'pass':'fail'}</span>
+        <span class="badge ${complianceImprovedAny?'pass':'fail'}">compliance improved: ${complianceImprovedAny?'pass':'fail'}</span>
+        <span class="badge ${resolutionSame?'pass':'fail'}">resolution same (±eps): ${resolutionSame?'pass':'fail'}</span>
+        <span class="badge ${promoteResolution?'pass':'fail'}">promote_resolution path: ${promoteResolution?'pass':'fail'}</span>
+        <span class="badge ${promoteCompliance?'pass':'fail'}">promote_compliance path: ${promoteCompliance?'pass':'fail'}</span>
+        <span class="badge ${promote?'pass':'fail'}">promote (resolution OR compliance path): ${promote?'pass':'fail'}</span>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:monospace;line-height:1.5">
-promote = (
-  n >= 30 AND p_value &lt; 0.05 AND delta &gt; 0.02 AND cohen_d &gt;= 0.20 AND compliance_pass
+promote_resolution = (
+  n >= 30 AND p_value &lt; 0.05 AND delta &gt; 0.02 AND cohen_d &gt;= 0.20 AND compliance_non_regression
 )
+promote_compliance = (
+  n >= 30 AND compliance_improved_any AND resolution_same AND no_large_resolution_drop
+)
+promote = promote_resolution OR promote_compliance
       </div>
       <div style="font-size:12px;line-height:1.6;color:var(--muted);padding:10px 12px;background:var(--surface2);border-radius:var(--r2)">
         ${vc.summary}<br><strong style="color:var(--text)">Reason:</strong> ${vc.reason}
       </div>`;
-    cards.push(detailCard('s6-compare', '6. A/B Comparison', html));
+    cards.push(detailCard('s7-compare', '7. A/B Comparison', html));
   }
 
-  // Stage 7 hypotheses
+  // Stage 8 hypotheses
   if (run.hypothesis_set?.hypotheses?.length) {
     const agentTarget = run.agent_target || '';
-    const caution = run.new_prompt_compliance && run.new_prompt_compliance.compliant === false
-      ? `<div style="margin-bottom:10px;padding:10px 12px;background:#3a0f0f;border-radius:var(--r2);font-size:12px;color:#fecaca">Caution: generated prompt failed compliance. Patches are shown for manual review only; do not promote until compliance passes.</div>`
+    const caution = run.compliance_pass === false
+      ? `<div style="margin-bottom:10px;padding:10px 12px;background:color-mix(in oklch, var(--red) 18%, white);border-radius:var(--r2);font-size:12px;color:var(--red)">Caution: generated prompt failed compliance gate. Patches are shown for manual review only; do not promote until compliance passes.</div>`
       : '';
     const cardsHtml = run.hypothesis_set.hypotheses.map((h, i) => `
       <div class="hyp-card" id="hyp-${run.run_id}-${i}">
@@ -1109,7 +1499,7 @@ promote = (
         <p><strong>How to test:</strong> ${h.how_to_test}</p>
         <div id="patchmsg-${run.run_id}-${i}" style="font-size:10px;color:var(--muted);margin-top:6px"></div>
       </div>`).join('');
-    cards.push(detailCard('s7-hyp', '7. Prompt Patches', caution + cardsHtml));
+    cards.push(detailCard('s8-hyp', '8. Prompt Patches', caution + cardsHtml));
   }
 
   // Error
@@ -1220,6 +1610,15 @@ async function loadCostBreakdown() {
     const d = await fetch('/api/admin/stats/cost-breakdown').then(r => r.json());
     if (d.error) return;
 
+    const scopeEl = document.getElementById('costScope');
+    if (scopeEl) {
+      const agents = d.scope_detail?.loop_agents || [];
+      scopeEl.textContent = agents.length ? `(${agents.join(', ')})` : '';
+      scopeEl.title = d.scope_detail?.loop_run_ids?.length
+        ? `Runs: ${d.scope_detail.loop_run_ids.join(', ')}`
+        : '';
+    }
+
     const total   = d.total_cost_usd ?? 0;
     const budget  = d.budget_usd ?? 20;
     const pct     = Math.min(100, d.pct_used ?? 0);
@@ -1240,7 +1639,7 @@ async function loadCostBreakdown() {
     // Table rows
     const rows = (d.rows || []).map(r => {
       const srcBadge = r.source === 'actual'
-        ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:#0d2240;color:var(--accent);font-weight:700">actual</span>`
+        ? `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:color-mix(in oklch, var(--accent) 18%, white);color:var(--accent);font-weight:700">actual</span>`
         : `<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--border);color:var(--muted);font-weight:700">est.</span>`;
       const modelShort = r.model.replace('claude-','').replace('-4-5','').replace('-4-7','');
       return `<tr>
@@ -1257,7 +1656,7 @@ async function loadCostBreakdown() {
       <td style="text-align:right;font-weight:800;font-size:14px;color:${over?'var(--red)':total>15?'var(--amber)':'var(--green)'};padding-top:10px">~$${total.toFixed(4)}</td>
       <td style="padding-top:10px">
         <span style="font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;
-          background:${over?'#3a0f0f':'#0d3021'};color:${over?'var(--red)':'var(--green)'}">
+          background:${over?'color-mix(in oklch, var(--red) 18%, white)':'color-mix(in oklch, var(--green) 18%, white)'};color:${over?'var(--red)':'var(--green)'}">
           ${over ? 'OVER BUDGET' : 'WITHIN $20'}
         </span>
       </td>
@@ -1272,7 +1671,7 @@ async function loadFeederStatus() {
   try {
     const d = await fetch('/api/admin/pipeline/feeder-status').then(r=>r.json());
     const count     = d.call_count ?? 0;
-    const threshold = d.trigger_every_n ?? 30;
+    const threshold = d.trigger_every_n ?? 60;
     const perAgentRemaining = d.transcripts_until_next_by_agent || {};
     const perAgentCounts = d.agent_transcript_counts || {};
     const nextIn = (typeof d.next_trigger_in === 'number' && d.next_trigger_in >= 0)
@@ -1325,10 +1724,10 @@ async function triggerNow(agentName) {
   finally { if (btn) { btn.disabled=false; btn.innerHTML='⚡ Trigger Now — All Agents'; } }
 }
 
-function renderScoreTrend(runs) {
+function renderScoreTrend(runs, totalCount = runs.length) {
   const section = document.getElementById('trendSection');
   const body    = document.getElementById('trendBody');
-  const total   = runs.length;
+  const total   = totalCount;
 
   const rows = runs.map((r, idx) => {
     const iterNum = total - idx;
@@ -1340,7 +1739,7 @@ function renderScoreTrend(runs) {
     const dec     = r.decision || 'pending';
     const ts      = r.started_at ? new Date(r.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '—';
     const by      = (r.triggered_by||'').includes('auto') ? 'auto' : 'manual';
-    const nTx     = r.transcript_scores?.length ?? '—';
+    const nTx = ((r.transcript_scores?.length || 0) + (r.held_out_scores?.length || 0)) || '—';
 
     const deltaHtml = delta == null ? '<span class="delta-flat">—</span>'
       : delta > 0  ? `<span class="delta-up">+${fmt(delta)}</span>`
@@ -1364,7 +1763,7 @@ function renderScoreTrend(runs) {
   }).join('');
 
   body.innerHTML = rows;
-  section.style.display = total > 0 ? 'block' : 'none';
+  section.style.display = runs.length > 0 ? 'block' : 'none';
 }
 
 // ── GENERATION ────────────────────────────────────────────
@@ -1382,7 +1781,7 @@ async function triggerGeneration(runPipeline) {
 
   const pipelineEvery = parseInt(document.getElementById('genBatch').value) || 8;
   const body = {
-    total:              parseInt(document.getElementById('genTotal').value) || 30,
+    total:              parseInt(document.getElementById('genTotal').value) || 60,
     batch_size:         parseInt(document.getElementById('genBatch').value) || 8,
     agent_target:       document.getElementById('genAgent').value,
     run_pipeline_every: pipelineEvery,
@@ -1659,6 +2058,183 @@ async function applyPatch(runId, patchIndex, agentName, btn) {
     toast('Patch failed: ' + e.message);
   }
 }
+
+
+// ── META EVALUATOR ───────────────────────────────
+let _metaPollTimer = null;
+let _currentMetaRunId = null;
+let _metaRuns = null;
+
+async function loadMetaStatus() {
+  try {
+    const d = await fetch('/api/admin/meta-evaluator/status').then(r => r.json());
+    const count     = d.call_count ?? 0;
+    const threshold = d.trigger_every_n ?? 300;
+    const sample    = d.sample_size ?? 20;
+    const nextIn    = (typeof d.calls_until_next === 'number' && d.calls_until_next >= 0)
+      ? d.calls_until_next
+      : (threshold - count);
+    const pct = threshold > 0
+      ? Math.min(100, Math.round(((threshold - nextIn) / threshold) * 100))
+      : 0;
+
+    document.getElementById('metaCount').textContent   = count < 0 ? '—' : count;
+    document.getElementById('metaThreshold').textContent = threshold;
+    document.getElementById('metaSample').textContent   = sample;
+    const remEl = document.getElementById('metaRemaining');
+    remEl.textContent = nextIn <= 0
+      ? 'triggering…'
+      : `${nextIn} more`;
+    const fill = document.getElementById('metaFill');
+    fill.style.width      = pct + '%';
+    fill.style.background = pct >= 100 ? 'var(--green)' : 'var(--accent)';
+  } catch(e) { console.warn('loadMetaStatus error', e); }
+}
+
+async function triggerMetaEvaluation() {
+  const btn = document.getElementById('btnRunMeta');
+  btn.disabled = true;
+  btn.textContent = '⏳ Starting…';
+  try {
+    const agentName  = document.getElementById('metaAgent').value || '';
+    const sampleSize = parseInt(document.getElementById('metaSampleSize').value) || 20;
+    const body = agentName
+      ? { agent_name: agentName, sample_size: sampleSize, triggered_by: 'admin_ui' }
+      : { sample_size: sampleSize, triggered_by: 'admin_ui' };
+    const d = await fetch('/api/admin/meta-evaluator/run', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+    if (d.error) { toast('Error: ' + d.error); return; }
+    toast(`L3 meta-evaluation started: ${d.run_id}`);
+    _currentMetaRunId = d.run_id;
+    setTimeout(loadMetaRuns, 1500);
+    _metaPollTimer && clearInterval(_metaPollTimer);
+    _metaPollTimer = setInterval(() => pollMetaRun(d.run_id), 4000);
+  } catch(e) { toast('Error: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '⚡ Run L3 Audit'; }
+}
+
+async function pollMetaRun(runId) {
+  try {
+    const run = await fetch(`/api/admin/meta-evaluator/runs/${runId}`).then(r => r.json());
+    if (run.error) return;
+    renderMetaDetail(run);
+    if (run.status !== 'running') {
+      clearInterval(_metaPollTimer);
+      _metaPollTimer = null;
+      loadMetaRuns();
+      loadMetaStatus();
+    }
+  } catch(e) {}
+}
+
+async function loadMetaRuns() {
+  try {
+    const d = await fetch('/api/admin/meta-evaluator/runs?limit=30').then(r => r.json());
+    const runs = d.runs || [];
+    if (!runs.length) {
+      document.getElementById('metaRunHistory').innerHTML = `<div class="empty" style="padding:20px">No L3 runs yet</div>`;
+      return;
+    }
+    document.getElementById('metaRunHistory').innerHTML = runs.map(r => {
+      const ts   = r.started_at ? new Date(r.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '';
+      const sel  = _currentMetaRunId === r.run_id ? 'selected' : '';
+      const dec  = r.overall_verdict || r.status || 'pending';
+      const agents = (r.target_agents || []).map(a => a.replace('Agent','').replace('FinalNotice','Final Notice')).join(', ');
+      return `<div class="run-row ${sel}" onclick="selectMetaRun('${r.run_id}')">
+        <div class="run-status ${r.status}"></div>
+        <div class="run-id">${r.run_id}</div>
+        <div style="font-size:10px;color:var(--muted)">${agents}</div>
+        <div style="font-size:10px;color:var(--muted)">${r.sample_size || '—'}</div>
+        <div class="run-ts">${ts}</div>
+        <div class="run-decision ${dec === 'acceptable' ? 'adopt' : dec === 'poor' ? 'reject' : 'pending'}">${dec}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.warn('loadMetaRuns error', e); }
+}
+
+async function selectMetaRun(runId) {
+  _currentMetaRunId = runId;
+  document.querySelectorAll('#metaRunHistory .run-row').forEach(row => {
+    row.classList.toggle('selected', row.onclick?.toString().includes(runId));
+  });
+  try {
+    const run = await fetch(`/api/admin/meta-evaluator/runs/${runId}`).then(r => r.json());
+    if (run.error) { toast(run.error); return; }
+    renderMetaDetail(run);
+  } catch(e) { console.warn('selectMetaRun error', e); }
+}
+
+function renderMetaDetail(run) {
+  document.getElementById('metaDetailEmpty').style.display = 'none';
+  const panel = document.getElementById('metaDetailPanel');
+  panel.style.display = 'flex';
+  panel.classList.add('open');
+
+  const audits = run.audits || [];
+  const auditCards = audits.map(a => {
+    const kappa = a.cohen_kappa ?? 0;
+    const obs   = a.observed_agreement ?? 0;
+    const exp   = a.expected_agreement ?? 0;
+    const kappaColor = kappa >= 0.60 ? 'var(--green)' : kappa >= 0.40 ? 'var(--amber)' : 'var(--red)';
+    const verdictBadge = a.verdict === 'acceptable' ? 'pass' : a.verdict === 'poor' ? 'fail' : '';
+    const casesHtml = (a.cases || []).slice(0, 6).map(c => `
+      <div style="padding:4px 8px;background:var(--surface);border-radius:var(--r2);margin-bottom:4px;font-size:11px;box-shadow:inset 0 2px 0 ${c.agreement?'color-mix(in oklch, var(--green) 50%, transparent)':'color-mix(in oklch, var(--amber) 50%, transparent)'}">
+        <span style="font-weight:700">${c.borrower_id}</span>
+        <span style="color:var(--muted)"> L2=${c.primary_resolution} L3=${c.shadow_resolution}</span>
+        <span style="color:${c.agreement?'var(--green)':'var(--amber)'}">${c.agreement?'✓ agree':'✗ disagree'}</span>
+      </div>`).join('');
+
+    return `<div class="detail-card" style="margin-bottom:12px">
+      <div class="detail-card-hdr">
+        <h4>${a.agent_name}</h4>
+        <span class="badge ${verdictBadge}">${a.verdict}</span>
+      </div>
+      <div class="detail-card-body open">
+        <div class="score-grid">
+          <div class="score-tile"><div class="label">Observed Agreement</div><div class="value" style="color:${kappaColor}">${(obs*100).toFixed(1)}%</div></div>
+          <div class="score-tile"><div class="label">Expected Agreement</div><div class="value">${(exp*100).toFixed(1)}%</div></div>
+          <div class="score-tile"><div class="label">Cohen's κ</div><div class="value" style="color:${kappaColor};font-size:16px">${kappa.toFixed(3)}</div></div>
+          <div class="score-tile"><div class="label">Disagreements</div><div class="value c-${a.disagreement_count>0?'amber':'green'}">${a.disagreement_count}</div></div>
+          <div class="score-tile"><div class="label">Sample Used</div><div class="value">${a.sample_size_used}</div></div>
+          <div class="score-tile"><div class="label">Flag</div><div class="value" style="font-size:11px">${a.flag}</div></div>
+        </div>
+        <div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r2);font-size:11px;color:var(--muted)">
+          <strong>Recommendation:</strong> ${a.recommendation || '—'}
+        </div>
+        ${a.disagreement_count > 0 ? `<div style="margin-top:8px"><div class="panel-title" style="font-size:11px">Disagreement Cases (${a.disagreement_count})</div>${casesHtml}</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">
+          L2-prompt=${a.current_prompt_sha || '—'} L3-shadow=${a.shadow_prompt_sha || '—'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const overallColor = run.overall_verdict === 'acceptable' ? 'var(--green)' : run.overall_verdict === 'poor' ? 'var(--red)' : 'var(--amber)';
+  const notesHtml = (run.notes || []).map(n => `
+    <div style="padding:4px 0;font-size:11px;color:var(--muted)">• ${n}</div>`).join('');
+
+  const headerHtml = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:24px">${run.status === 'completed' ? '✅' : run.status === 'failed' ? '❌' : '⏳'}</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:${overallColor}">${run.overall_verdict || run.status}</div>
+        <div style="font-size:11px;color:var(--muted)">${run.run_id} · ${run.triggered_by || '—'}</div>
+      </div>
+    </div>
+    ${notesHtml}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="badge ${run.status === 'completed' ? 'pass' : run.status === 'failed' ? 'fail' : 'pending'}">${run.status}</span>
+      <span style="badge" style="background:var(--border);color:var(--muted2)">${run.target_agents?.length || 0} agents</span>
+      <span style="badge" style="background:var(--border);color:var(--muted2)">$${run.meta_eval_cost_usd?.toFixed(4) || '0.0000'}</span>
+    </div>
+  `;
+
+  panel.innerHTML = headerHtml + auditCards + (run.error ? `<div style="padding:10px;background:color-mix(in oklch, var(--red) 18%, white);border-radius:var(--r2);color:var(--red);font-size:12px">${run.error}</div>` : '');
+}
+
+// ── APPLY PATCH ───────────────────────────────
 
 // ── init ──────────────────────────────────────────────────
 loadStats();

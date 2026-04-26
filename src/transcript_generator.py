@@ -110,6 +110,7 @@ async def _run_one_transcript(
     from src.pipeline import CollectionsPipeline
     from src.data_layer import log_interaction, log_outcome, upsert_borrower_case
     from src.models import Stage
+    from src.self_learning.improvement_pipeline import get_prompt_version
 
     try:
         persona_type = PersonaType(persona_name.lower())
@@ -171,11 +172,13 @@ async def _run_one_transcript(
                 user_content = um.get("content", "")
                 break
 
+        prompt_version = get_prompt_version(agent_name)
+
         asyncio.create_task(log_interaction(
             borrower_id=borrower_id,
             agent_name=agent_name,
             agent_version="v1.0",
-            prompt_version="canonical-v1",
+            prompt_version=prompt_version,
             model="mock",
             model_params={"mock": True},
             input_text=user_content,

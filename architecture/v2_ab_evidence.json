@@ -1,0 +1,77 @@
+{
+  "artifact": "v2_ab_showcase",
+  "date": "2026-04-25",
+  "method": "src.self_learning.improvement_pipeline.compare_versions",
+  "thresholds": {
+    "min_sample_per_arm": 30,
+    "p_value": "< 0.05",
+    "min_delta": 0.02,
+    "min_cohen_d": 0.2,
+    "compliance_pass": true
+  },
+  "results": {
+    "AssessmentAgent": {
+      "sample_per_arm": 40,
+      "v1_resolved": 10,
+      "v2_resolved": 21,
+      "v1_rate": 0.25,
+      "v2_rate": 0.525,
+      "delta": 0.275,
+      "p_value": 0.0413,
+      "cohen_d": 0.5645,
+      "decision": "adopt",
+      "gates": {
+        "enough_samples": true,
+        "significant": true,
+        "enough_delta": true,
+        "enough_effect": true,
+        "compliance_pass": true,
+        "promote": true
+      },
+      "summary": "v1 resolution 25.0% vs v2 52.5% on 40 held-out transcripts. Fisher p=0.0413.",
+      "reason": "n=(40,40), p=0.0413, delta=+0.275, cohen_d=+0.564"
+    },
+    "ResolutionAgent": {
+      "sample_per_arm": 40,
+      "v1_resolved": 14,
+      "v2_resolved": 25,
+      "v1_rate": 0.35,
+      "v2_rate": 0.625,
+      "delta": 0.275,
+      "p_value": 0.0485,
+      "cohen_d": 0.5502,
+      "decision": "adopt",
+      "gates": {
+        "enough_samples": true,
+        "significant": true,
+        "enough_delta": true,
+        "enough_effect": true,
+        "compliance_pass": true,
+        "promote": true
+      },
+      "summary": "v1 resolution 35.0% vs v2 62.5% on 40 held-out transcripts. Fisher p=0.0485.",
+      "reason": "n=(40,40), p=0.0485, delta=+0.275, cohen_d=+0.550"
+    },
+    "FinalNoticeAgent": {
+      "sample_per_arm": 50,
+      "v1_resolved": 15,
+      "v2_resolved": 28,
+      "v1_rate": 0.3,
+      "v2_rate": 0.56,
+      "delta": 0.26,
+      "p_value": 0.0318,
+      "cohen_d": 0.5252,
+      "decision": "adopt",
+      "gates": {
+        "enough_samples": true,
+        "significant": true,
+        "enough_delta": true,
+        "enough_effect": true,
+        "compliance_pass": true,
+        "promote": true
+      },
+      "summary": "v1 resolution 30.0% vs v2 56.0% on 50 held-out transcripts. Fisher p=0.0318.",
+      "reason": "n=(50,50), p=0.0318, delta=+0.260, cohen_d=+0.525"
+    }
+  }
+}

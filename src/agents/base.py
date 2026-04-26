@@ -18,6 +18,8 @@ from src.question_tracker import QuestionTracker, FactKey
 
 logger = logging.getLogger(__name__)
 
+AGENT_TEMPERATURE = float(os.getenv("AGENT_TEMPERATURE", "0.2"))
+
 def _first_nonempty_env(*names: str) -> str:
     for name in names:
         value = os.getenv(name)
@@ -112,7 +114,7 @@ class BaseAgent(ABC):
         self,
         system: str,
         messages: list[dict],
-        temperature: float = 0.1,
+        temperature: float = AGENT_TEMPERATURE,
         max_tokens: Optional[int] = None,
     ) -> tuple[str, TokenUsage]:
         """
@@ -184,7 +186,7 @@ class BaseAgent(ABC):
         system: str,
         messages: list[dict],
         tools: list[dict],
-        temperature: float = 0.1,
+        temperature: float = AGENT_TEMPERATURE,
         max_tokens: Optional[int] = None,
     ) -> tuple[str, TokenUsage]:
         """

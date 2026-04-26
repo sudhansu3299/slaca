@@ -9,532 +9,231 @@
      Both from Google Fonts. Rejected reflex fonts (Inter, DM Sans, Space Grotesk). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
 <style>
-/* ── Design tokens (OKLCH — perceptually uniform) ──────────── */
-/* P1/P4 fix: replaced every hard-coded hex with semantic tokens.
-   Tinted neutrals toward brand hue (blue-indigo, ~250°) per impeccable rules.
-   No pure black or white — all tinted. */
 :root {
-  /* Surfaces — tinted toward hue 248 */
-  --bg:        oklch(12% 0.018 248);
-  --surface:   oklch(16% 0.020 248);
-  --surface-2: oklch(14% 0.018 248);
-  --border:    oklch(22% 0.022 248);
-  --border-hi: oklch(32% 0.028 248);
-
-  /* Brand accent — a clean slate blue, not the AI cyan/purple */
-  --accent:     oklch(62% 0.16 248);
-  --accent-dim: oklch(54% 0.14 248);
-  --accent-sub: oklch(62% 0.10 248 / 0.12);
-
-  /* Message surfaces */
-  --agent-bg:    oklch(18% 0.022 248);
-  --borrower-bg: oklch(18% 0.10 248);
-
-  /* Semantic status colors */
-  --amber: oklch(76% 0.16 72);
-  --green: oklch(70% 0.16 152);
-  --red:   oklch(62% 0.18 22);
-
-  /* Text */
-  --text:       oklch(88% 0.018 248);
-  --text-body:  oklch(78% 0.015 248);
-  --muted:      oklch(54% 0.022 248);
-
-  /* Spacing scale (4pt base) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-
-  /* Radii */
-  --r-full: 9999px;
-  --r-lg:   16px;
-  --r-md:   8px;
-  --r-sm:   4px;
-
-  /* Typography */
-  --font-ui:   'Sora', system-ui, sans-serif;
-  --font-body: 'Noto Sans', system-ui, sans-serif;
-  --font-doc:  'Georgia', 'Times New Roman', serif;
+  --bg: oklch(96% 0.012 242);
+  --canvas: oklch(99% 0.004 242);
+  --panel: oklch(96% 0.015 242);
+  --panel-soft: oklch(94% 0.02 242);
+  --border: oklch(86% 0.02 242);
+  --border-strong: oklch(76% 0.03 242);
+  --shadow-soft: 0 18px 48px rgba(18, 36, 68, 0.08);
+  --text: oklch(28% 0.02 255);
+  --text-soft: oklch(48% 0.018 245);
+  --muted: oklch(60% 0.02 245);
+  --accent: oklch(61% 0.11 248);
+  --accent-strong: oklch(55% 0.12 248);
+  --accent-soft: oklch(92% 0.04 248);
+  --agent-bg: oklch(96% 0.015 248);
+  --borrower-bg: oklch(97% 0.04 90);
+  --contract-paper: oklch(98% 0.006 85);
+  --green: oklch(64% 0.15 150);
+  --amber: oklch(73% 0.14 75);
+  --red: oklch(58% 0.17 30);
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 40px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 8px;
+  --font-ui: 'Public Sans', 'Helvetica Neue', sans-serif;
+  --font-body: 'Public Sans', 'Helvetica Neue', sans-serif;
+  --font-doc: 'Spectral', 'Times New Roman', serif;
 }
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.6;
+  min-height: 100dvh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-
-/* ── P2 fix: global focus-visible styles (keyboard navigation) ── */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--r-sm);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
-
-/* ── Header ─────────────────────────────────────────────────── */
 .hdr {
-  background: var(--surface);
+  background: var(--canvas);
   border-bottom: 1px solid var(--border);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
 }
-
-/* P1 fix: replaced purple→blue gradient with a solid tinted surface + icon treatment.
-   The gradient was the #1 AI color palette tell. */
 .hdr-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--accent-sub);
-  border: 1.5px solid var(--accent);
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-family: var(--font-doc);
+  font-size: 18px;
+  letter-spacing: 0.08em;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  color: var(--accent);
-  font-family: var(--font-ui);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.02em;
 }
-
-/* P1 fix: tighter type scale using Sora */
 .hdr-info h2 {
-  font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .hdr-sub {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 1px;
-  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 2px;
 }
-.hdr-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--muted);
-  transition: background 0.3s, box-shadow 0.3s;
+  background: var(--border-strong);
+  transition: all 0.25s ease;
 }
-.dot.on   { background: var(--green); box-shadow: 0 0 6px var(--green); }
-/* P2 fix: pulse uses opacity, not layout — correct */
-.dot.ring { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.2s ease-in-out infinite; }
-
-/* ── Stage bar ───────────────────────────────────────────────── */
+.dot.on {
+  background: var(--green);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--green) 35%, transparent);
+}
+.dot.ring {
+  background: var(--amber);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--amber) 35%, transparent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
 .stage-bar {
-  background: var(--surface-2);
+  background: var(--panel);
   border-bottom: 1px solid var(--border);
-  padding: 5px var(--space-5);
+  padding: var(--space-2) var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  font-size: 12px;
+  color: var(--text-soft);
   flex-shrink: 0;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--muted);
 }
-
 .pill {
-  padding: 2px var(--space-3);
-  border-radius: var(--r-full);
-  font-family: var(--font-ui);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--canvas);
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: var(--border);
-  transition: background 0.3s, color 0.3s;
 }
-/* P4: pill colors use OKLCH-tinted tokens rather than raw hex */
-.pill.assessment   { background: oklch(20% 0.06 230); color: oklch(72% 0.12 230); }
-.pill.resolution   { background: oklch(18% 0.06 290); color: oklch(72% 0.12 290); }
-.pill.final_notice { background: oklch(18% 0.06 22);  color: oklch(72% 0.12 22);  }
-.pill.complete     { background: oklch(18% 0.06 152); color: oklch(72% 0.12 152); }
-.pill.escalated    { background: oklch(18% 0.06 22);  color: oklch(72% 0.12 22);  }
-
-/* ── Voice overlay ───────────────────────────────────────────── */
+.pill.assessment { border-color: color-mix(in oklch, var(--accent) 40%, var(--border)); color: var(--accent-strong); }
+.pill.resolution { border-color: color-mix(in oklch, var(--amber) 50%, var(--border)); color: var(--amber); }
+.pill.final_notice { border-color: color-mix(in oklch, var(--red) 40%, var(--border)); color: var(--red); }
+.pill.complete { border-color: color-mix(in oklch, var(--green) 40%, var(--border)); color: var(--green); }
+.pill.escalated { border-color: color-mix(in oklch, var(--red) 60%, var(--border)); color: var(--red); }
 .voice-banner {
   display: none;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-5) var(--space-6);
-  background: var(--surface-2);
+  padding: var(--space-5);
+  background: var(--panel-soft);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .voice-banner.show { display: flex; }
-
-/* P1 fix: replaced purple→blue gradient ring with solid accent + ring animation.
-   Uses the brand accent; no AI gradient palette. */
 .ring-anim {
-  width: 60px;
-  height: 60px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  background: var(--accent-sub);
   border: 2px solid var(--accent);
+  background: var(--accent-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 22px;
   animation: ringpulse 1.6s ease-out infinite;
 }
-
 @keyframes ringpulse {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 50%, transparent); }
-  70%  { box-shadow: 0 0 0 16px color-mix(in oklch, var(--accent) 0%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 50%, transparent); }
+  70% { box-shadow: 0 0 0 18px color-mix(in oklch, var(--accent) 0%, transparent); }
   100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 0%, transparent); }
 }
-
-.voice-label {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-.voice-sub {
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-  max-width: 300px;
-  line-height: 1.5;
-}
-
-/* ── Messages ────────────────────────────────────────────────── */
+.voice-label { font-weight: 600; font-size: 13px; }
+.voice-sub { font-size: 12px; color: var(--text-soft); text-align: center; max-width: 320px; }
 .msgs {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  scroll-behavior: smooth;
+  background: var(--panel-soft);
 }
-.msgs::-webkit-scrollbar { width: 3px; }
-.msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
+.msgs::-webkit-scrollbar { width: 4px; }
+.msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .row {
   display: flex;
   gap: var(--space-2);
-  max-width: 86%;
-  /* P2 fix: animation uses opacity + transform only (no layout props) */
+  max-width: 84%;
   animation: fadeup 0.18s ease-out;
 }
-.row.agent    { align-self: flex-start; }
+.row.agent { align-self: flex-start; }
 .row.borrower { align-self: flex-end; flex-direction: row-reverse; }
-.row.system   { align-self: center; max-width: 100%; }
-.row.contract { align-self: center; max-width: 98%; width: 98%; }
-
-/* ── Settlement Contract Document ───────────────────────────── */
-/* P1 fix: removed border-left: 4px on .contract-warning (absolute ban).
-   Replaced with a full background tint + top border approach that reads
-   clearly without the AI side-stripe tell. */
-.contract-doc {
-  /* Contract sits on white — tinted off-white, not pure #fff */
-  background: oklch(98% 0.005 80);
-  color: oklch(18% 0.02 248);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  font-family: var(--font-doc);
-  box-shadow: 0 8px 40px oklch(0% 0 0 / 0.5);
-  width: 100%;
-  margin: var(--space-2) 0;
-}
-
-.contract-header {
-  background: oklch(18% 0.025 248);
-  color: oklch(96% 0.008 248);
-  padding: var(--space-5) var(--space-6);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.contract-logo {
-  font-size: 24px;
-  width: 44px;
-  height: 44px;
-  background: oklch(96% 0.008 248 / 0.10);
-  border: 1px solid oklch(96% 0.008 248 / 0.18);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.contract-title {
-  font-family: var(--font-ui);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: oklch(96% 0.008 248);
-}
-
-.contract-subtitle {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: oklch(96% 0.008 248 / 0.55);
-  margin-top: 3px;
-  letter-spacing: 0.02em;
-}
-
-.contract-stamp {
-  margin-left: auto;
-  background: oklch(76% 0.16 72);
-  color: oklch(18% 0.025 248);
-  font-family: var(--font-ui);
-  font-size: 9px;
-  font-weight: 800;
-  padding: 3px var(--space-3);
-  border-radius: var(--r-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  flex-shrink: 0;
-}
-.contract-stamp.accepted {
-  background: oklch(70% 0.16 152);
-  color: oklch(98% 0.005 152);
-}
-
-.contract-meta {
-  background: oklch(94% 0.008 80);
-  padding: var(--space-3) var(--space-6);
-  display: flex;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  border-bottom: 2px solid oklch(18% 0.025 248);
-  color: oklch(40% 0.015 248);
-}
-
-.contract-section {
-  padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid oklch(88% 0.008 80);
-}
-.contract-section:last-child { border-bottom: none; }
-
-.contract-section-title {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: oklch(18% 0.025 248);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1.5px solid oklch(18% 0.025 248);
-}
-
-.contract-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-}
-.contract-table th {
-  background: oklch(18% 0.025 248);
-  color: oklch(96% 0.008 248);
-  padding: 6px var(--space-3);
-  text-align: left;
-  font-family: var(--font-ui);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.contract-table td {
-  padding: 7px var(--space-3);
-  border-bottom: 1px solid oklch(92% 0.006 80);
-  vertical-align: top;
-  color: oklch(28% 0.018 248);
-}
-.contract-table tr:last-child td { border-bottom: none; }
-.contract-table tr:nth-child(even) td { background: oklch(96% 0.005 80); }
-
-/* P0 fix: removed border-left: 4px solid (absolute ban #1).
-   Replaced with a full background tint + top-rule approach. */
-.contract-warning {
-  background: oklch(94% 0.055 72);
-  border-top: 2px solid oklch(76% 0.16 72);
-  border-radius: var(--r-sm);
-  padding: var(--space-3) var(--space-4);
-  font-size: 12px;
-  color: oklch(38% 0.08 72);
-  margin-bottom: var(--space-3);
-}
-
-.contract-list {
-  margin: 0;
-  padding-left: var(--space-5);
-  font-size: 12.5px;
-  line-height: 1.9;
-  color: oklch(30% 0.018 248);
-}
-.contract-note {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: oklch(48% 0.018 248);
-  margin-bottom: var(--space-2);
-}
-.contract-terms {
-  font-size: 11px;
-  color: oklch(48% 0.018 248);
-  line-height: 1.75;
-  background: oklch(96% 0.005 80);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--r-sm);
-  font-style: italic;
-}
-.contract-acceptance {
-  background: oklch(18% 0.025 248);
-  padding: var(--space-4) var(--space-6);
-  text-align: center;
-}
-.contract-acceptance-label {
-  font-family: var(--font-ui);
-  color: oklch(96% 0.008 248 / 0.70);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  margin-bottom: var(--space-3);
-}
-.contract-download-btn {
-  margin-top: var(--space-3);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  background: oklch(62% 0.16 248);
-  color: oklch(98% 0.005 248);
-  border: none;
-  border-radius: var(--r-md);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s cubic-bezier(0.22,1,0.36,1);
-}
-.contract-download-btn::before { content: "↓ "; }
-.contract-download-btn:hover  { background: oklch(54% 0.14 248); }
-.contract-download-btn:active { transform: scale(0.95); }
-
-/* ── Print styles — used when Download PDF triggers window.print() ── */
-@media print {
-  /* Hide everything except the contract being printed */
-  body > *                    { display: none !important; }
-  #print-contract-target      { display: block !important; }
-
-  #print-contract-target .contract-doc {
-    box-shadow: none;
-    border-radius: 0;
-    width: 100%;
-  }
-  /* Hide the download button in the printed output */
-  .contract-download-btn      { display: none !important; }
-
-  @page {
-    size: A4;
-    margin: 15mm 20mm;
-  }
-}
-
-/* ── Animations ──────────────────────────────────────────────── */
-@keyframes fadeup {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
-}
-
-/* ── Avatars ─────────────────────────────────────────────────── */
+.row.system { align-self: center; max-width: 100%; }
+.row.contract { align-self: center; width: min(640px, 100%); }
 .av {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  flex-shrink: 0;
-  align-self: flex-end;
-  font-family: var(--font-ui);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
-/* P1 fix: replaced gradient fills with solid tinted tokens */
-.av.agent    { background: var(--accent-sub); border: 1.5px solid var(--accent); color: var(--accent); }
-.av.borrower { background: var(--border);     border: 1.5px solid var(--border-hi); color: var(--muted); }
-
-/* ── Bubbles ─────────────────────────────────────────────────── */
+.av.agent { background: var(--accent-soft); border-color: color-mix(in oklch, var(--accent) 40%, var(--border)); color: var(--accent-strong); }
+.av.borrower { background: var(--canvas); }
 .bbl {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--r-lg);
   font-size: 13.5px;
-  line-height: 1.65;
-  word-break: break-word;
-  font-family: var(--font-body);
-  color: var(--text-body);
-  max-width: 65ch;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--canvas);
+  box-shadow: 0 4px 16px rgba(15, 31, 54, 0.05);
 }
-.agent   .bbl { background: var(--agent-bg);    border-bottom-left-radius: var(--r-sm); }
+.agent .bbl { background: var(--agent-bg); border-bottom-left-radius: var(--r-sm); }
 .borrower .bbl { background: var(--borrower-bg); border-bottom-right-radius: var(--r-sm); }
-
 .ts {
   font-size: 10px;
-  color: var(--muted);
-  margin-top: 3px;
-  padding: 0 3px;
-  font-family: var(--font-ui);
+  color: var(--text-soft);
+  margin-top: 4px;
 }
-.agent .ts    { text-align: left; }
-.borrower .ts { text-align: right; }
-
-/* ── System messages ─────────────────────────────────────────── */
 .sys-msg {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 6px var(--space-4);
-  font-family: var(--font-ui);
   font-size: 11px;
-  color: var(--muted);
-  text-align: center;
-  letter-spacing: 0.01em;
+  color: var(--text-soft);
+  background: var(--canvas);
 }
-.sys-msg.amber { border-color: var(--amber); color: var(--amber); background: oklch(76% 0.16 72 / 0.06); }
-.sys-msg.green { border-color: var(--green); color: var(--green); background: oklch(70% 0.16 152 / 0.06); }
-.sys-msg.red   { border-color: var(--red);   color: var(--red);   background: oklch(62% 0.18 22 / 0.06); }
-
-/* ── Typing indicator ────────────────────────────────────────── */
+.sys-msg.amber { border-color: var(--amber); color: var(--amber); background: color-mix(in oklch, var(--amber) 10%, white); }
+.sys-msg.green { border-color: var(--green); color: var(--green); background: color-mix(in oklch, var(--green) 10%, white); }
+.sys-msg.red { border-color: var(--red); color: var(--red); background: color-mix(in oklch, var(--red) 8%, white); }
 .typing {
   display: flex;
   gap: var(--space-1);
@@ -542,76 +241,219 @@ body {
   background: var(--agent-bg);
   border-radius: var(--r-lg);
   border-bottom-left-radius: var(--r-sm);
-  width: fit-content;
 }
 .typing span {
-  width: 5px;
-  height: 5px;
-  background: var(--muted);
+  width: 6px;
+  height: 6px;
+  background: var(--text-soft);
   border-radius: 50%;
-  /* P2 fix: replaced bounce easing with ease-out (exponential deceleration).
-     Bounce/elastic easing is dated per impeccable rules. */
   animation: typingdot 1.1s ease-out infinite;
 }
 .typing span:nth-child(2) { animation-delay: 0.18s; }
 .typing span:nth-child(3) { animation-delay: 0.36s; }
-
-/* Simple fade-scale — no translateY layout animation */
 @keyframes typingdot {
   0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
-  30%           { opacity: 1;   transform: scale(1.3); }
+  30% { opacity: 1; transform: scale(1.25); }
 }
-
-/* ── Input area ──────────────────────────────────────────────── */
-.iarea {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: var(--space-2) var(--space-3) var(--space-3);
+.contract-doc {
+  background: var(--contract-paper);
+  color: oklch(24% 0.02 250);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+  font-family: var(--font-doc);
+  overflow: hidden;
+}
+.contract-header {
+  background: oklch(20% 0.025 248);
+  color: oklch(96% 0.008 248);
+  padding: var(--space-5) var(--space-6);
   display: flex;
-  gap: var(--space-2);
-  align-items: flex-end;
-  flex-shrink: 0;
+  gap: var(--space-4);
+  align-items: center;
 }
-
-/* P2 fix: textarea has proper focus-visible handled by global rule above */
-.iarea textarea {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  color: var(--text-body);
-  padding: 9px var(--space-3);
-  font-size: 13.5px;
-  font-family: var(--font-body);
-  resize: none;
-  max-height: 100px;
-  line-height: 1.5;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.iarea textarea:focus  { border-color: var(--accent); }
-.iarea textarea:disabled { opacity: 0.38; cursor: not-allowed; }
-
-/* P2 fix: send button meets 44×44 minimum touch target */
-.sbtn {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  background: var(--accent);
-  border: none;
+.contract-logo {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  color: oklch(98% 0.005 248);
-  font-size: 16px;
-  cursor: pointer;
+  border: 1px solid oklch(96% 0.008 248 / 0.35);
+  color: oklch(96% 0.008 248);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s, transform 0.1s cubic-bezier(0.22,1,0.36,1);
+  font-family: var(--font-ui);
 }
-.sbtn:hover:not(:disabled)  { background: var(--accent-dim); }
-.sbtn:active:not(:disabled) { transform: scale(0.90); }
-.sbtn:disabled { opacity: 0.38; cursor: not-allowed; }
+.contract-title {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.contract-subtitle {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: oklch(94% 0.01 248);
+}
+.contract-stamp {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: white;
+}
+.contract-stamp.accepted { background: var(--green); }
+.contract-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 2px solid oklch(88% 0.01 248);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.contract-section {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid oklch(90% 0.01 250);
+}
+.contract-section:last-child { border-bottom: none; }
+.contract-section-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+  border-bottom: 1.5px solid oklch(86% 0.02 248);
+  padding-bottom: var(--space-1);
+}
+.contract-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.contract-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  text-align: left;
+  padding: 6px var(--space-3);
+  background: oklch(92% 0.008 250);
+}
+.contract-table td {
+  padding: 7px var(--space-3);
+  border-bottom: 1px solid oklch(92% 0.008 250);
+}
+.contract-warning {
+  background: color-mix(in oklch, var(--amber) 12%, white);
+  border: 1px solid color-mix(in oklch, var(--amber) 40%, white);
+  border-radius: var(--r-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  color: oklch(38% 0.06 75);
+  margin-bottom: var(--space-3);
+}
+.contract-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  line-height: 1.8;
+  color: var(--text);
+}
+.contract-note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.contract-terms {
+  font-size: 11px;
+  color: var(--text-soft);
+  background: oklch(96% 0.006 90);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-sm);
+  font-style: italic;
+}
+.contract-acceptance {
+  background: oklch(93% 0.01 240);
+  padding: var(--space-4) var(--space-6);
+  text-align: center;
+}
+.contract-acceptance-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+}
+.contract-download-btn {
+  margin-top: var(--space-2);
+  border: none;
+  background: var(--accent);
+  color: white;
+  padding: 8px 18px;
+  border-radius: var(--r-md);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s ease;
+}
+.contract-download-btn::before { content: "↓ "; }
+.contract-download-btn:hover { background: var(--accent-strong); }
+.contract-download-btn:active { transform: scale(0.96); }
+.iarea {
+  background: var(--canvas);
+  border-top: 1px solid var(--border);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+.iarea textarea {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-3);
+  font-size: 13px;
+  min-height: 44px;
+  max-height: 120px;
+  resize: none;
+  background: var(--panel);
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+.iarea textarea:focus { border-color: var(--accent); }
+.iarea textarea:disabled { opacity: 0.4; }
+.sbtn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s ease;
+}
+.sbtn:hover:not(:disabled) { background: var(--accent-strong); }
+.sbtn:active:not(:disabled) { transform: scale(0.92); }
+.sbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@media print {
+  body > * { display: none !important; }
+  #print-contract-target { display: block !important; }
+  #print-contract-target .contract-doc { box-shadow: none; border-radius: 0; }
+  .contract-download-btn { display: none !important; }
+  @page { size: A4; margin: 15mm 20mm; }
+}
 </style>
 </head>
 <body>

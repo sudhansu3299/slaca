@@ -189,6 +189,13 @@ class CollectionsPipeline:
             pass
 
         try:
+            from src.self_learning.meta_evaluator import on_conversation_complete as on_meta_complete
+
+            asyncio.create_task(on_meta_complete())
+        except Exception:
+            pass
+
+        try:
             from src.self_learning.regression_monitor import record_outcome
 
             for agent_name in ("AssessmentAgent", "ResolutionAgent", "FinalNoticeAgent"):

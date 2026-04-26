@@ -263,102 +263,291 @@ async def start_page():
 
 
 _START_PAGE = """<!DOCTYPE html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset=\"UTF-8\">
+<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
 <title>Collections — New Case</title>
+<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+<link href=\"https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap\" rel=\"stylesheet\">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: oklch(97% 0.01 240);
+  --card: oklch(96% 0.015 230);
+  --card-border: oklch(88% 0.018 230);
+  --ink: oklch(28% 0.02 250);
+  --muted: oklch(52% 0.02 250);
+  --accent: oklch(62% 0.11 242);
+  --accent-strong: oklch(56% 0.13 242);
+  --accent-soft: oklch(92% 0.04 242);
+  --critical: oklch(70% 0.14 30);
+  --space-xs: 6px;
+  --space-sm: 12px;
+  --space-md: 20px;
+  --space-lg: 32px;
+  --r-lg: 20px;
+  --r-md: 12px;
+  --font-ui: 'Public Sans', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Spectral', 'Times New Roman', serif;
+}
 body {
-  background: #0d0f1a; color: #dde3f0;
-  font-family: -apple-system, "Segoe UI", sans-serif;
-  min-height: 100vh; display: flex; align-items: center;
-  justify-content: center; padding: 24px;
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--ink);
+  padding: clamp(24px, 5vw, 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.card {
-  background: #161927; border: 1px solid #252839;
-  border-radius: 18px; padding: 36px 32px; width: 100%; max-width: 520px;
+.shell {
+  width: min(1040px, 100%);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  align-items: stretch;
 }
-.logo { font-size: 34px; margin-bottom: 6px; }
-h1 { font-size: 21px; font-weight: 700; margin-bottom: 4px; }
-.sub { font-size: 12px; color: #7a849a; margin-bottom: 28px; line-height: 1.6; }
-.pipeline {
-  display: flex; gap: 0; margin-bottom: 28px; border-radius: 10px;
-  overflow: hidden; border: 1px solid #252839; font-size: 11px;
+.panel {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 20px 60px rgba(15, 37, 66, 0.08);
 }
-.step {
-  flex: 1; padding: 8px 6px; text-align: center; font-weight: 600;
-  letter-spacing: .3px;
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
-.step.a { background:#0d2a4a; color:#60a5fa; }
-.step.b { background:#2d1660; color:#c084fc; border-left:1px solid #252839; border-right:1px solid #252839; }
-.step.c { background:#3a0f0f; color:#f87171; }
-.arrow { padding-top:8px; color:#7a849a; font-size:12px; align-self:center; }
+.badge {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.logo-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 26px;
+}
+.intro h1 {
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+.intro p {
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 15px;
+  max-width: 46ch;
+}
+.timeline {
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-md);
+  padding: var(--space-sm);
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  background: white;
+}
+.stage {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stage small {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.stage strong { font-size: 14px; }
+.stage span { font-size: 12px; color: var(--muted); }
+.intel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(140px,1fr));
+  gap: var(--space-sm);
+}
+.intel-card {
+  border-radius: var(--r-md);
+  border: 1px dashed var(--card-border);
+  padding: 14px;
+}
+.intel-card .label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.intel-card .value {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.panel form {
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 label {
-  display: block; font-size: 11px; color: #7a849a;
-  font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-  margin: 16px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
 }
-label:first-of-type { margin-top: 0; }
+.field {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: var(--space-sm);
+}
+.phone-group {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+}
 input, select {
-  width: 100%; background: #0d0f1a; border: 1px solid #252839;
-  border-radius: 10px; color: #dde3f0; padding: 10px 14px;
-  font-size: 14px; outline: none; transition: border-color .2s;
+  width: 100%;
+  border: 1px solid var(--card-border);
+  background: white;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-input:focus, select:focus { border-color: #4c82f7; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.phone-group { display: grid; grid-template-columns: 104px 1fr; gap: 8px; }
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 40%, transparent);
+  outline: none;
+}
 .btn {
-  margin-top: 24px; width: 100%; background: #4c82f7; border: none;
-  border-radius: 10px; color: #fff; font-size: 15px; font-weight: 700;
-  padding: 14px; cursor: pointer; transition: background .2s;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.2s, transform 0.2s;
 }
-.btn:hover:not(:disabled) { background: #3464c8; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.err { margin-top: 12px; color: #f87171; font-size: 12px; display: none; }
+.btn:hover:not(:disabled) { background: var(--accent-strong); transform: translateY(-1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.err {
+  margin-top: 10px;
+  color: var(--critical);
+  font-size: 13px;
+  display: none;
+}
+.footnote {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo">🏦</div>
-  <h1>New Collection Case</h1>
-  <p class="sub">Start a live case with just name and phone. Other account details are loaded from backend records.</p>
-
-  <div class="pipeline">
-    <div class="step a">💬 Assessment<br><span style="font-weight:400;font-size:10px">Chat · identity + financials</span></div>
-    <div class="step b">📞 Resolution<br><span style="font-weight:400;font-size:10px">Voice · offer + commitment</span></div>
-    <div class="step c">📋 Final Notice<br><span style="font-weight:400;font-size:10px">Chat · consequences + deadline</span></div>
-  </div>
-
-  <form id="frm" onsubmit="go(event)">
-    <div class="row">
-      <div>
-        <label>Name</label>
-        <input name="borrower_name" placeholder="Rahul Sharma" required>
+<div class=\"shell\">
+  <section class=\"panel intro\">
+    <div class=\"badge\">Collections Desk</div>
+    <div class=\"logo-mark\">Σ</div>
+    <h1>Open a new collection case</h1>
+    <p>Kick off a supervised chat session in under a minute. We preload balances and loan terms from the ledger once you supply the borrower identity.</p>
+    <div class=\"timeline\">
+      <div class=\"stage\">
+        <small>Stage 01</small>
+        <strong>Assessment</strong>
+        <span>Chat · verify, gather intent</span>
       </div>
-      <div>
-        <label>Phone</label>
-        <div class="phone-group">
-          <select name="country_code">
-            <option value="+91" selected>🇮🇳 +91</option>
-            <option value="+1">🇺🇸 +1</option>
-            <option value="+44">🇬🇧 +44</option>
-            <option value="+61">🇦🇺 +61</option>
-            <option value="+65">🇸🇬 +65</option>
-          </select>
-          <input name="phone_number" type="tel" placeholder="7008098779">
-        </div>
+      <div class=\"stage\">
+        <small>Stage 02</small>
+        <strong>Resolution</strong>
+        <span>Voice · structure proposal</span>
+      </div>
+      <div class=\"stage\">
+        <small>Stage 03</small>
+        <strong>Final Notice</strong>
+        <span>Chat · documentation + deadline</span>
       </div>
     </div>
-
-    <button class="btn" id="btn" type="submit">
-      <span id="btn-text">Start Chat Session →</span>
-      <span id="spin" style="display:none">⏳</span>
-    </button>
-  </form>
-  <div class="err" id="err"></div>
+    <div class=\"intel\">
+      <div class=\"intel-card\">
+        <div class=\"label\">SLA</div>
+        <div class=\"value\">&lt; 4 min to connect</div>
+      </div>
+      <div class=\"intel-card\">
+        <div class=\"label\">Coverage</div>
+        <div class=\"value\">APAC · GCC · NA</div>
+      </div>
+      <div class=\"intel-card\">
+        <div class=\"label\">Compliance</div>
+        <div class=\"value\">Every call recorded</div>
+      </div>
+    </div>
+  </section>
+  <section class=\"panel\">
+    <div class=\"badge\" style=\"font-size:10px;letter-spacing:0.3em;\">Intake</div>
+    <h2 style=\"margin-top:12px;font-size:22px;font-weight:600;\">Borrower details</h2>
+    <p style=\"margin-top:4px;color:var(--muted);font-size:14px;\">Only the caller information is required to initiate the workflow. Ledger fields hydrate downstream.</p>
+    <form id=\"frm\" onsubmit=\"go(event)\">
+      <div class=\"row\">
+        <div class=\"field\">
+          <label>Name</label>
+          <input name=\"borrower_name\" placeholder=\"Rahul Sharma\" required>
+        </div>
+        <div class=\"field\">
+          <label>Phone</label>
+          <div class=\"phone-group\">
+            <select name=\"country_code\">
+              <option value=\"+91\" selected>🇮🇳 +91</option>
+              <option value=\"+1\">🇺🇸 +1</option>
+              <option value=\"+44\">🇬🇧 +44</option>
+              <option value=\"+61\">🇦🇺 +61</option>
+              <option value=\"+65\">🇸🇬 +65</option>
+            </select>
+            <input name=\"phone_number\" type=\"tel\" placeholder=\"7008098779\">
+          </div>
+        </div>
+      </div>
+      <button class=\"btn\" id=\"btn\" type=\"submit\">
+        <span id=\"btn-text\">Start Chat Session →</span>
+        <span id=\"spin\" style=\"display:none\">⏳</span>
+      </button>
+      <div class=\"err\" id=\"err\"></div>
+      <p class=\"footnote\">Submitting triggers a supervised channel and records the attempt in the audit ledger.</p>
+    </form>
+  </section>
 </div>
 
 <script>

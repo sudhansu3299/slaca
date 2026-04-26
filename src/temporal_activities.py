@@ -148,6 +148,13 @@ def _schedule_learning_followups(resolved: bool) -> None:
         activity.logger.debug("[self_learning] feeder notify skipped: %s", e)
 
     try:
+        from src.self_learning.meta_evaluator import on_conversation_complete as on_meta_complete
+
+        asyncio.create_task(on_meta_complete())
+    except Exception as e:
+        activity.logger.debug("[self_learning] meta-evaluator notify skipped: %s", e)
+
+    try:
         from src.self_learning.regression_monitor import record_outcome
 
         for agent_name in ("AssessmentAgent", "ResolutionAgent", "FinalNoticeAgent"):

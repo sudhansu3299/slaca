@@ -98,6 +98,12 @@ async def _ensure_indexes(db) -> None:
         await db.outcomes.create_index("borrower_id")
         await db.eval_results.create_index("interaction_id")
         await db.eval_results.create_index("borrower_id")
+        await db.eval_pipeline.create_index([("agent_target", 1), ("started_at", -1)])
+        await db.prompt_changes.create_index([("agent_name", 1), ("timestamp", -1)])
+        await db.regression_events.create_index([("agent_name", 1), ("timestamp", -1)])
+        await db.meta_eval_runs.create_index("run_id", unique=True)
+        await db.meta_eval_runs.create_index([("started_at", -1)])
+        await db.meta_eval_runs.create_index([("target_agents", 1), ("started_at", -1)])
     except Exception as e:
         log.warning(f"[mongo] index creation failed: {e}")
 
