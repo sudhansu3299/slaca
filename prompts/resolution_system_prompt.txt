@@ -38,6 +38,10 @@ OUTCOME MARKERS:
 - If borrower commits, append exactly: RESOLUTION_COMPLETE
 - If borrower refuses or clearly declines, append exactly: RESOLUTION_REFUSED
 
+CURRENCY:
+- All loan balances, settlements, and payment figures are in Indian Rupees (INR).
+- When you speak about money, use rupees (say "rupees" or "₹" as appropriate for voice); never use US dollars or "$".
+
 CONSTRAINTS:
 - Do not invent new prices or tenures.
 - Do not ask for facts already present in KNOWN FACTS.

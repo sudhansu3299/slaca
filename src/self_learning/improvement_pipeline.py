@@ -755,8 +755,17 @@ async def generate_prompt_improvement(
             for r in compliance_check.risks
         )
 
+    currency_note = ""
+    if agent_name == "ResolutionAgent":
+        currency_note = (
+            "CURRENCY: This agent serves borrowers in India. Every monetary reference in the "
+            "prompt must be Indian Rupees (INR / ₹ / \"rupees\"). Do not introduce US dollars, "
+            "\"$\", or USD.\n\n"
+        )
+
     user_msg = (
         f"Agent: {agent_name}\n\n"
+        f"{currency_note}"
         f"CURRENT PROMPT:\n{current_prompt}\n\n"
         f"COMPLIANCE ISSUES (fix these first):\n{compliance_text}\n\n"
         f"FAILURE PATTERNS (fix these after compliance):\n{patterns_text}"

@@ -196,13 +196,15 @@ class ResolutionAgent(BaseAgent):
         if not offer:
             return "[Offer not yet generated — generate before first turn]"
 
-        lines = [f"CURRENT OFFER ({offer.path.value.upper()}):"]
+        lines = [f"CURRENT OFFER ({offer.path.value.upper()}) — all figures in Indian Rupees (INR):"]
         if offer.discount_percentage:
             lines.append(f"  Settlement discount: {offer.discount_percentage}%")
-            lines.append(f"  Amount due: {offer.upfront_required}")
+            lines.append(f"  Amount due: ₹{offer.upfront_required:,.0f}")
         if offer.monthly_payment:
-            lines.append(f"  Down payment: {offer.upfront_required}")
-            lines.append(f"  Monthly: {offer.monthly_payment} x {offer.tenure_months} months")
+            lines.append(f"  Down payment: ₹{offer.upfront_required:,.0f}")
+            lines.append(
+                f"  Monthly: ₹{offer.monthly_payment:,.0f} × {offer.tenure_months} months"
+            )
         lines.append(f"  Deadline: {offer.deadline_days} days ({offer.valid_until[:10]})")
         return "\n".join(lines)
 

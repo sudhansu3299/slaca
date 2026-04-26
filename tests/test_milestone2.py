@@ -131,7 +131,7 @@ class TestHandoffLosslessness:
         block = summary.to_prompt_block()
         assert "50000" in block
         assert "installment" in block.lower()
-        assert "85000" in block or "85_000" in block.replace(",", "")
+        assert "₹85,000" in block
 
 
 class TestApplyToContext:

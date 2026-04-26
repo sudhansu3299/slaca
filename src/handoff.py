@@ -86,7 +86,7 @@ class HandoffSummary(BaseModel):
             f"From: {self.from_stage} → To: {self.to_stage}",
             f"Borrower: {self.borrower_id} | Loan: {self.loan_id}",
             f"Identity verified: {self.identity_verified}",
-            f"Outstanding: {self.outstanding_amount} | DPD: {self.days_past_due}",
+            f"Outstanding: ₹{self.outstanding_amount:,.0f} | DPD: {self.days_past_due}",
         ]
 
         # Financial facts — only include answered ones
@@ -113,9 +113,11 @@ class HandoffSummary(BaseModel):
             if self.offer_discount_pct:
                 lines.append(f"  Discount: {self.offer_discount_pct}%")
             if self.offer_upfront:
-                lines.append(f"  Upfront: {self.offer_upfront}")
+                lines.append(f"  Upfront: ₹{self.offer_upfront:,.0f}")
             if self.offer_monthly:
-                lines.append(f"  Monthly: {self.offer_monthly} x {self.offer_tenure_months}mo")
+                lines.append(
+                    f"  Monthly: ₹{self.offer_monthly:,.0f} × {self.offer_tenure_months}mo"
+                )
             if self.offer_valid_until:
                 lines.append(f"  Valid until: {self.offer_valid_until}")
             lines.append(f"  Committed: {self.resolution_committed}")
