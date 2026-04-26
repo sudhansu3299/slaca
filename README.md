@@ -1,191 +1,111 @@
 # AI Collections System
 
-Self-learning 3-agent debt collections pipeline orchestrated by Temporal.
+Self-learning 3-agent collections workflow with a chat UI, admin panel, Temporal orchestration, and evaluation pipelines.
 
-## Deliverables
+## What You Need
 
-| Deliverable | Location |
-|---|---|
-| Temporal workflow orchestrating 3-agent pipeline | `src/temporal_workflow.py` |
-| 2× Chat agents + 1× Voice agent | `src/agents/` |
-| Cross-modal handoff with context summarization | `src/handoff.py`, `src/memory.py` |
-| Test harness for generating + evaluating conversations | `src/test_harness.py` |
-| Self-learning loop with meta-evaluation | `src/self_learning/` |
-| Docker Compose setup | `docker-compose.yml`, `Dockerfile` |
+1. Docker + Docker Compose
+2. A valid OpenAI API key if you want live model calls
 
-## Quick Start (fresh machine, ≤5 min)
+## 1) Set Your Environment
+
+Create a `.env` file in the project root:
 
 ```bash
-# 1. Clone
-git clone <repo> project-slaca && cd project-slaca
+cp .env.example .env
+```
 
-# 2. Boot entire stack (Temporal + worker + harness)
+Open `.env` and set at least:
+
+```bash
+OPENAI_API_KEY=your_openai_key_here
+```
+
+Notes:
+
+1. Mock mode can run without a real key in some paths, but set `OPENAI_API_KEY` anyway so live/eval paths work cleanly.
+2. If you plan to use live voice integrations, also set `VAPI_*` keys from `docker-compose.yml` comments.
+
+## 2) Start the Stack with Docker Compose
+
+From project root:
+
+```bash
 docker compose up --build
 ```
 
-That's it. The stack:
+This starts:
 
-1. **PostgreSQL** (Temporal backing store)
-2. **Temporal server** (`localhost:7233`)
-3. **Temporal UI** (`http://localhost:8233`)
-4. **Worker** — listens on task queue `collections-queue`
-5. **Harness** — starts 4 synthetic borrower workflows (all personas), prints outcomes, exits
+1. Temporal + Temporal UI
+2. Redis
+3. MongoDB
+4. Postgres (Temporal + app DB)
+5. Worker
+6. Chat/API server
 
-All LLM calls are **mocked** by default (`USE_LLM_MOCK=1`) so no API keys needed for the smoke test.
+## 3) Open the UI and Admin Panel
 
-## Local development (no Docker)
+After containers are healthy:
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+1. Main start/chat UI: [http://localhost:8000](http://localhost:8000)
+2. Admin panel: [http://localhost:8000/admin](http://localhost:8000/admin)
+3. Temporal UI: [http://localhost:8233](http://localhost:8233)
 
-# Terminal 1: start Temporal locally (needs temporal CLI)
-temporal server start-dev
+## 4) Live vs Mock Modes
 
-# Terminal 2: start worker
-python -m src.temporal_activities
+Default `docker compose up --build` runs with mock worker defaults from compose.
 
-# Terminal 3: kick off a workflow
-python -m src.starter --persona cooperative
-# or run all 4 personas:
-python -m src.starter --batch
-```
-
-## Test harness (no Temporal needed)
-
-Fast iteration, fully local:
+If you want full live profile (real worker/voice path), run:
 
 ```bash
-python -m src.test_harness                  # 1 cooperative run, mocked LLM
-python -m src.test_harness --all            # all 4 personas, mocked
-python -m src.test_harness --all --runs 3   # 12 runs total
-python -m src.test_harness --all --json     # machine-readable output
-python -m src.test_harness --persona cooperative --live            # real Claude Opus 4.5
-python -m src.test_harness --persona cooperative --live --verbose  # turn-by-turn trace
+docker compose --profile live up --build
 ```
 
-### Audit logs (written to `./audit-logs/` by default)
-
-Every harness run writes two files:
-
-| File | Purpose |
-|---|---|
-| `<run-id>.log`   | Human-readable turn trace + stage eval + cost summary |
-| `<run-id>.jsonl` | One JSON event per line: `run_started`, `run_config`, `turn`, `stage_summary`, `final_report`, `run_finished` |
-
-The paths are printed at the end of each run. Override location with `--log-dir some/path` or suppress with `--no-log`.
-
-Programmatic analysis example:
+If you want the smoke harness profile:
 
 ```bash
-cat audit-logs/SIM-COOP-abc123-r0.jsonl | jq 'select(.event=="turn") | {stage, turn, agent, advanced}'
+docker compose --profile test up --build
 ```
 
-### Tweaking personas (borrower scripts)
+## 5) Useful Commands
 
-Override what the borrower says per stage with a JSON file:
-
-```json
-// personas/my_borrower.json
-{
-  "AssessmentAgent":  ["Yes got the notice.", "Last 4 are 4455, born 1992.", ...],
-  "ResolutionAgent":  ["What can you offer?", "I accept."],
-  "FinalNoticeAgent": ["Yes I formally accept."]
-}
-```
-
-Run with it:
+Tail logs:
 
 ```bash
-python -m src.test_harness --persona cooperative --live \
-    --personas-file personas/my_borrower.json
+docker compose logs -f chat-server
+docker compose logs -f worker
 ```
 
-A sample is checked in at `personas/example_cooperative.json`.
-
-### Tweaking prompts (agent guidance)
-
-Inject extra instructions into any agent's system prompt without editing `src/prompts.py`:
-
-```json
-// prompts/my_tweaks.json
-{
-  "AssessmentAgent":  "Keep each response under 12 words.",
-  "ResolutionAgent":  "Lead with total savings vs legal route.",
-  "FinalNoticeAgent": "Use ALL CAPS for the deadline line only."
-}
-```
-
-Apply it:
+Restart after env changes:
 
 ```bash
-python -m src.test_harness --persona cooperative --live \
-    --prompt-overrides prompts/my_tweaks.json
+docker compose down
+docker compose up --build
 ```
 
-A sample is checked in at `prompts/example_tweaks.json`.
+## 6) Quick Troubleshooting
 
-### Combining all knobs
+If `localhost:8000` is not loading:
 
-```bash
-python -m src.test_harness \
-    --persona cooperative --live --verbose \
-    --personas-file personas/my_borrower.json \
-    --prompt-overrides prompts/my_tweaks.json \
-    --log-dir audit-logs/experiment-42
-```
+1. Check `chat-server` logs.
+2. Confirm required services are healthy with `docker compose ps`.
 
-## Run tests
+If model calls fail:
 
-```bash
-.venv/bin/python -m pytest tests/ -q
-```
+1. Confirm `.env` has `OPENAI_API_KEY`.
+2. Recreate containers so env is reloaded.
 
-## Architecture
+If admin panel looks stale:
 
-```
-Borrower ──▶ Temporal Workflow (one per borrower)
-                 │
-                 ├─ Activity: run_assessment_stage     [chat, Agent 1]
-                 │    ├─ cold, clinical fact-gathering
-                 │    └─ produces HandoffSummary (≤500 tok)
-                 │
-                 ├─ Activity: run_resolution_stage     [voice, Agent 2]
-                 │    ├─ reads handoff → voice metadata
-                 │    ├─ transactional dealmaking
-                 │    └─ produces HandoffSummary + offer
-                 │
-                 └─ Activity: run_final_notice_stage   [chat, Agent 3]
-                      ├─ consequences + deadline
-                      └─ routes to resolved | escalated
-```
+1. Hard refresh browser.
+2. Ensure you are using the same running stack (avoid mixing old local processes with Docker stack).
 
-**Truth** lives in `ConversationContext` (passed through the workflow).  
-**Temporal** owns state persistence, retries, and timeouts.  
-**Agents** are stateless processors — receive context, return `AgentResponse`.
+## 7) Key Paths in This Repo
 
-## Cost tracking
-
-```python
-from src.cost import TieredCostTracker
-tracker = TieredCostTracker()
-# ... runs ...
-print(tracker.full_report())
-```
-
-Budget: **$20 total** across all production + simulation + evaluation calls.
-
-## Self-learning loop
-
-`src/self_learning/loop.py` — runs evaluation → methodology evolves → prompts update.
-
-Meta-evaluator (`MetaEvaluator`) judges whether the eval itself is producing useful signal (variance, outcome correlation, version evolution).
-
-## Personas (test harness)
-
-| Persona | Expected path | Expected outcome |
-|---|---|---|
-| Cooperative | INSTALLMENT | resolved |
-| Hostile | LEGAL | escalated |
-| Broke | HARDSHIP | resolved |
-| Strategic Defaulter | LUMP_SUM | escalated |
+1. Workflow orchestration: `src/temporal_workflow.py`
+2. Agents: `src/agents/`
+3. Handoff/context: `src/handoff.py`
+4. Self-learning: `src/self_learning/`
+5. Chat server + admin routes: `src/chat_server.py`
+6. Admin UI: `static/admin.html`
+7. Docker setup: `docker-compose.yml`, `Dockerfile`
