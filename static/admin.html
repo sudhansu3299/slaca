@@ -672,6 +672,12 @@ body { background:var(--bg); color:var(--text); font-family:'Public Sans','Helve
             <div id="costBudgetFill" style="height:100%;border-radius:5px;transition:width .5s;background:var(--green)"></div>
           </div>
         </div>
+        <div id="costTrendWrap" style="margin-bottom:14px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Cost Trend (Last 10 iterations)</div>
+          <div id="costTrendChart" class="metric-plot-canvas">
+            <div class="empty" style="padding:20px">Loading cost trend…</div>
+          </div>
+        </div>
         <div style="overflow-x:auto">
           <table class="trend-tbl" id="costTable">
             <thead><tr>
@@ -1636,6 +1642,36 @@ async function loadCostBreakdown() {
     fill.style.width  = pct + '%';
     fill.style.background = over ? 'var(--red)' : pct > 75 ? 'var(--amber)' : 'var(--green)';
 
+    // Last-10 iterations cost graph
+    const trendEl = document.getElementById('costTrendChart');
+    const points = d.iteration_costs || [];
+    if (trendEl) {
+      if (!points.length) {
+        trendEl.innerHTML = `<div class="empty" style="padding:18px">No iteration history yet.</div>`;
+      } else {
+        const maxCost = Math.max(0.0001, ...points.map(p => Number(p.cost_usd || 0)));
+        const bars = points.map(p => {
+          const c = Number(p.cost_usd || 0);
+          const h = Math.max(6, Math.round((c / maxCost) * 84));
+          const danger = c > 20;
+          const color = danger ? 'var(--red)' : c > 15 ? 'var(--amber)' : 'var(--green)';
+          const runShort = String(p.run_id || '').slice(0, 10);
+          return `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px">
+              <div title="${runShort} · $${c.toFixed(4)}" style="width:24px;height:${h}px;border-radius:6px 6px 3px 3px;background:${color};opacity:.9"></div>
+              <div style="font-size:10px;color:var(--muted2)">#${p.index}</div>
+              <div style="font-size:9px;color:var(--muted);font-family:monospace">$${c.toFixed(2)}</div>
+            </div>
+          `;
+        }).join('');
+        trendEl.innerHTML = `
+          <div style="display:flex;align-items:flex-end;gap:10px;padding:8px 4px 2px 4px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);overflow-x:auto">
+            ${bars}
+          </div>
+        `;
+      }
+    }
+
     // Table rows
     const rows = (d.rows || []).map(r => {
       const srcBadge = r.source === 'actual'
@@ -1954,6 +1990,12 @@ function renderAgentAnalytics() {
     </div>
   `).join('');
 
+  const pFmt = (v) => {
+    if (typeof v !== 'number') return '—';
+    if (v > 0 && v < 0.0001) return '<0.0001';
+    return v.toFixed(4);
+  };
+
   const rows = (agent.version_history || []).map(r => `
     <tr>
       <td>${r.label}</td>
@@ -1961,7 +2003,7 @@ function renderAgentAnalytics() {
       <td>${typeof r.mean==='number' ? r.mean.toFixed(3) : '—'}</td>
       <td>${typeof r.sd==='number' ? r.sd.toFixed(3) : '—'}</td>
       <td>[${typeof r.ci_low==='number' ? r.ci_low.toFixed(3) : '—'}, ${typeof r.ci_high==='number' ? r.ci_high.toFixed(3) : '—'}]</td>
-      <td>${typeof r.p_vs_prev==='number' ? r.p_vs_prev.toFixed(4) : '—'}</td>
+      <td>${pFmt(r.p_vs_prev)}</td>
       <td>${typeof r.cohen_d==='number' ? r.cohen_d.toFixed(3) : '—'}</td>
       <td>${escHtml(r.primary_change || '—')}</td>
       <td><span class="dec-chip ${_decisionClass(r.decision)}">${r.decision || 'Observed'}</span></td>
@@ -1969,21 +2011,30 @@ function renderAgentAnalytics() {
   `).join('');
 
   const descHtml = escHtml(agent.description || '').replace(/\n/g, '<br>');
+  const cardsSource = agent.cards_source_version ? ` · cards from ${agent.cards_source_version}` : '';
   const pr = agent.patch_readiness || {};
   const prReady = pr.patch_ready === true;
-  const prColor = prReady ? 'var(--green)' : 'var(--amber)';
+  const latestDecision = String(pr.decision || '').toLowerCase();
+  const hasAdoptedContext = Boolean(pr.latest_adopted_run_id) || latestDecision === 'adopt';
+  const prColor = (prReady || hasAdoptedContext) ? 'var(--green)' : 'var(--amber)';
   const prWhen = pr.started_at ? new Date(pr.started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '—';
+  const adoptedWhen = pr.latest_adopted_started_at ? new Date(pr.latest_adopted_started_at).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}) : '—';
+  const confidencePct = Number.isFinite(pr.latest_adopted_confidence_pct) ? pr.latest_adopted_confidence_pct : (pr.patch_readiness_pct || 0);
+  const headlineLabel = hasAdoptedContext ? 'Last Patched Confidence' : (prReady ? 'Patch Ready' : 'Patch Not Ready');
+  const headlinePct = hasAdoptedContext ? confidencePct : (pr.patch_readiness_pct || 0);
+  const headlineRunId = hasAdoptedContext ? (pr.latest_adopted_run_id || pr.run_id || '—') : (pr.run_id || '—');
+  const headlineWhen = hasAdoptedContext ? adoptedWhen : prWhen;
   const patchReadinessHtml = `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
         <div style="font-size:12px;font-weight:700;color:${prColor}">
-          ${prReady ? 'Patch Ready' : 'Patch Not Ready'}
-          <span style="color:var(--muted);font-weight:600"> · ${pr.patch_readiness_pct || 0}%</span>
+          ${headlineLabel}
+          <span style="color:var(--muted);font-weight:600"> · ${headlinePct}%</span>
         </div>
-        <div style="font-size:10px;color:var(--muted)">latest run: ${escHtml(pr.run_id || '—')} · ${prWhen}</div>
+        <div style="font-size:10px;color:var(--muted)">latest run: ${escHtml(headlineRunId)} · ${headlineWhen}${cardsSource}</div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">
-        decision=${escHtml(pr.decision || 'pending')} | promote=${pr.promote===true?'pass':'fail'} | compliance_pass=${pr.compliance_pass===true?'pass':'fail'} | manual_patch_required=${pr.manual_patch_required===true?'yes':'no'}
+        decision=${escHtml(pr.decision || 'pending')} | promote=${pr.promote===true?'pass':'fail'} | compliance_gate=${pr.compliance_gate_pass===true?'pass':'fail'} | manual_patch_required=${pr.manual_patch_required===true?'yes':'no'}
       </div>
     </div>
   `;

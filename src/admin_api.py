@@ -1231,10 +1231,24 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "prompt_improvement": 1,
             "new_prompt_compliance": 1,
             "version_comparison": 1,
+            "executed_v2_scores": 1,
+            "transcript_scores": 1,
+            "held_out_scores": 1,
             "manual_patch_required": 1,
         },
     ).sort("started_at", -1).to_list(length=500)
     runs_by_id = {r.get("run_id", ""): r for r in runs}
+    latest_adopted_run = next(
+        (
+            r for r in runs
+            if r.get("status") == "completed"
+            and (
+                str(r.get("decision", "")).lower() == "adopt"
+                or bool(((r.get("version_comparison") or {}).get("improvement") or {}).get("promote", False))
+            )
+        ),
+        None,
+    )
 
     latest_run = runs[0] if runs else None
     latest_comp = (latest_run or {}).get("new_prompt_compliance") or {}
@@ -1242,11 +1256,16 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
     latest_cmp = (latest_run or {}).get("version_comparison") or {}
     latest_imp = latest_cmp.get("improvement") or {}
     latest_promote = bool(latest_imp.get("promote", False))
+    latest_compliance_non_regression = bool(
+        latest_imp.get("compliance_non_regression", False)
+        or latest_imp.get("compliance_pass", False)
+    )
+    latest_any_compliance_pass = latest_comp_pass or latest_compliance_non_regression
     patch_ready = bool(
         latest_run
         and (latest_run.get("status") == "completed")
         and latest_promote
-        and latest_comp_pass
+        and latest_any_compliance_pass
     )
     patch_readiness_pct = int(latest_imp.get("patch_readiness_pct", 0) or 0)
 
@@ -1300,6 +1319,39 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
 
         change_doc = next((c for c in prompt_changes if c.get("new_version") == version), None)
         run_doc = runs_by_id.get((change_doc or {}).get("run_id", "")) if change_doc else None
+        fallback_run_doc = run_doc
+        if not fallback_run_doc and version != "canonical-v1":
+            fallback_run_doc = latest_adopted_run or latest_run
+        cmp_doc = (fallback_run_doc or {}).get("version_comparison") or {}
+        imp_doc = cmp_doc.get("improvement") or {}
+
+        # Backfill sparse/new prompt rows from latest A/B comparison when
+        # interactions for that prompt version have not been logged yet.
+        if not vals and cmp_doc:
+            v2_rate = cmp_doc.get("v2_resolution_rate")
+            if isinstance(v2_rate, (int, float)):
+                inferred_n = 0
+                executed = (fallback_run_doc or {}).get("executed_v2_scores") or []
+                if isinstance(executed, list):
+                    inferred_n = len(executed)
+                if inferred_n <= 0:
+                    inferred_n = len((fallback_run_doc or {}).get("transcript_scores") or []) + len((fallback_run_doc or {}).get("held_out_scores") or [])
+                if inferred_n > 0:
+                    n = int(inferred_n)
+                    mean = float(v2_rate)
+                    # Bernoulli SD for resolution-rate proxy when per-sample
+                    # composite metric scores are unavailable.
+                    sd = math.sqrt(max(0.0, mean * (1.0 - mean)))
+                    ci_half = 1.96 * math.sqrt(max(0.0, mean * (1.0 - mean) / n))
+                    ci_low = max(0.0, mean - ci_half)
+                    ci_high = min(1.0, mean + ci_half)
+                    p_from_cmp = cmp_doc.get("p_value")
+                    d_from_cmp = imp_doc.get("cohen_d")
+                    if isinstance(p_from_cmp, (int, float)):
+                        p_value = float(p_from_cmp)
+                    if isinstance(d_from_cmp, (int, float)):
+                        d_value = float(d_from_cmp)
+
         primary_change = "Original prompt" if version == "canonical-v1" else _format_change_from_run(run_doc, (change_doc or {}).get("trigger", ""))
         decision = "Baseline" if version == "canonical-v1" else _format_decision_from_change(change_doc, run_doc)
 
@@ -1320,10 +1372,19 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             prev_scores = vals
 
     latest_metrics: dict[str, float] = {}
+    latest_metrics_source_version: Optional[str] = None
     if ordered_versions:
-        latest_bucket = ordered_versions[-1][1]
-        for k, vals in latest_bucket.get("metrics", {}).items():
-            latest_metrics[k] = round(_mean(vals), 3)
+        # Prefer newest version metrics, but fall back to the most recent
+        # version that has interaction-derived metric samples.
+        for version, bucket in reversed(ordered_versions):
+            metric_map = bucket.get("metrics", {}) or {}
+            if not any(metric_map.values()):
+                continue
+            for k, vals in metric_map.items():
+                if vals:
+                    latest_metrics[k] = round(_mean(vals), 3)
+            latest_metrics_source_version = version
+            break
 
     cfg = _AGENT_ANALYTICS_CONFIG[agent_name]
     cards = []
@@ -1343,17 +1404,23 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         "description": cfg["description"],
         "formula": cfg["formula"],
         "cards": cards,
+        "cards_source_version": latest_metrics_source_version,
         "version_history": rows,
         "insight": _insight_from_rows(rows),
         "patch_readiness": {
             "run_id": (latest_run or {}).get("run_id"),
             "decision": (latest_run or {}).get("decision"),
             "compliance_pass": latest_comp_pass,
+            "compliance_non_regression": latest_compliance_non_regression,
+            "compliance_gate_pass": latest_any_compliance_pass,
             "promote": latest_promote,
             "patch_ready": patch_ready,
             "patch_readiness_pct": patch_readiness_pct,
             "manual_patch_required": bool((latest_run or {}).get("manual_patch_required", True)),
             "started_at": (latest_run or {}).get("started_at"),
+            "latest_adopted_run_id": (latest_adopted_run or {}).get("run_id"),
+            "latest_adopted_started_at": (latest_adopted_run or {}).get("started_at"),
+            "latest_adopted_confidence_pct": int((((latest_adopted_run or {}).get("version_comparison") or {}).get("improvement") or {}).get("patch_readiness_pct", 0) or 0),
         },
     }
 
@@ -1676,6 +1743,32 @@ async def get_cost_breakdown():
         total_cost = round(sum(r["cost_usd"] for r in rows), 4)
     budget     = TOTAL_COST_BUDGET_USD
 
+    # Cost trend across last 10 pipeline iterations.
+    recent_runs = await db.eval_pipeline.find(
+        {},
+        {
+            "_id": 0,
+            "run_id": 1,
+            "agent_target": 1,
+            "started_at": 1,
+            "pipeline_cost_usd": 1,
+            "decision": 1,
+            "status": 1,
+        },
+    ).sort("started_at", -1).to_list(length=10)
+    recent_runs = list(reversed(recent_runs))
+    iteration_costs: list[dict[str, Any]] = []
+    for idx, run in enumerate(recent_runs, start=1):
+        iteration_costs.append({
+            "index": idx,
+            "run_id": run.get("run_id"),
+            "agent": run.get("agent_target"),
+            "started_at": run.get("started_at"),
+            "status": run.get("status"),
+            "decision": run.get("decision"),
+            "cost_usd": round(float(run.get("pipeline_cost_usd") or 0.0), 4),
+        })
+
     return {
         "rows":          rows,
         "total_cost_usd": total_cost,
@@ -1684,6 +1777,7 @@ async def get_cost_breakdown():
         "remaining_usd": round(budget - total_cost, 4),
         "within_budget": total_cost <= budget,
         "pipeline_runs": n_runs,
+        "iteration_costs": iteration_costs,
         "tracked_pipeline_cost": pipe_cost > 0,
         "scope": "latest_loop",
         "scope_detail": {

@@ -53,23 +53,76 @@ ALL_AGENTS: list[str] = [
     "FinalNoticeAgent",
 ]
 
+_AGENT_AUDIT_METRIC: dict[str, str] = {
+    "AssessmentAgent": "assessment_completeness_identity",
+    "ResolutionAgent": "resolution_commitment",
+    "FinalNoticeAgent": "final_notice_clarity_deadline",
+}
+
+_AGENT_METRIC_SPEC: dict[str, str] = {
+    "AssessmentAgent": (
+        "assessment_completeness_identity:\n"
+        "- Require identity verification as hard gate (last-4 + birth year or equivalent verified signal).\n"
+        "- Require completeness over required fields (income, expense, employment, hardship/cash-flow markers).\n"
+        "- Do not mark complete on partial fact collection."
+    ),
+    "ResolutionAgent": (
+        "resolution_commitment:\n"
+        "- resolution = 1 only with explicit borrower commitment + actionable timeline.\n"
+        "- Reject vague intent or passive acknowledgment.\n"
+        "- Do not infer commitment from agent-only statements."
+    ),
+    "FinalNoticeAgent": (
+        "final_notice_clarity_deadline:\n"
+        "- Require explicit consequence clarity (credit/legal/asset impact language).\n"
+        "- Require concrete deadline (hard date or explicit expiry window).\n"
+        "- Do not mark successful final notice if deadline/consequence is missing."
+    ),
+}
+
 _COUNTER_KEY = "meta_eval:call_count"
 _COUNTER_TTL = 7 * 24 * 3600
 _RUNNING_LOCK_KEY = "meta_eval:running"
 _RUNNING_LOCK_TTL = 30 * 60
 
 _CURRENT_JUDGE_PROMPT = evaluator_judge_prompt()
-_SHADOW_RESOLUTION_PROMPT = """You are an independent audit judge checking whether an L2 evaluator's RESOLUTION label is reliable.
+_SHADOW_RESOLUTION_PROMPT = """
+You are an independent audit judge checking whether an L2 evaluator's RESOLUTION label is reliable.
 
 You are reviewing a debt-collection conversation transcript for one thing only:
 whether the borrower actually reached a real resolution.
 
-Anchor the label strictly:
-- resolution = 1 ONLY when the borrower explicitly commits, confirms a payment arrangement,
-  accepts the proposed plan, or the transcript shows a clear completed resolution outcome.
-- resolution = 0 when the borrower is still undecided, asks for more time, asks questions,
-  merely engages, argues, delays, hangs up, or the agent just presents options.
-- Do not infer commitment from agent optimism alone.
+---
+
+STRICT DECISION RULES (follow in order):
+
+1. resolution = 1 ONLY if there is EXPLICIT, ACTIONABLE COMMITMENT from the borrower.
+   This requires at least one of the following:
+   - A clear payment statement with time: "I will pay tomorrow", "I'll clear it Friday"
+   - Acceptance of a concrete plan: "Yes, set up the payment plan"
+   - Confirmation of action taken: "I just paid", "Done", "Transaction completed"
+
+2. resolution = 0 if ANY of the following occur:
+   - Vague intent: "I'll try", "maybe", "I'll see"
+   - Requests for time without commitment: "give me time", "later", "next week maybe"
+   - Information seeking: "how do I pay?", "send link"
+   - Passive agreement: "okay", "fine", "hmm"
+   - Emotional or argumentative responses
+   - Agent proposes plan but borrower does not explicitly accept
+
+3. DO NOT infer commitment from tone, politeness, or agent statements.
+
+4. If unsure, default to resolution = 0 (favor precision over recall).
+
+---
+
+EDGE CASE HANDLING:
+- "I will try to pay tomorrow" → 0
+- "Send me the link, I'll pay" → 0 (intent but no confirmed action)
+- "Yes, I will pay tomorrow morning" → 1
+- "Okay set it up" → 1 ONLY if clearly referring to a payment plan
+
+---
 
 Return JSON only with this exact schema:
 {
@@ -168,6 +221,337 @@ def _verdict_for_kappa(kappa: float) -> tuple[str, str, str]:
     )
 
 
+def _objective_recommendation(
+    kappa: float,
+    cases: list["MetaAuditCase"],
+    default_recommendation: str,
+) -> str:
+    """
+    Build an objective recommendation anchored to measured disagreement patterns
+    between L2 labels and the L3 shadow prompt for the same agent.
+    """
+    n = len(cases)
+    if n <= 0:
+        return default_recommendation
+
+    l2_pos = sum(1 for c in cases if c.primary_resolution == 1)
+    l3_pos = sum(1 for c in cases if c.shadow_resolution == 1)
+    fp = sum(1 for c in cases if c.primary_resolution == 1 and c.shadow_resolution == 0)
+    fn = sum(1 for c in cases if c.primary_resolution == 0 and c.shadow_resolution == 1)
+    disagreements = fp + fn
+    disagreement_rate = disagreements / n
+
+    if kappa < 0.40:
+        direction = "over-calling resolution" if fp >= fn else "under-calling resolution"
+        dominant = "false positives" if fp >= fn else "false negatives"
+        return (
+            f"L2 vs L3 agreement is weak (kappa={kappa:.3f}, disagreement={disagreements}/{n}, "
+            f"L2 positives={l2_pos}/{n}, L3 positives={l3_pos}/{n}). "
+            f"Disagreement is driven by {dominant} ({max(fp, fn)}/{disagreements}); "
+            f"tighten the L2 resolution rubric for {direction} and re-audit after collecting >=20 same-agent samples."
+        )
+    if kappa < 0.60:
+        dominant = "false positives" if fp >= fn else "false negatives"
+        return (
+            f"L2 vs L3 agreement is moderate (kappa={kappa:.3f}, disagreement={disagreements}/{n}, "
+            f"L2 positives={l2_pos}/{n}, L3 positives={l3_pos}/{n}). "
+            f"Prioritize the dominant mismatch type ({dominant}: {max(fp, fn)}/{disagreements}) "
+            f"with explicit accept/reject anchors, then rerun the audit."
+        )
+    return (
+        f"L2 vs L3 agreement is acceptable (kappa={kappa:.3f}, disagreement={disagreements}/{n}, "
+        f"L2 positives={l2_pos}/{n}, L3 positives={l3_pos}/{n}). "
+        f"Keep the current rubric and monitor for drift if disagreement rate exceeds {disagreement_rate:.1%}."
+    )
+
+
+def _extract_metric_spec_from_prompt(prompt: str, metric: str = "resolution") -> str:
+    metric = metric.strip().lower()
+    lines = prompt.splitlines()
+    start = None
+    for i, raw in enumerate(lines):
+        line = raw.strip().lower()
+        if line.startswith(f"{metric} ") or line.startswith(f"{metric}(") or line.startswith(f"{metric}:"):
+            start = i
+            break
+    if start is None:
+        return ""
+    block: list[str] = []
+    for raw in lines[start:start + 12]:
+        if block and raw.strip().endswith(":") and not raw.strip().lower().startswith(metric):
+            break
+        block.append(raw.rstrip())
+    return "\n".join(block).strip()
+
+
+def _build_metric_tuning_proposals(
+    kappa: float,
+    cases: list["MetaAuditCase"],
+    agent_name: str,
+    metric: str = "resolution",
+    weakest_metric: str = "",
+) -> list[MetricTuningProposal]:
+    n = len(cases)
+    if n <= 0:
+        return []
+
+    fp = sum(1 for c in cases if c.primary_resolution == 1 and c.shadow_resolution == 0)
+    fn = sum(1 for c in cases if c.primary_resolution == 0 and c.shadow_resolution == 1)
+    disagreements = fp + fn
+    if disagreements <= 0:
+        return []
+
+    disagreement_ratio = disagreements / n
+    base_priority = int(round(min(100.0, max(0.0, (1.0 - max(kappa, -1.0)) * 55.0 + disagreement_ratio * 45.0))))
+    proposals: list[MetricTuningProposal] = []
+
+    target_metric = weakest_metric or metric
+
+    if agent_name == "AssessmentAgent":
+        if fp >= fn:
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="tighten",
+                    proposal="Require identity hard-gate + minimum required-field completeness before positive label.",
+                    rationale=f"False positives dominate ({fp}/{disagreements}); L2 is over-accepting incomplete assessments.",
+                    evidence_count=fp,
+                    priority_score=max(0, min(100, base_priority)),
+                )
+            )
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="remove",
+                    proposal="Remove weak anchors that treat one-field confirmation as assessment complete.",
+                    rationale="Single-field confirmations are inflating positive labels.",
+                    evidence_count=fp,
+                    priority_score=max(0, min(100, base_priority - 8)),
+                )
+            )
+        else:
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="add",
+                    proposal="Add positive anchors for alternative but complete fact bundles that satisfy all required slots.",
+                    rationale=f"False negatives dominate ({fn}/{disagreements}); L2 is missing valid completions.",
+                    evidence_count=fn,
+                    priority_score=max(0, min(100, base_priority)),
+                )
+            )
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="tighten",
+                    proposal="Clarify equivalence classes for required facts (e.g., salary/income synonyms).",
+                    rationale="Semantic variants are being under-counted as complete.",
+                    evidence_count=fn,
+                    priority_score=max(0, min(100, base_priority - 8)),
+                )
+            )
+        return proposals
+
+    if agent_name == "FinalNoticeAgent":
+        if fp >= fn:
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="tighten",
+                    proposal="Require both consequence clarity and explicit deadline before positive final-notice label.",
+                    rationale=f"False positives dominate ({fp}/{disagreements}); L2 is over-calling adequate final notices.",
+                    evidence_count=fp,
+                    priority_score=max(0, min(100, base_priority)),
+                )
+            )
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="remove",
+                    proposal="Remove anchors that treat generic warning language as complete final notice.",
+                    rationale="Generic warnings without deadline/consequence are driving mismatches.",
+                    evidence_count=fp,
+                    priority_score=max(0, min(100, base_priority - 8)),
+                )
+            )
+        else:
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="add",
+                    proposal="Add positive anchors for clearly time-bounded notices that imply consequence escalation.",
+                    rationale=f"False negatives dominate ({fn}/{disagreements}); L2 is missing valid final notices.",
+                    evidence_count=fn,
+                    priority_score=max(0, min(100, base_priority)),
+                )
+            )
+            proposals.append(
+                MetricTuningProposal(
+                    metric=target_metric,
+                    action="tighten",
+                    proposal="Define accepted deadline expressions (date, hour window, explicit expiry phrasing).",
+                    rationale="Deadline phrasing variance is causing inconsistent labels.",
+                    evidence_count=fn,
+                    priority_score=max(0, min(100, base_priority - 8)),
+                )
+            )
+        return proposals
+
+    # Default: ResolutionAgent
+    if fp >= fn:
+        proposals.append(
+            MetricTuningProposal(
+                metric=target_metric,
+                action="tighten",
+                proposal=(
+                    "Require explicit borrower commitment with action + timeline "
+                    "before setting resolution=1."
+                ),
+                rationale=(
+                    f"False positives dominate ({fp}/{disagreements}) between L2 and L3 labels."
+                ),
+                evidence_count=fp,
+                priority_score=max(0, min(100, base_priority)),
+            )
+        )
+        proposals.append(
+            MetricTuningProposal(
+                metric=target_metric,
+                action="remove",
+                proposal=(
+                    "Remove weak acceptance anchors that treat generic intent "
+                    "phrases as resolved outcomes."
+                ),
+                rationale="Ambiguous language is inflating L2 positives.",
+                evidence_count=fp,
+                priority_score=max(0, min(100, base_priority - 8)),
+            )
+        )
+    else:
+        proposals.append(
+            MetricTuningProposal(
+                metric=target_metric,
+                action="add",
+                proposal=(
+                    "Add a positive anchor for clear acceptance + actionable next step "
+                    "even when canonical keywords are absent."
+                ),
+                rationale=(
+                    f"False negatives dominate ({fn}/{disagreements}) between L2 and L3 labels."
+                ),
+                evidence_count=fn,
+                priority_score=max(0, min(100, base_priority)),
+            )
+        )
+        proposals.append(
+            MetricTuningProposal(
+                metric=target_metric,
+                action="tighten",
+                proposal=(
+                    "Clarify paraphrase handling for commitment detection so semantic "
+                    "acceptance maps to resolution=1."
+                ),
+                rationale="Current rubric misses non-template commitment language.",
+                evidence_count=fn,
+                priority_score=max(0, min(100, base_priority - 8)),
+            )
+        )
+    return proposals
+
+
+def _agent_metric_snapshot(agent_name: str, transcripts: list[dict], cases: list["MetaAuditCase"]) -> tuple[dict[str, float], str]:
+    if not transcripts:
+        return {}, ""
+
+    if agent_name == "ResolutionAgent":
+        n = max(1, len(transcripts))
+        commitment = sum(1 for c in cases if c.primary_resolution == 1) / max(1, len(cases))
+        anch_hits = 0
+        obj_hits = 0
+        cont_hits = 0
+        for t in transcripts:
+            hist = t.get("history") or []
+            agent_text = " ".join(
+                str(m.get("content", "")).lower()
+                for m in hist
+                if m.get("role") == "assistant" and str(m.get("stage", "")).lower() == "resolution"
+            )
+            if any(k in agent_text for k in ("upfront", "monthly", "installment", "deadline", "amount")):
+                anch_hits += 1
+            if any(k in agent_text for k in ("terms", "deadline", "confirm", "commit")):
+                obj_hits += 1
+            if any(k in agent_text for k in ("income", "employment", "cash flow", "assessment", "verified")):
+                cont_hits += 1
+        snap = {
+            "commitment": round(commitment, 3),
+            "anchoring": round(anch_hits / n, 3),
+            "objection": round(obj_hits / n, 3),
+            "continuity": round(cont_hits / n, 3),
+        }
+    elif agent_name == "AssessmentAgent":
+        n = max(1, len(transcripts))
+        completeness_sum = 0.0
+        id_sum = 0.0
+        turns_sum = 0.0
+        tone_sum = 0.0
+        for t in transcripts:
+            hist = t.get("history") or []
+            stage_msgs = [m for m in hist if str(m.get("stage", "")).lower() == "assessment"]
+            user_text = " ".join(str(m.get("content", "")).lower() for m in stage_msgs if m.get("role") == "user")
+            agent_text = " ".join(str(m.get("content", "")).lower() for m in stage_msgs if m.get("role") == "assistant")
+            fields = [
+                any(k in (user_text + " " + agent_text) for k in ("last 4", "last four", "account number")),
+                any(k in (user_text + " " + agent_text) for k in ("birth year", "dob", "year of birth")),
+                any(k in (user_text + " " + agent_text) for k in ("income", "monthly income")),
+                any(k in (user_text + " " + agent_text) for k in ("expense", "expenses")),
+                any(k in (user_text + " " + agent_text) for k in ("employment", "self employed", "employed")),
+                any(k in (user_text + " " + agent_text) for k in ("cash flow", "hardship", "financial stress")),
+            ]
+            completeness_sum += (sum(1 for f in fields if f) / 6.0)
+            id_sum += 1.0 if re.search(r"\b\d{4}\b", user_text) and re.search(r"\b(19|20)\d{2}\b", user_text) else 0.0
+            turns_sum += max(1.0, float(len(stage_msgs)))
+            tone_sum += 0.0 if any(k in agent_text for k in _EMPATHY_TERMS) else 1.0
+        snap = {
+            "completeness": round(completeness_sum / n, 3),
+            "identity_verified": round(id_sum / n, 3),
+            "turns": round(turns_sum / n, 3),
+            "tone": round(tone_sum / n, 3),
+        }
+    else:
+        n = max(1, len(transcripts))
+        clarity_hits = 0
+        deadline_hits = 0
+        reask_hits = 0
+        resolution = sum(1 for c in cases if c.primary_resolution == 1) / max(1, len(cases))
+        for t in transcripts:
+            hist = t.get("history") or []
+            agent_text = " ".join(
+                str(m.get("content", "")).lower()
+                for m in hist
+                if m.get("role") == "assistant" and str(m.get("stage", "")).lower() == "final_notice"
+            )
+            if any(k in agent_text for k in ("credit", "legal", "court", "asset", "seizure")):
+                clarity_hits += 1
+            if any(k in agent_text for k in ("deadline", "expires", "valid until", "hours")):
+                deadline_hits += 1
+            if any(k in agent_text for k in ("last 4", "birth year", "monthly income", "employment status")):
+                reask_hits += 1
+        snap = {
+            "clarity": round(clarity_hits / n, 3),
+            "deadline": round(deadline_hits / n, 3),
+            "re_ask_penalty": round(min(1.0, reask_hits / n), 3),
+            "resolution": round(resolution, 3),
+        }
+
+    weakest_metric = ""
+    if snap:
+        if "re_ask_penalty" in snap:
+            weakest_metric = min(snap.keys(), key=lambda k: (1.0 - snap[k]) if k != "re_ask_penalty" else snap[k])
+        else:
+            weakest_metric = min(snap.keys(), key=lambda k: snap[k])
+    return snap, weakest_metric
+
+
 def _get_client() -> AsyncOpenAI:
     api_key = _first_nonempty_env("OPENCODE_API_KEY", "OPENAI_API_KEY")
     base_url = _normalize_base_url(_first_nonempty_env("OPENCODE_BASE_URL", "OPENAI_BASE_URL"))
@@ -192,6 +576,15 @@ class MetaAuditCase(BaseModel):
     transcript_excerpt: str = ""
 
 
+class MetricTuningProposal(BaseModel):
+    metric: str
+    action: str  # add | remove | tighten
+    proposal: str
+    rationale: str
+    evidence_count: int = 0
+    priority_score: int = 0  # 0-100
+
+
 class MetaAuditSummary(BaseModel):
     agent_name: str
     audited_metric: str = "resolution"
@@ -208,6 +601,10 @@ class MetaAuditSummary(BaseModel):
     verdict: str = "needs_data"
     flag: str = "not enough data"
     recommendation: str = "Gather more scored transcripts before auditing L2 consistency."
+    l2_metric_spec: str = ""
+    tuning_proposals: list[MetricTuningProposal] = Field(default_factory=list)
+    agent_metric_snapshot: dict[str, float] = Field(default_factory=dict)
+    weakest_metric: str = ""
     cases: list[MetaAuditCase] = Field(default_factory=list)
 
 
@@ -407,8 +804,10 @@ async def _run_agent_audit(
     cost_acc: dict[str, float],
 ) -> MetaAuditSummary:
     transcripts = await _fetch_agent_transcripts(agent_name, sample_size)
+    audited_metric = _AGENT_AUDIT_METRIC.get(agent_name, "resolution")
     summary = MetaAuditSummary(
         agent_name=agent_name,
+        audited_metric=audited_metric,
         sample_size_requested=sample_size,
         sample_size_used=len(transcripts),
     )
@@ -425,6 +824,7 @@ async def _run_agent_audit(
     observed, expected, kappa = _cohen_kappa(primary_labels, shadow_labels)
     verdict, flag, recommendation = _verdict_for_kappa(kappa)
     disagreements = [case for case in cases if not case.agreement]
+    recommendation = _objective_recommendation(kappa, cases, recommendation)
 
     summary.sample_size_used = len(cases)
     summary.observed_agreement = observed
@@ -433,6 +833,30 @@ async def _run_agent_audit(
     summary.disagreement_count = len(disagreements)
     summary.verdict = verdict
     summary.flag = flag
+    metric_snapshot, weakest_metric = _agent_metric_snapshot(agent_name, transcripts, cases)
+    summary.agent_metric_snapshot = metric_snapshot
+    summary.weakest_metric = weakest_metric
+    proposals = _build_metric_tuning_proposals(
+        kappa=kappa,
+        cases=cases,
+        agent_name=agent_name,
+        metric=summary.audited_metric,
+        weakest_metric=weakest_metric,
+    )
+    summary.l2_metric_spec = _extract_metric_spec_from_prompt(_CURRENT_JUDGE_PROMPT, "resolution") or _AGENT_METRIC_SPEC.get(agent_name, "")
+    summary.tuning_proposals = proposals
+    if proposals:
+        top = proposals[0]
+        recommendation = (
+            f"{recommendation} Top metric action: {top.action} `{top.metric}` "
+            f"(priority={top.priority_score}/100) — {top.proposal}"
+        )
+    if metric_snapshot:
+        recommendation = (
+            f"Metric snapshot: {json.dumps(metric_snapshot, ensure_ascii=True)}. "
+            f"Weakest metric: {weakest_metric or 'n/a'}. "
+            f"{recommendation}"
+        )
     summary.recommendation = recommendation
     summary.cases = cases
     return summary

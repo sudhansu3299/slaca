@@ -1319,11 +1319,11 @@ def _build_replay_input_provider(transcript: dict):
 
     Modes (env REPLAY_BORROWER_MODE):
       - simulator: seed first utterance per stage, then PersonaScript responses
-      - history (default): strict v1 user-turn replay
+      - history: strict v1 user-turn replay
         with optional simulator fallback when history is exhausted
     """
     history = transcript.get("history", [])
-    mode = str(os.getenv("REPLAY_BORROWER_MODE", "history")).strip().lower()
+    mode = str(os.getenv("REPLAY_BORROWER_MODE", "simulator")).strip().lower()
     if mode == "history":
         persona_type = _infer_persona_type(transcript)
         use_fallback = _is_truthy_env(os.getenv("REPLAY_HISTORY_SIM_FALLBACK", "1"))
@@ -1339,6 +1339,15 @@ def _build_replay_input_provider(transcript: dict):
         from src.simulation import PersonaType
         persona_type = PersonaType.COOPERATIVE
     return _ReplaySimulationInputProvider(history, persona_type)
+
+
+def _effective_v2_execution_mode() -> str:
+    """
+    Stage 6a execution mode defaults to simulator for safety.
+    Explicit env override remains available for debugging.
+    """
+    mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "simulator")).strip().lower()
+    return mode if mode in {"real", "simulator"} else "simulator"
 
 
 def _is_resolved_outcome(outcome: Any) -> bool:
@@ -1738,6 +1747,12 @@ async def compare_versions(
     min_n_per_arm = int(os.getenv("AB_MIN_SAMPLE_PER_ARM", "30"))
     min_delta = float(os.getenv("AB_MIN_RESOLUTION_DELTA", "0.02"))
     min_effect = float(os.getenv("AB_MIN_COHEN_D", "0.20"))
+    medium_p = float(os.getenv("AB_MEDIUM_MAX_P_VALUE", "0.15"))
+    medium_delta = float(os.getenv("AB_MEDIUM_MIN_DELTA", "0.05"))
+    medium_effect = float(os.getenv("AB_MEDIUM_MIN_COHEN_D", "0.30"))
+    directional_delta = float(os.getenv("AB_DIRECTIONAL_MIN_DELTA", "0.10"))
+    directional_effect = float(os.getenv("AB_DIRECTIONAL_MIN_COHEN_D", "0.40"))
+    directional_min_n = int(os.getenv("AB_DIRECTIONAL_MIN_N_PER_ARM", "10"))
     equal_delta_eps = float(os.getenv("AB_EQUAL_DELTA_EPS", "0.005"))
     compliance_eps = float(os.getenv("AB_COMPLIANCE_DELTA_EPS", "0.001"))
 
@@ -1782,29 +1797,28 @@ async def compare_versions(
     )
     no_large_resolution_drop = delta > -0.02
 
-    # Decision is computed from deterministic gates only — LLM cannot change it.
-    # Promote path A:
-    # If resolution metrics improve significantly/effectively and compliance does
-    # not regress, allow promotion even when compliance score is unchanged.
-    promote_resolution = all([
-        enough_samples,
-        significant,
-        enough_delta,
-        enough_effect,
-        compliance_non_regression,
-    ])
-    # Promote path B:
-    # If compliance improves and resolution is effectively unchanged, allow
-    # promotion (compliance-improvement promotion with stable score).
-    promote_compliance = all([
-        enough_samples,
-        compliance_improved_any,
-        resolution_same,
-        no_large_resolution_drop,
-    ])
-    promote = promote_resolution or promote_compliance
+    # Confidence-tier decisioning.
+    if significant and enough_effect and enough_delta:
+        confidence = "high"
+    elif p_value < medium_p and cohen_d >= medium_effect and delta > medium_delta:
+        confidence = "medium"
+    elif cohen_d >= directional_effect and delta >= directional_delta and n_v1 >= directional_min_n and n_v2 >= directional_min_n:
+        confidence = "directional"
+    else:
+        confidence = "low"
+
+    promote = confidence in {"high", "medium", "directional"} and compliance_non_regression
     decision = "adopt" if promote else "reject"
-    patch_readiness_pct = 90 if promote else (70 if (compliance_improved_any and no_large_resolution_drop) else 0)
+    if confidence == "high":
+        patch_readiness_pct = 95
+    elif confidence == "medium":
+        patch_readiness_pct = 85
+    elif confidence == "directional":
+        patch_readiness_pct = 75
+    elif compliance_improved_any and no_large_resolution_drop:
+        patch_readiness_pct = 70
+    else:
+        patch_readiness_pct = 0
 
     stats_payload = json.dumps({
         "v1": {
@@ -1833,6 +1847,12 @@ async def compare_versions(
             "min_sample_per_arm": min_n_per_arm,
             "min_delta": min_delta,
             "min_cohen_d": min_effect,
+            "medium_max_p_value": medium_p,
+            "medium_min_delta": medium_delta,
+            "medium_min_cohen_d": medium_effect,
+            "directional_min_delta": directional_delta,
+            "directional_min_cohen_d": directional_effect,
+            "directional_min_n_per_arm": directional_min_n,
             "observed_delta": round(delta, 4),
             "observed_transcript_compliance_delta": round(compliance_delta, 4),
             "observed_cohen_d": round(cohen_d, 4),
@@ -1850,8 +1870,10 @@ async def compare_versions(
             "compliance_improved_any": compliance_improved_any,
             "compliance_non_regression": compliance_non_regression,
             "no_large_resolution_drop": no_large_resolution_drop,
-            "promote_resolution": promote_resolution,
-            "promote_compliance": promote_compliance,
+            "confidence": confidence,
+            "confidence_high": confidence == "high",
+            "confidence_medium": confidence == "medium",
+            "confidence_directional": confidence == "directional",
             "strict_prompt_compliance_pass": compliance_pass,
             "compliance_pass": compliance_non_regression,
             "promote": promote,
@@ -1905,8 +1927,10 @@ async def compare_versions(
             "prompt_risks_before": prompt_risks_before,
             "prompt_risks_after": prompt_risks_after,
             "no_large_resolution_drop": no_large_resolution_drop,
-            "promote_resolution": promote_resolution,
-            "promote_compliance": promote_compliance,
+            "confidence": confidence,
+            "confidence_high": confidence == "high",
+            "confidence_medium": confidence == "medium",
+            "confidence_directional": confidence == "directional",
             "strict_prompt_compliance_pass": compliance_pass,
             "compliance_pass": compliance_non_regression,
             "promote": promote,
@@ -1915,6 +1939,12 @@ async def compare_versions(
             "min_sample_per_arm": min_n_per_arm,
             "min_delta": min_delta,
             "min_cohen_d": min_effect,
+            "medium_max_p_value": medium_p,
+            "medium_min_delta": medium_delta,
+            "medium_min_cohen_d": medium_effect,
+            "directional_min_delta": directional_delta,
+            "directional_min_cohen_d": directional_effect,
+            "directional_min_n_per_arm": directional_min_n,
             "equal_delta_eps": equal_delta_eps,
             "compliance_delta_eps": compliance_eps,
         },
@@ -2298,7 +2328,7 @@ async def run_improvement_pipeline(
         )
         try:
             overall_timeout_s = float(os.getenv("REAL_V2_OVERALL_TIMEOUT_S", "900"))
-            exec_mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "real")).strip().lower()
+            exec_mode = _effective_v2_execution_mode()
             if exec_mode == "real" and not _has_llm_key():
                 log.warning(
                     "[pipeline] REAL_V2_EXECUTION_MODE=real but no LLM key is present; "
