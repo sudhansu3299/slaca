@@ -147,5 +147,7 @@ Agent Analytics
 
 
 
+### Cost per Self-Learning Loop
+<img width="1324" height="664" alt="image" src="https://github.com/user-attachments/assets/8d0f6399-8b1c-449b-aacf-1462c8a544b6" />
 
 
