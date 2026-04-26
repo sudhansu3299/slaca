@@ -1,0 +1,30 @@
+{
+  "generated_at_utc": "2026-04-26T09:00:25.410722+00:00",
+  "requested_target": "real run with 300 transcripts",
+  "found_run_with_300": false,
+  "max_real_v1_transcripts": 60,
+  "selected_run": {
+    "run_id": "pipeline-43020190",
+    "agent_target": "ResolutionAgent",
+    "started_at": "2026-04-26T01:43:37.013185+00:00",
+    "triggered_by": "debug_v2_zero_check",
+    "status": "completed",
+    "decision": "adopt",
+    "v1_transcripts": 30,
+    "v2_transcripts": 30,
+    "pipeline_cost_usd": 0.031379,
+    "llm_calls": 37,
+    "input_tokens": 21408,
+    "output_tokens": 3941,
+    "cost_per_call_usd": 0.00084808,
+    "cost_per_v1_transcript_usd": 0.00104597
+  },
+  "component_breakdown_usd": {
+    "llm_as_judge_scoring": 0.011296,
+    "failure_analysis": 0.004393,
+    "prompt_generation_proposer": 0.007531,
+    "compliance_checks": 0.003765,
+    "ab_compare_misc": 0.004394
+  },
+  "method_note": "Component split uses the same proportional heuristic as src/admin_api.py /stats/cost-breakdown for tracked pipeline cost."
+}

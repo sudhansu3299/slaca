@@ -2581,7 +2581,9 @@ def _apply_prompt(agent_name: str, new_prompt: str, run_id: str) -> None:
     log.info("[pipeline] prompt written to %s", path)
 
     # Update in-memory version registry (Change 3)
-    new_version = f"pipeline-{run_id}"
+    # run_id is already shaped like "pipeline-abc12345"; avoid "pipeline-pipeline-...".
+    run_slug = str(run_id).strip()
+    new_version = run_slug if run_slug.startswith("pipeline-") else f"pipeline-{run_slug}"
     _active_prompt_versions[agent_name] = new_version
 
     # Persist the change to MongoDB for audit (Change 3)

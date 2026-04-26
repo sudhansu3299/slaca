@@ -296,12 +296,82 @@ def _format_change_from_run(run_doc: Optional[dict], trigger: str) -> str:
     if run_doc:
         summary = ((run_doc.get("prompt_improvement") or {}).get("changes_summary") or [])
         if summary:
-            return str(summary[0])
+            text = str(summary[0])
+            # Do not surface raw infra errors as a "prompt change" headline in analytics UI.
+            if text.lower().startswith("error:"):
+                return "No prompt change summary (upstream LLM unavailable)"
+            return text
     return {
         "pipeline_adopt": "Pipeline prompt adoption",
         "patch_apply": "Manual patch applied",
         "rollback": "Rollback restoration",
     }.get(trigger, "Prompt update")
+
+
+def _normalize_prompt_version(version: str) -> str:
+    """
+    Collapse accidental double-prefixing from older pipeline writes
+    (e.g. pipeline-pipeline-abc123 → pipeline-abc123).
+    """
+    raw = (version or "").strip()
+    if not raw:
+        return ""
+    v = raw
+    while v.startswith("pipeline-pipeline-"):
+        v = v[len("pipeline-") :]
+    return v
+
+
+def _is_mock_pipeline_run(run: dict) -> bool:
+    rid = str(run.get("run_id", "")).lower()
+    trig = str(run.get("triggered_by", "")).lower()
+    return rid.startswith("mock-") or ("mock" in rid) or ("mock" in trig)
+
+
+def _order_prompt_versions_for_analytics(
+    items: list[tuple[str, dict[str, Any]]],
+) -> list[tuple[str, dict[str, Any]]]:
+    """Always list canonical-v1 first as v1 baseline; then chronological."""
+    m = dict(items)
+    out: list[tuple[str, dict[str, Any]]] = []
+    if "canonical-v1" in m:
+        out.append(("canonical-v1", m.pop("canonical-v1")))
+    rest = sorted(m.items(), key=lambda kv: (kv[1].get("first_ts") or "", kv[0]))
+    out.extend(rest)
+    return out
+
+
+def _trim_resolution_version_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Keep the UI-friendly 3-row view: v1 baseline + the two most recent non-baseline versions.
+    Full history remains available via raw `interactions` / `prompt_changes`.
+    """
+    if len(rows) <= 3:
+        return rows
+    first = rows[0]
+    tail = rows[-2:]
+    out: list[dict[str, Any]] = [first]
+    for idx, r in enumerate(tail, start=2):
+        rr = dict(r)
+        rr["label"] = _version_label(idx)
+        out.append(rr)
+    return out
+
+
+def _recompute_row_pairwise_stats(
+    rows: list[dict[str, Any]],
+    scores_by_version: dict[str, list[float]],
+) -> None:
+    """Recompute p_vs_prev / cohen_d using the immediately previous row in `rows`."""
+    for i in range(1, len(rows)):
+        curr_v = str(rows[i].get("version") or "")
+        prev_v = str(rows[i - 1].get("version") or "")
+        vals = scores_by_version.get(curr_v) or []
+        prev = scores_by_version.get(prev_v) or []
+        p_value = _p_vs_prev(vals, prev) if (vals and prev) else None
+        d_value = _cohen_d(vals, prev) if (vals and prev) else None
+        rows[i]["p_vs_prev"] = round(p_value, 4) if p_value is not None else None
+        rows[i]["cohen_d"] = round(d_value, 3) if d_value is not None else None
 
 
 def _format_decision_from_change(change_doc: Optional[dict], run_doc: Optional[dict]) -> str:
@@ -1220,7 +1290,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         {"_id": 0},
     ).sort("timestamp", 1).to_list(length=500)
 
-    runs = await db.eval_pipeline.find(
+    runs_all = await db.eval_pipeline.find(
         {"agent_target": agent_name},
         {
             "_id": 0,
@@ -1228,6 +1298,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "decision": 1,
             "status": 1,
             "started_at": 1,
+            "triggered_by": 1,
             "prompt_improvement": 1,
             "new_prompt_compliance": 1,
             "version_comparison": 1,
@@ -1237,6 +1308,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "manual_patch_required": 1,
         },
     ).sort("started_at", -1).to_list(length=500)
+    runs = [r for r in runs_all if not _is_mock_pipeline_run(r)] or runs_all
     runs_by_id = {r.get("run_id", ""): r for r in runs}
     latest_adopted_run = next(
         (
@@ -1271,7 +1343,10 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
 
     buckets: dict[str, dict[str, Any]] = {}
     for doc in interactions:
-        version = (doc.get("prompt_version") or "canonical-v1").strip()
+        pv_raw = str(doc.get("prompt_version") or "").strip()
+        version = _normalize_prompt_version(pv_raw) if pv_raw else "canonical-v1"
+        if "mock" in version.lower():
+            continue
         score, metrics = scorer(doc)
         b = buckets.setdefault(version, {
             "scores": [],
@@ -1291,8 +1366,11 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
     # Ensure prompt versions that were patched/rolled back are visible immediately
     # in analytics, even before post-change interaction samples arrive.
     for ch in prompt_changes:
-        version = str(ch.get("new_version") or "").strip()
-        if not version:
+        raw_ver = str(ch.get("new_version") or "").strip()
+        if not raw_ver:
+            continue
+        version = _normalize_prompt_version(raw_ver)
+        if not version or "mock" in version.lower():
             continue
         buckets.setdefault(version, {
             "scores": [],
@@ -1300,10 +1378,12 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "first_ts": ch.get("timestamp") or "",
         })
 
-    ordered_versions = sorted(
-        buckets.items(),
-        key=lambda kv: (kv[1].get("first_ts") or "", kv[0]),
+    ordered_versions = _order_prompt_versions_for_analytics(
+        sorted(buckets.items(), key=lambda kv: (kv[1].get("first_ts") or "", kv[0]))
     )
+    scores_by_version: dict[str, list[float]] = {
+        str(v): list(b.get("scores") or []) for v, b in ordered_versions
+    }
 
     rows: list[dict[str, Any]] = []
     prev_scores: Optional[list[float]] = None
@@ -1317,7 +1397,13 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         p_value = _p_vs_prev(vals, prev_scores or []) if (prev_scores and vals) else None
         d_value = _cohen_d(vals, prev_scores or []) if (prev_scores and vals) else None
 
-        change_doc = next((c for c in prompt_changes if c.get("new_version") == version), None)
+        change_doc = next(
+            (
+                c for c in prompt_changes
+                if _normalize_prompt_version(str(c.get("new_version") or "").strip()) == version
+            ),
+            None,
+        )
         run_doc = runs_by_id.get((change_doc or {}).get("run_id", "")) if change_doc else None
         fallback_run_doc = run_doc
         if not fallback_run_doc and version != "canonical-v1":
@@ -1370,6 +1456,10 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         })
         if vals:
             prev_scores = vals
+
+    if agent_name == "ResolutionAgent":
+        rows = _trim_resolution_version_rows(rows)
+        _recompute_row_pairwise_stats(rows, scores_by_version)
 
     latest_metrics: dict[str, float] = {}
     latest_metrics_source_version: Optional[str] = None

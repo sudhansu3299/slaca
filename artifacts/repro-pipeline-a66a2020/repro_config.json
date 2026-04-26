@@ -1,0 +1,28 @@
+{
+  "generated_at_utc": "2026-04-26T08:46:09.578565+00:00",
+  "run_id": "pipeline-a66a2020",
+  "agent_target": "FinalNoticeAgent",
+  "triggered_by": "manual_report_run30",
+  "git_commit": "e867ded00b0468ed544c400abb46bf01ade5c468",
+  "pipeline_split_seed": 2330947426,
+  "seed_formula": "int(md5(run_id).hexdigest(), 16) % (2**32)",
+  "env": {
+    "MONGODB_URL": "",
+    "MONGODB_DB": "",
+    "OPENAI_BASE_URL": "",
+    "OPENCODE_BASE_URL": "",
+    "AGENT_MODEL": "",
+    "EVAL_MODEL": "",
+    "EVAL_TEMP": "",
+    "PROMPT_GENERATION_MODEL": "",
+    "PROMPT_GENERATION_TEMP": "",
+    "REAL_V2_EXECUTION_MODE": "simulator",
+    "REPLAY_BORROWER_MODE": "simulator"
+  },
+  "files": {
+    "run_doc_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/run_doc.json",
+    "scores_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/per_conversation_scores.json",
+    "scores_csv": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/per_conversation_scores.csv",
+    "transcripts_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/transcripts.json"
+  }
+}
