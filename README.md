@@ -157,3 +157,42 @@ Seed used for pipeline split:
 ```bash
 .venv/bin/python scripts/rerun_pipeline_from_snapshot.py --agent-name FinalNoticeAgent --run-id pipeline-a66a2020 --transcripts-file /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/transcripts.json --allow-overwrite-run-id --output-json /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/rerun_result.json
 ```
+
+# UI Screenshots
+Home Page:
+
+<img width="1062" height="828" alt="image" src="https://github.com/user-attachments/assets/e936b763-b202-46f7-8a31-b50b5ea7ade1" />
+
+1. Assessment Agent:
+
+<img width="1878" height="963" alt="image" src="https://github.com/user-attachments/assets/ba7f5059-1117-4498-bfcd-aa0202f2b424" />
+
+2. Final Notice Agent:
+
+<img width="797" height="490" alt="image" src="https://github.com/user-attachments/assets/1a030a6a-2196-47e1-b7a5-aaa7e55464bd" />
+<img width="1261" height="742" alt="image" src="https://github.com/user-attachments/assets/007053aa-aa03-423f-af21-fe667b1c318e" />
+
+
+## Admin Panel
+
+Chat-wise scores and trends
+<img width="1771" height="963" alt="image" src="https://github.com/user-attachments/assets/3614d778-f7a4-4f55-937c-b7f6080d438d" />
+
+Synthetic conversations creator
+<img width="1641" height="939" alt="image" src="https://github.com/user-attachments/assets/963219a5-8b56-4d6b-9473-13ac8f4b3693" />
+
+Self-Improvement Pipeline
+<img width="1436" height="960" alt="image" src="https://github.com/user-attachments/assets/842bcfab-07ab-431c-97de-7fa28f6c7631" />
+
+Meta-Evaluator
+<img width="1575" height="1022" alt="image" src="https://github.com/user-attachments/assets/fdb8e6ec-9b7b-40a5-956c-3332ef7fe068" />
+
+Agent Analytics
+<img width="1615" height="668" alt="image" src="https://github.com/user-attachments/assets/a97e2455-9b8c-46f2-8a42-4792b7736ede" />
+
+
+
+### Cost per Self-Learning Loop
+<img width="1324" height="664" alt="image" src="https://github.com/user-attachments/assets/8d0f6399-8b1c-449b-aacf-1462c8a544b6" />
+
+
