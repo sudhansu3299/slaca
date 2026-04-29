@@ -1,9 +1,9 @@
 {
-  "generated_at_utc": "2026-04-26T08:46:09.578565+00:00",
+  "generated_at_utc": "2026-04-29T13:18:06.800142+00:00",
   "run_id": "pipeline-a66a2020",
   "agent_target": "FinalNoticeAgent",
-  "triggered_by": "manual_report_run30",
-  "git_commit": "e867ded00b0468ed544c400abb46bf01ade5c468",
+  "triggered_by": "repro_bundle_rerun",
+  "git_commit": "3b51a604f17d8f01d57e9e8f300316abd000892d",
   "pipeline_split_seed": 2330947426,
   "seed_formula": "int(md5(run_id).hexdigest(), 16) % (2**32)",
   "env": {

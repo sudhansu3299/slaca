@@ -19,7 +19,9 @@ import math
 import os
 import re
 import statistics
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter
@@ -58,6 +60,43 @@ def _to_bool(value: Any, default: bool = True) -> bool:
     if s in {"0", "false", "no", "n", "off"}:
         return False
     return default
+
+
+async def _auto_export_repro_bundle(run_id: str) -> None:
+    """
+    Export reproducibility artifacts for a completed pipeline run.
+    This is triggered after UI-started pipeline runs finish.
+    """
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "export_repro_bundle.py"
+    out_dir = Path(__file__).resolve().parents[1] / "artifacts" / f"repro-{run_id}"
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--run-id",
+        run_id,
+        "--output-dir",
+        str(out_dir),
+        "--export-interactions",
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        log.warning(
+            "[repro] export failed for run %s: rc=%s stderr=%s",
+            run_id,
+            proc.returncode,
+            (stderr or b"").decode("utf-8", errors="replace").strip(),
+        )
+        return
+    log.info(
+        "[repro] export completed for run %s: %s",
+        run_id,
+        (stdout or b"").decode("utf-8", errors="replace").strip(),
+    )
 
 
 _AGENT_ANALYTICS_CONFIG: dict[str, dict[str, Any]] = {
@@ -416,12 +455,129 @@ def _insight_from_rows(rows: list[dict]) -> str:
     return "Latest version is borderline; gather more samples before treating as durable improvement."
 
 
+def _build_convergence_payload(
+    runs: list[dict[str, Any]],
+    prompt_changes: list[dict[str, Any]],
+    plateau_window: int = 3,
+    plateau_delta_eps: float = 0.015,
+    plateau_band_eps: float = 0.03,
+) -> dict[str, Any]:
+    """
+    Build convergence trend for agent analytics from completed real v2 runs.
+    """
+    version_by_run: dict[str, str] = {}
+    for change in prompt_changes:
+        rid = str(change.get("run_id") or "").strip()
+        new_ver = _normalize_prompt_version(str(change.get("new_version") or "").strip())
+        if rid and new_ver:
+            version_by_run[rid] = new_ver
+
+    eligible: list[dict[str, Any]] = []
+
+    def _rate_from_scores(scores: Any) -> Optional[float]:
+        """
+        Convert a list of stored TranscriptScore-like dicts into a resolution rate.
+        Expected:
+          - each element has {"resolution": 0|1} (but we defensively handle missing)
+        """
+        if not isinstance(scores, list) or not scores:
+            return None
+        try:
+            res = 0
+            n = 0
+            for s in scores:
+                if not isinstance(s, dict):
+                    continue
+                if "resolution" not in s:
+                    continue
+                n += 1
+                res += 1 if int(s.get("resolution") or 0) == 1 else 0
+            if n <= 0:
+                return None
+            return float(res / n)
+        except Exception:
+            return None
+    for run in sorted(runs, key=lambda r: str(r.get("started_at") or "")):
+        if str(run.get("status") or "").lower() != "completed":
+            continue
+        exec_mode = str(run.get("v2_execution_mode") or "").lower() or "unknown"
+        vc = run.get("version_comparison") or {}
+
+        executed_scores = run.get("executed_v2_scores") or []
+        v2_rate = _rate_from_scores(executed_scores)
+        if v2_rate is None:
+            v2_rate = vc.get("v2_resolution_rate")
+            if isinstance(v2_rate, (int, float)):
+                v2_rate = float(v2_rate)
+            else:
+                continue
+
+        # v1 is scored from the current prompt before applying the new prompt.
+        v1_scores = (run.get("transcript_scores") or []) + (run.get("held_out_scores") or [])
+        v1_rate = _rate_from_scores(v1_scores)
+        if v1_rate is None:
+            v1_rate = vc.get("v1_resolution_rate")
+            if isinstance(v1_rate, (int, float)):
+                v1_rate = float(v1_rate)
+            else:
+                # If we can't compute v1, we can still plot v2 rate but delta becomes 0.
+                v1_rate = 0.0
+        rid = str(run.get("run_id") or "")
+        eligible.append({
+            "run_id": rid,
+            "started_at": run.get("started_at"),
+            "version": version_by_run.get(rid, rid),
+            "v2_resolution_rate": float(v2_rate),
+            "v2_execution_mode": exec_mode,
+            "v1_resolution_rate": float(v1_rate),
+            "resolution_delta": float(v2_rate) - float(v1_rate),
+            "decision": str(run.get("decision") or "pending"),
+        })
+
+    if not eligible:
+        return {"status": "insufficient_data", "points": []}
+
+    # Compare each run against a fixed baseline v1:
+    # baseline_v1_rate = v1-resolution-rate from the first eligible real run overall.
+    baseline_v1_rate = float(eligible[0].get("v1_resolution_rate", 0.0))
+
+    # Plot only the last 10 improvements (density), but keep the baseline constant.
+    display_points = eligible[-10:] if len(eligible) > 10 else eligible
+
+    rates = [float(p["v2_resolution_rate"]) for p in display_points]
+    for p in display_points:
+        p["delta_from_v1"] = float(p["v2_resolution_rate"]) - baseline_v1_rate
+    trend_non_decreasing = all(rates[i] >= rates[i - 1] - 1e-9 for i in range(1, len(rates)))
+    stability_band = (max(rates) - min(rates)) if len(rates) > 1 else 0.0
+
+    if len(eligible) >= plateau_window:
+        tail = display_points[-plateau_window:] if len(display_points) >= plateau_window else display_points
+        tail_rates = [float(p["v2_resolution_rate"]) for p in tail]
+        # Plateau is defined as "resolution rate is stable in the recent window".
+        plateau = (max(tail_rates) - min(tail_rates) <= plateau_band_eps)
+    else:
+        plateau = False
+
+    return {
+        "status": "ok",
+        "points": display_points,
+        "baseline_v1_rate": round(baseline_v1_rate, 4),
+        "trend_non_decreasing": trend_non_decreasing,
+        "stability_band": round(stability_band, 4),
+        "plateau": plateau,
+        "plateau_window": plateau_window,
+        "plateau_delta_eps": plateau_delta_eps,
+        "plateau_band_eps": plateau_band_eps,
+    }
+
+
 async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
     """
     Returns the last N distinct trace_ids from the interactions collection,
     with full conversation history reconstructed per trace.
     """
     from src.data_layer import get_mongo
+    from src.token_budget import estimate_tokens
 
     db = await get_mongo()
     if db is None:
@@ -453,21 +609,56 @@ async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
             {"trace_id": trace_id},
             {"agent_name": 1, "input": 1, "output": 1, "decision": 1,
              "timestamp": 1, "agent_version": 1, "model": 1,
-             "input_tokens": 1, "output_tokens": 1, "_id": 0}
+             "input_tokens": 1, "output_tokens": 1, "structured_context": 1, "_id": 0}
         ).sort("timestamp", 1)
         turns = await turns_cursor.to_list(length=100)
 
-        tokens_by_agent: dict[str, dict[str, int]] = {}
+        tokens_by_agent: dict[str, dict[str, Any]] = {}
         for turn in turns:
             an = (turn.get("agent_name") or "").strip() or "Unknown"
-            rec = tokens_by_agent.setdefault(
-                an, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
-            )
+            input_text = str(turn.get("input") or "")
+            output_text = str(turn.get("output") or "")
             it = int(turn.get("input_tokens") or 0)
             ot = int(turn.get("output_tokens") or 0)
-            rec["input_tokens"] += it
-            rec["output_tokens"] += ot
-            rec["total_tokens"] += it + ot
+            # Some providers/paths do not persist usage fields. In that case,
+            # estimate token counts from visible text so dashboard averages don't
+            # silently collapse to blanks.
+            if it <= 0 and input_text:
+                it = estimate_tokens(input_text)
+            if ot <= 0 and output_text:
+                ot = estimate_tokens(output_text)
+            # Keep only turns that look like an actual model exchange.
+            if it <= 0 and ot <= 0 and not (input_text or output_text):
+                continue
+            rec = tokens_by_agent.setdefault(
+                an,
+                {
+                    "calls": 0,
+                    "max_input_tokens": 0,
+                    "max_total_turn_tokens": 0,
+                    "input_tokens_per_call": [],
+                },
+            )
+            tt = it + ot
+            rec["calls"] += 1
+            rec["max_input_tokens"] = max(int(rec["max_input_tokens"]), it)
+            rec["max_total_turn_tokens"] = max(int(rec["max_total_turn_tokens"]), tt)
+            rec["input_tokens_per_call"].append(it)
+
+        summary_context_tokens = {
+            "after_assessment_agent": 0,
+            "after_resolution_agent": 0,
+        }
+        for turn in turns:
+            sc = turn.get("structured_context") or {}
+            h_from = str(sc.get("handoff_from") or "").strip()
+            h_tok = int(sc.get("received_handoff_tokens") or 0)
+            if h_tok <= 0:
+                continue
+            if h_from == "AssessmentAgent":
+                summary_context_tokens["after_assessment_agent"] = h_tok
+            elif h_from == "ResolutionAgent":
+                summary_context_tokens["after_resolution_agent"] = h_tok
 
         # Reconstruct conversation_history list (format expected by evaluators)
         history = []
@@ -513,6 +704,7 @@ async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
             "existing_eval": existing_eval,
             "agent_version": turns[0].get("agent_version", "v1.0") if turns else "v1.0",
             "tokens_by_agent": tokens_by_agent,
+            "summary_context_tokens": summary_context_tokens,
         })
 
     return transcripts
@@ -712,6 +904,7 @@ async def _run_evaluations(transcript: dict, force_llm: bool = False) -> dict:
         "transcript_preview": transcript["history"][-6:],
         "transcript_full":    transcript["history"],
         "tokens_by_agent":    transcript.get("tokens_by_agent") or {},
+        "summary_context_tokens": transcript.get("summary_context_tokens") or {},
     }
 
 
@@ -770,7 +963,7 @@ async def trigger_generation(body: dict = {}):
     total              = int(body.get("total", 30))
     batch_size         = int(body.get("batch_size", 8))
     agent_target       = body.get("agent_target", "ResolutionAgent")
-    run_pipeline_every = int(body.get("run_pipeline_every", 8))
+    run_pipeline_every = int(body.get("run_pipeline_every", 30))
     run_pipeline       = _to_bool(body.get("run_pipeline", True), default=True)
     job_id             = f"gen-{uuid.uuid4().hex[:8]}"
 
@@ -1056,14 +1249,14 @@ async def trigger_pipeline(body: dict = {}):
     from src.self_learning.improvement_pipeline import run_improvement_pipeline
 
     agent_name  = body.get("agent_name", "AssessmentAgent")
-    limit       = int(body.get("limit", 10))
+    limit       = int(body.get("limit", 30))
     triggered_by = body.get("triggered_by", "admin_ui")
     requested_exec_mode = str(body.get("v2_execution_mode", "")).strip().lower()
     requested_replay_mode = str(body.get("replay_borrower_mode", "")).strip().lower()
-    force_simulator = _to_bool(body.get("force_simulator"), default=True)
+    force_simulator = _to_bool(body.get("force_simulator"), default=False)
 
     valid_exec_modes = {"real", "simulator"}
-    valid_replay_modes = {"history", "simulator"}
+    valid_replay_modes = {"history", "simulator", "llm"}
 
     if requested_exec_mode in valid_exec_modes:
         exec_mode = requested_exec_mode
@@ -1098,12 +1291,14 @@ async def trigger_pipeline(body: dict = {}):
         os.environ["REAL_V2_EXECUTION_MODE"] = exec_mode
         os.environ["REPLAY_BORROWER_MODE"] = replay_mode
         try:
-            await run_improvement_pipeline(
+            run = await run_improvement_pipeline(
                 transcripts,
                 agent_name,
                 triggered_by,
                 run_id=run_id,
             )
+            if run and str(run.status).lower() == "completed":
+                await _auto_export_repro_bundle(run_id)
         finally:
             if prev_exec_mode is None:
                 os.environ.pop("REAL_V2_EXECUTION_MODE", None)
@@ -1125,7 +1320,12 @@ async def trigger_pipeline(body: dict = {}):
         "transcript_count": len(transcripts),
         "v2_execution_mode": exec_mode,
         "replay_borrower_mode": replay_mode,
-        "message": f"Pipeline started with {len(transcripts)} transcripts. Poll /api/admin/pipeline/runs for status.",
+        "message": (
+            f"Pipeline started with {len(transcripts)} transcripts. "
+            "Poll /api/admin/pipeline/runs for status. "
+            "On completion, reproducibility bundle is auto-exported to "
+            f"artifacts/repro-{run_id}/"
+        ),
     }
 
 
@@ -1189,6 +1389,62 @@ async def get_pipeline_run(run_id: str):
     _augment_v2_execution_summary(doc)
     doc.pop("_id", None)
     return doc
+
+
+@router.get("/pipeline/test-resolution-trend")
+async def get_test_resolution_trend(agent_name: Optional[str] = None, limit: int = 20):
+    """Return holdout/test resolution trend across recent completed runs."""
+    from src.self_learning.improvement_pipeline import list_pipeline_runs as _list
+
+    def _rate(scores: Any) -> Optional[float]:
+        if not isinstance(scores, list) or not scores:
+            return None
+        valid = [s for s in scores if isinstance(s, dict) and "resolution" in s]
+        if not valid:
+            return None
+        resolved = sum(1 for s in valid if int(s.get("resolution") or 0) == 1)
+        return float(resolved / len(valid))
+
+    def _trace_root(value: Any) -> str:
+        return str(value or "").split(":", 1)[0]
+
+    runs = await _list(agent_name, max(1, min(int(limit), 100)))
+    points: list[dict[str, Any]] = []
+    for run in sorted(runs, key=lambda r: str(r.get("started_at") or "")):
+        if str(run.get("status") or "").lower() != "completed":
+            continue
+
+        test_before = run.get("test_v1_resolution_rate")
+        test_after = run.get("test_v2_resolution_rate")
+        test_delta = run.get("test_resolution_delta")
+
+        if not isinstance(test_before, (int, float)) or not isinstance(test_after, (int, float)):
+            held_out = run.get("held_out_scores") or []
+            executed = run.get("executed_v2_scores") or []
+            held_out_ids = {_trace_root(t.get("trace_id")) for t in held_out if isinstance(t, dict)}
+            executed_test = [
+                s for s in executed
+                if isinstance(s, dict) and _trace_root(s.get("trace_id")) in held_out_ids
+            ]
+            r_before = _rate(held_out)
+            r_after = _rate(executed_test) if executed_test else _rate(executed)
+            if r_before is None or r_after is None:
+                continue
+            test_before = r_before
+            test_after = r_after
+            test_delta = float(r_after - r_before)
+
+        points.append({
+            "run_id": run.get("run_id"),
+            "agent_target": run.get("agent_target"),
+            "started_at": run.get("started_at"),
+            "decision": run.get("decision"),
+            "test_v1_resolution_rate": round(float(test_before), 4),
+            "test_v2_resolution_rate": round(float(test_after), 4),
+            "test_resolution_delta": round(float(test_delta), 4),
+        })
+
+    return {"points": points[-10:], "total": len(points)}
 
 
 @router.post("/pipeline/runs/{run_id}/stop")
@@ -1281,6 +1537,8 @@ async def get_regression_events(limit: int = 50):
 
 
 async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
+    from src.self_learning.improvement_pipeline import get_prompt_version
+
     scorer = {
         "AssessmentAgent": _score_assessment,
         "ResolutionAgent": _score_resolution,
@@ -1317,6 +1575,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "prompt_improvement": 1,
             "new_prompt_compliance": 1,
             "version_comparison": 1,
+            "v2_execution_mode": 1,
             "executed_v2_scores": 1,
             "transcript_scores": 1,
             "held_out_scores": 1,
@@ -1401,6 +1660,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
     }
 
     rows: list[dict[str, Any]] = []
+    active_version = _normalize_prompt_version(get_prompt_version(agent_name))
     prev_scores: Optional[list[float]] = None
     for i, (version, b) in enumerate(ordered_versions, start=1):
         vals = b["scores"]
@@ -1455,6 +1715,11 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
 
         primary_change = "Original prompt" if version == "canonical-v1" else _format_change_from_run(run_doc, (change_doc or {}).get("trigger", ""))
         decision = "Baseline" if version == "canonical-v1" else _format_decision_from_change(change_doc, run_doc)
+        backup_path = str((change_doc or {}).get("backup_path") or "").strip()
+        backup_filename = os.path.basename(backup_path) if backup_path else ""
+        trigger = str((change_doc or {}).get("trigger") or "").strip()
+        applied_to_prompt = bool(change_doc) and trigger in {"pipeline_adopt", "patch_apply", "rollback"}
+        is_active = version == active_version
 
         rows.append({
             "version": version,
@@ -1468,6 +1733,11 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
             "cohen_d": round(d_value, 3) if d_value is not None else None,
             "primary_change": primary_change,
             "decision": decision,
+            "trigger": trigger,
+            "applied_to_prompt": applied_to_prompt,
+            "backup_path": backup_path,
+            "backup_filename": backup_filename,
+            "is_active": is_active,
         })
         if vals:
             prev_scores = vals
@@ -1511,6 +1781,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         "cards": cards,
         "cards_source_version": latest_metrics_source_version,
         "version_history": rows,
+        "convergence": _build_convergence_payload(runs, prompt_changes),
         "insight": _insight_from_rows(rows),
         "patch_readiness": {
             "run_id": (latest_run or {}).get("run_id"),

@@ -1,0 +1,9 @@
+{
+  "run_id": "real-stream-1777473908",
+  "agent_target": "AssessmentAgent",
+  "status": "failed",
+  "decision": "pending",
+  "started_at": "2026-04-29T14:45:08.792930+00:00",
+  "completed_at": "2026-04-29T14:45:39.207504+00:00",
+  "generated_at_utc": "2026-04-29T14:45:39.210348+00:00"
+}

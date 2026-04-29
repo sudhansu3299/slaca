@@ -43,6 +43,32 @@ def _normalize_base_url(url: str) -> str:
     return f"https://{url.lstrip('/')}"
 
 
+def _resolve_llm_provider() -> tuple[str, str, str]:
+    """
+    Resolve (provider, api_key, base_url) for agent LLM calls.
+    Priority keeps DeepSeek/OpenRouter opt-in simple for replay runs.
+    """
+    deepseek_key = _first_nonempty_env("DEEPSEEK_API_KEY")
+    opencode_key = _first_nonempty_env("OPENCODE_API_KEY")
+    openai_key = _first_nonempty_env("OPENAI_API_KEY")
+    if deepseek_key:
+        base_url = _normalize_base_url(
+            _first_nonempty_env("DEEPSEEK_BASE_URL") or "https://openrouter.ai/api/v1"
+        )
+        return "deepseek", deepseek_key, base_url
+    if opencode_key:
+        return "opencode", opencode_key, _normalize_base_url(_first_nonempty_env("OPENCODE_BASE_URL"))
+    if openai_key:
+        return "openai", openai_key, _normalize_base_url(_first_nonempty_env("OPENAI_BASE_URL"))
+    return "none", "", ""
+
+
+def _build_chat_extra_body(model: str) -> dict[str, Any]:
+    if "deepseek" in str(model).lower():
+        return {"reasoning": {"enabled": True}}
+    return {}
+
+
 class AgentResponse(BaseModel):
     message: str
     context_update: dict[str, Any] = {}
@@ -154,45 +180,34 @@ class BaseAgent(ABC):
             estimated_input_tokens=est_in,
         )
 
-        opencode_key = _first_nonempty_env("OPENCODE_API_KEY")
-        openai_key = _first_nonempty_env("OPENAI_API_KEY")
-        opencode_base_url = _normalize_base_url(_first_nonempty_env("OPENCODE_BASE_URL"))
-        openai_base_url = _normalize_base_url(_first_nonempty_env("OPENAI_BASE_URL"))
-
-        for env_name in ("OPENCODE_BASE_URL", "OPENAI_BASE_URL"):
+        _provider, api_key, base_url = _resolve_llm_provider()
+        for env_name in ("DEEPSEEK_BASE_URL", "OPENCODE_BASE_URL", "OPENAI_BASE_URL"):
             if not os.getenv(env_name, "").strip():
                 os.environ.pop(env_name, None)
-
-        key_source = (
-            "opencode"
-            if opencode_key
-            else ("openai" if openai_key else "none")
-        )
-        base_url = (
-            opencode_base_url
-            if opencode_key else openai_base_url
-        )
         logger.info(
             "[llm] provider_key=%s base_url_override=%s",
-            key_source,
+            provider,
             "yes" if bool(base_url) else "no",
         )
-        if not (opencode_key or openai_key):
+        if not api_key:
             raise RuntimeError(
-                "Missing LLM API key. Set one of OPENCODE_API_KEY or OPENAI_API_KEY."
+                "Missing LLM API key. Set one of DEEPSEEK_API_KEY, OPENCODE_API_KEY, or OPENAI_API_KEY."
             )
 
-        api_key = opencode_key or openai_key
         client_kwargs = {"api_key": api_key}
         if base_url:
             client_kwargs["base_url"] = base_url
         client = AsyncOpenAI(**client_kwargs)
-        response = await client.chat.completions.create(
-            model=self.model,
-            max_tokens=safe_max,
-            temperature=temperature,
-            messages=built,
-        )
+        request_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": safe_max,
+            "temperature": temperature,
+            "messages": built,
+        }
+        extra_body = _build_chat_extra_body(self.model)
+        if extra_body:
+            request_kwargs["extra_body"] = extra_body
+        response = await client.chat.completions.create(**request_kwargs)
         message = response.choices[0].message if response.choices else None
         text = self._content_to_text(message.content if message else "")
         usage = TokenUsage(
@@ -237,10 +252,7 @@ class BaseAgent(ABC):
 
         self.cost_tracker.check_budget()
 
-        api_key = (
-            _first_nonempty_env("OPENCODE_API_KEY")
-            or _first_nonempty_env("OPENAI_API_KEY")
-        )
+        provider, api_key, base_url = _resolve_llm_provider()
         if not api_key:
             self._tool_loop_fallback = True
             logger.info(
@@ -253,10 +265,6 @@ class BaseAgent(ABC):
                 max_tokens=max_tokens,
             )
 
-        base_url = _normalize_base_url(
-            _first_nonempty_env("OPENCODE_BASE_URL")
-            or _first_nonempty_env("OPENAI_BASE_URL")
-        )
         client_kwargs: dict[str, Any] = {"api_key": api_key}
         if base_url:
             client_kwargs["base_url"] = base_url
@@ -277,14 +285,18 @@ class BaseAgent(ABC):
                 label=self.name,
                 estimated_input_tokens=est_in,
             )
-            response = await client.chat.completions.create(
-                model=self.model,
-                max_tokens=safe_max,
-                temperature=temperature,
-                messages=current_messages,
-                tools=openai_tools,
-                tool_choice="auto",
-            )
+            request_kwargs = {
+                "model": self.model,
+                "max_tokens": safe_max,
+                "temperature": temperature,
+                "messages": current_messages,
+                "tools": openai_tools,
+                "tool_choice": "auto",
+            }
+            extra_body = _build_chat_extra_body(self.model)
+            if extra_body:
+                request_kwargs["extra_body"] = extra_body
+            response = await client.chat.completions.create(**request_kwargs)
             if response.usage:
                 enforce_total_turn_limit(
                     response.usage.prompt_tokens or 0,
@@ -303,13 +315,15 @@ class BaseAgent(ABC):
                 break
 
             # Execute all tool calls in this round
-            current_messages.append(
-                {
-                    "role": "assistant",
-                    "content": message.content or "",
-                    "tool_calls": [tc.model_dump() for tc in tool_calls],
-                }
-            )
+            assistant_msg: dict[str, Any] = {
+                "role": "assistant",
+                "content": message.content or "",
+                "tool_calls": [tc.model_dump() for tc in tool_calls],
+            }
+            reasoning_details = getattr(message, "reasoning_details", None)
+            if reasoning_details is not None:
+                assistant_msg["reasoning_details"] = reasoning_details
+            current_messages.append(assistant_msg)
 
             tool_results = []
             for call in tool_calls:

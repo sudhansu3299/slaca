@@ -44,7 +44,7 @@ class GenerationConfig:
     total: int = 30
     batch_size: int = 8
     agent_target: str = "ResolutionAgent"   # agent to focus learning on
-    run_pipeline_every_n: int = 8           # run improvement pipeline after every N transcripts
+    run_pipeline_every_n: int = 30          # run improvement pipeline after every N transcripts
     max_turns_per_stage: int = 6
     personas: list[str] = field(default_factory=lambda: [
         "cooperative", "cooperative",
@@ -330,16 +330,34 @@ async def _run_pipeline_and_apply(
     await asyncio.sleep(1.5)
 
     # Fetch the latest transcripts from MongoDB (includes just-written ones)
-    transcripts = await _fetch_last_n_transcripts(n=min(len(batch_results) + 5, 20))
+    target_n = 30
+    transcripts = await _fetch_last_n_transcripts(n=target_n)
     if not transcripts:
         progress.emit("  ⚠ No transcripts in MongoDB yet — skipping pipeline")
         return
+    if len(transcripts) < target_n:
+        progress.emit(f"  ⚠ Only {len(transcripts)} transcripts available (target {target_n}); running with available data")
 
-    pipeline_run = await run_improvement_pipeline(
-        transcripts=transcripts,
-        agent_name=agent_target,
-        triggered_by=f"generator_batch_{batch_num}",
-    )
+    import os
+    prev_exec_mode = os.getenv("REAL_V2_EXECUTION_MODE")
+    prev_replay_mode = os.getenv("REPLAY_BORROWER_MODE")
+    os.environ["REAL_V2_EXECUTION_MODE"] = "real"
+    os.environ["REPLAY_BORROWER_MODE"] = "history"
+    try:
+        pipeline_run = await run_improvement_pipeline(
+            transcripts=transcripts,
+            agent_name=agent_target,
+            triggered_by=f"generator_batch_{batch_num}",
+        )
+    finally:
+        if prev_exec_mode is None:
+            os.environ.pop("REAL_V2_EXECUTION_MODE", None)
+        else:
+            os.environ["REAL_V2_EXECUTION_MODE"] = prev_exec_mode
+        if prev_replay_mode is None:
+            os.environ.pop("REPLAY_BORROWER_MODE", None)
+        else:
+            os.environ["REPLAY_BORROWER_MODE"] = prev_replay_mode
 
     progress.pipeline_runs += 1
     decision = pipeline_run.decision or "pending"
@@ -384,7 +402,7 @@ async def run_generation_loop(
     total: int = 30,
     batch_size: int = 8,
     agent_target: str = "ResolutionAgent",
-    run_pipeline_every_n: int = 8,
+    run_pipeline_every_n: int = 30,
     run_pipeline: bool = True,
     job_id: Optional[str] = None,
 ) -> GenerationProgress:
@@ -527,7 +545,7 @@ if __name__ == "__main__":
     parser.add_argument("--total",      type=int, default=30,               help="Total transcripts to generate")
     parser.add_argument("--batch-size", type=int, default=8,                help="Batch size between pipeline runs")
     parser.add_argument("--agent",      type=str, default="ResolutionAgent",help="Agent to focus learning on")
-    parser.add_argument("--pipeline-every", type=int, default=8,           help="Run pipeline every N transcripts")
+    parser.add_argument("--pipeline-every", type=int, default=30,          help="Run pipeline every N transcripts")
     args = parser.parse_args()
 
     async def main():

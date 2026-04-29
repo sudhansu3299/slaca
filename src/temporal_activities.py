@@ -33,7 +33,7 @@ from src.models import (
 )
 from src.self_learning.eval import SelfLearningLoop
 from src.simulation import PersonaScript, PersonaType, SimulationEngine
-from src.token_budget import CostTracker, TokenUsage
+from src.token_budget import CostTracker, TokenUsage, estimate_tokens
 from src.voice import VoiceProvider, VoiceProviderName, CallConfig, build_voice_metadata
 
 # ── Data layer (Redis + MongoDB) ──────────────────────────────────── #
@@ -212,6 +212,9 @@ async def run_assessment_stage(payload: Any) -> dict:
         "status": "ACTIVE",
         "attempts": attempt,
         "last_agent": "AssessmentAgent",
+        "final_notice_recap_sent": False,
+        "final_notice_opened_sent": False,
+        "final_notice_opening_msg_sent": False,
     })
     await upsert_borrower_case(borrower_id, "ASSESSMENT", "ACTIVE", attempt)
 
@@ -294,6 +297,7 @@ async def run_assessment_stage(payload: Any) -> dict:
                 "advanced": resp.should_advance,
             },
             decision="advance" if resp.should_advance else "continue",
+            trace_id=workflow_id,
             input_tokens=_tin,
             output_tokens=_tout,
         ))
@@ -394,6 +398,7 @@ async def run_resolution_stage(payload: Any) -> dict:
     summary = HandoffBuilder.build(ctx, Stage.ASSESSMENT, Stage.RESOLUTION)
     voice = _build_voice_provider()
     phone_number = data.get("phone_number", os.getenv("BORROWER_PHONE", ""))
+    assessment_handoff_tokens = estimate_tokens(summary.to_prompt_block())
 
     call = None
     call_context: dict[str, Any] = {
@@ -430,6 +435,28 @@ async def run_resolution_stage(payload: Any) -> dict:
         transcript = voice_result.get("transcript", "")
         call_context["transcript_chars"] = len(transcript)
         call_context["transcript_excerpt"] = transcript[:1000]
+        for rec in voice_result.get("turn_logs", []):
+            asyncio.create_task(log_interaction(
+                borrower_id=borrower_id,
+                agent_name="ResolutionAgent",
+                agent_version="v1.0",
+                prompt_version=get_prompt_version("ResolutionAgent"),
+                model="vapi/" + os.getenv("VAPI_ASSISTANT_ID", "mock"),
+                model_params={"modality": "voice", "source": "voice_turn"},
+                input_text=rec.get("input", ""),
+                output_text=rec.get("output", ""),
+                structured_context={
+                    "intent": "resolution_turn",
+                    "stage": Stage.RESOLUTION.value,
+                    "call_id": call_context.get("call_id", ""),
+                    "offer": (ctx.resolution_offer.model_dump() if ctx.resolution_offer else None),
+                },
+                decision=rec.get("decision", "continue"),
+                confidence=1.0 if rec.get("decision") in ("committed", "refused") else 0.0,
+                trace_id=workflow_id,
+                input_tokens=int(rec.get("input_tokens", 0) or 0),
+                output_tokens=int(rec.get("output_tokens", 0) or 0),
+            ))
     elif use_real_voice and not call:
         # The real call failed to initiate (Vapi/Retell error).
         # Do NOT fall through to the PersonaScript loop — that would produce a
@@ -467,6 +494,31 @@ async def run_resolution_stage(payload: Any) -> dict:
                 "stage": Stage.RESOLUTION.value, "timestamp": _ts(),
                 "advanced": resp.should_advance,
             })
+
+            _tin = resp.tokens_used.input_tokens if resp.tokens_used else 0
+            _tout = resp.tokens_used.output_tokens if resp.tokens_used else 0
+            asyncio.create_task(log_interaction(
+                borrower_id=borrower_id,
+                agent_name="ResolutionAgent",
+                agent_version="v1.0",
+                prompt_version=get_prompt_version("ResolutionAgent"),
+                model=agent.model,
+                model_params={"temperature": 0.08, "max_tokens": 2000, "modality": "voice"},
+                input_text=user_input,
+                output_text=resp.message,
+                structured_context={
+                    "intent": "resolution_turn",
+                    "stage": Stage.RESOLUTION.value,
+                    "call_id": call_context.get("call_id", ""),
+                    "offer": (ctx.resolution_offer.model_dump() if ctx.resolution_offer else None),
+                },
+                decision="committed" if resp.should_advance and ctx.resolution_outcome != "refused"
+                         else ("refused" if resp.should_advance else "continue"),
+                confidence=1.0 if resp.should_advance else 0.0,
+                trace_id=workflow_id,
+                input_tokens=_tin,
+                output_tokens=_tout,
+            ))
 
             await loop.evaluate_interaction(
                 ctx.conversation_history,
@@ -509,11 +561,14 @@ async def run_resolution_stage(payload: Any) -> dict:
             "stage": Stage.RESOLUTION.value,
             "call_id": call_context.get("call_id", ""),
             "offer": offer_dict,
+            "received_handoff_tokens": int(assessment_handoff_tokens),
+            "handoff_from": "AssessmentAgent",
         },
         decision=outcome,
         confidence=1.0 if outcome == "committed" else 0.0,
-        input_tokens=cost.total_tokens.input_tokens,
-        output_tokens=cost.total_tokens.output_tokens,
+        trace_id=workflow_id,
+        input_tokens=0,
+        output_tokens=0,
     ))
 
     summary2 = HandoffBuilder.build(ctx, Stage.RESOLUTION, Stage.FINAL_NOTICE)
@@ -548,10 +603,11 @@ async def _run_real_voice_call(call, voice, agent, ctx, loop,
     else:
         print("[voice] ⚠️  Timed out — ending call")
         await voice.end_call(call)
-        return {"outcome": "no_outcome", "transcript": ""}
+        return {"outcome": "no_outcome", "transcript": "", "turn_logs": []}
 
     turns = _parse_transcript(transcript)
     outcome = "no_outcome"
+    turn_logs: list[dict[str, Any]] = []
     for speaker, text in turns:
         if speaker.lower() in ("user", "borrower", "customer"):
             ctx.conversation_history.append({
@@ -565,6 +621,14 @@ async def _run_real_voice_call(call, voice, agent, ctx, loop,
                 "stage": Stage.RESOLUTION.value, "timestamp": _ts(),
                 "advanced": resp.should_advance,
             })
+            turn_logs.append({
+                "input": text,
+                "output": resp.message,
+                "input_tokens": (resp.tokens_used.input_tokens if resp.tokens_used else 0),
+                "output_tokens": (resp.tokens_used.output_tokens if resp.tokens_used else 0),
+                "decision": ("committed" if resp.should_advance and ctx.resolution_outcome != "refused"
+                             else ("refused" if resp.should_advance else "continue")),
+            })
             await loop.evaluate_interaction(ctx.conversation_history,
                                             "committed" if resp.should_advance else None)
             if resp.should_advance:
@@ -573,7 +637,7 @@ async def _run_real_voice_call(call, voice, agent, ctx, loop,
                 await voice.end_call(call)
                 print(f"[voice] 📵 Call terminated after terminal outcome: {outcome}")
                 break
-    return {"outcome": outcome, "transcript": transcript}
+    return {"outcome": outcome, "transcript": transcript, "turn_logs": turn_logs}
 
 
 def _parse_transcript(transcript: str) -> list[tuple[str, str]]:
@@ -590,6 +654,100 @@ def _parse_transcript(transcript: str) -> list[tuple[str, str]]:
             speaker, _, text = line.partition(":")
             turns.append((speaker.strip(), text.strip()))
     return turns
+
+
+def _format_voice_to_chat_recap(summary: HandoffSummary, resolution_outcome: str) -> str:
+    """Human-readable recap surfaced in chat after the voice call."""
+    offer_parts: list[str] = []
+    if summary.offer_upfront:
+        offer_parts.append(f"upfront ₹{summary.offer_upfront:,.0f}")
+    if summary.offer_monthly:
+        months = summary.offer_tenure_months or 0
+        offer_parts.append(f"monthly ₹{summary.offer_monthly:,.0f} for {months} months")
+    offer_text = ", ".join(offer_parts) if offer_parts else "offer details unavailable"
+    deadline_text = summary.offer_valid_until or "deadline previously shared on call"
+
+    objections = summary.objections[-3:] if summary.objections else []
+    objections_text = "; ".join(objections) if objections else "no major objections recorded"
+    position = summary.intent or resolution_outcome or "unknown"
+
+    return (
+        "Call recap before we continue in chat:\n"
+        f"- Offer discussed: {offer_text}\n"
+        f"- Deadline: {deadline_text}\n"
+        f"- Objections raised on call: {objections_text}\n"
+        f"- Your stated position: {position}"
+    )
+
+
+def _build_legal_notice_contract_html(
+    borrower_id: str,
+    loan_id: str,
+    resolution_outcome: str,
+    offer: Optional[ResolutionOffer],
+) -> str:
+    """Fallback legal notice document shown when final notice is not accepted."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    issued = now.strftime("%d %B %Y")
+    offer_line = "No settlement terms accepted by borrower."
+    if offer:
+        if offer.monthly_payment:
+            offer_line = (
+                f"Prior offer discussed: ₹{offer.upfront_required:,.0f} down + "
+                f"₹{offer.monthly_payment:,.0f}/month × {offer.tenure_months} months."
+            )
+        else:
+            offer_line = f"Prior offer discussed: ₹{offer.upfront_required:,.0f} one-time settlement."
+
+    return f"""<div class="contract-doc">
+  <div class="contract-header">
+    <div class="contract-logo">⚖</div>
+    <div>
+      <div class="contract-title">LEGAL ESCALATION NOTICE</div>
+      <div class="contract-subtitle">Final Notice Outcome — Case Escalated</div>
+    </div>
+    <div class="contract-stamp">ESCALATED</div>
+  </div>
+
+  <div class="contract-meta">
+    <span><strong>Borrower ID:</strong> {borrower_id}</span>
+    <span><strong>Loan Account:</strong> {loan_id}</span>
+    <span><strong>Date Issued:</strong> {issued}</span>
+  </div>
+
+  <div class="contract-section">
+    <div class="contract-section-title">1. CASE SUMMARY</div>
+    <div class="contract-terms">
+      Resolution outcome recorded: {resolution_outcome}.<br/>
+      {offer_line}
+    </div>
+  </div>
+
+  <div class="contract-section">
+    <div class="contract-section-title">2. NEXT LEGAL ACTIONS</div>
+    <ol class="contract-list">
+      <li>Credit bureau reporting is initiated.</li>
+      <li>Formal legal notice is issued within 7 days.</li>
+      <li>Recovery proceedings may be filed before the competent court.</li>
+      <li>Further collection actions continue as permitted by law.</li>
+    </ol>
+  </div>
+
+  <div class="contract-section">
+    <div class="contract-section-title">3. REINSTATEMENT OPTION</div>
+    <div class="contract-note">
+      If you choose to settle after escalation, contact the collections desk immediately
+      to request a revised settlement review.
+    </div>
+  </div>
+
+  <div class="contract-acceptance">
+    <div class="contract-acceptance-label">Download this legal notice PDF for your records.</div>
+    <button class="contract-download-btn" onclick="downloadContractPDF(this)">Download PDF</button>
+  </div>
+</div>"""
 
 
 # ──────────────────────────────────────────────────────────── #
@@ -654,6 +812,13 @@ async def run_final_notice_stage(payload: Any) -> dict:
             "source": "voice_call_handoff",
         })
 
+    summary_voice_to_chat = HandoffBuilder.build(ctx, Stage.RESOLUTION, Stage.FINAL_NOTICE)
+    resolution_handoff_tokens = estimate_tokens(summary_voice_to_chat.to_prompt_block())
+    recap_message = _format_voice_to_chat_recap(
+        summary_voice_to_chat,
+        str(prior_resolution.get("outcome", "unknown")),
+    )
+
     loop = SelfLearningLoop("FinalNoticeAgent")
     llm_iter = iter(llm_mock)
     outcome = "escalated"
@@ -662,35 +827,65 @@ async def run_final_notice_stage(payload: Any) -> dict:
 
     # Emit the final notice opening immediately (agent generates it from handoff context)
     if use_real_chat:
-        # Trigger the agent with a synthetic "stage_open" so it produces the notice
-        opening_resp = await agent.process(ctx, "[STAGE_OPEN: Generate the final notice now.]")
-        opening_msg = opening_resp.message
-        # Tell the UI we're now in final_notice (re-enables the input)
-        await push_stage_event(workflow_id, "final_notice_opened",
-                               "The resolution call has concluded. Your final notice is below.")
-        await push_agent_message(workflow_id, opening_msg, Stage.FINAL_NOTICE.value)
+        sess = await session_get(borrower_id) or {}
+        recap_sent = bool(sess.get("final_notice_recap_sent"))
+        opened_event_sent = bool(sess.get("final_notice_opened_sent"))
+        opening_msg_sent = bool(sess.get("final_notice_opening_msg_sent"))
 
-        # If the opening itself resolved (e.g. Claude saw implied acceptance from the
-        # voice handoff and called the tool), capture the contract and short-circuit.
-        if opening_resp.should_advance and opening_resp.metadata.get("contract_html"):
-            _contract_html = opening_resp.metadata["contract_html"]
-            outcome = ctx.final_notice_outcome or "resolved"
-            await push_stage_event(workflow_id, f"final_notice_{outcome}",
-                                   "Case resolved." if outcome == "resolved"
-                                   else "This matter has been escalated to legal.")
-            if _contract_html:
-                await push_stage_event(workflow_id, "contract", _contract_html)
-            # Skip the interactive turn loop — the stage is already closed
-            final_status = "RESOLVED" if outcome == "resolved" else "LEGAL"
-            await session_update(borrower_id, stage="FINAL_NOTICE", status=final_status)
-            await upsert_borrower_case(borrower_id, "FINAL_NOTICE", final_status)
-            fn_turns = ctx.conversation_history[prior_len:]
-            return {
-                "outcome": outcome,
-                "conversation": fn_turns,
-                "tokens_in": cost.total_tokens.input_tokens,
-                "tokens_out": cost.total_tokens.output_tokens,
-            }
+        # 1) Enable chat as soon as the voice call is finished.
+        # This must happen before we push recap/question messages.
+        if not opened_event_sent:
+            await push_stage_event(
+                workflow_id,
+                "final_notice_opened",
+                "The resolution call has concluded. Your final notice is below.",
+            )
+            await session_update(borrower_id, final_notice_opened_sent=True)
+
+        # 2) Show the call recap once.
+        if not recap_sent:
+            await push_agent_message(
+                workflow_id,
+                recap_message,
+                Stage.FINAL_NOTICE.value,
+            )
+            ctx.conversation_history.append({
+                "role": "assistant",
+                "content": recap_message,
+                "stage": Stage.FINAL_NOTICE.value,
+                "timestamp": _ts(),
+                "source": "voice_to_chat_recap",
+            })
+            await session_update(borrower_id, final_notice_recap_sent=True)
+
+        # 3) Ask for explicit agreement once.
+        # If the UI already received the opening question (e.g. reconnect/retry),
+        # don't re-generate or re-send it.
+        if not opening_msg_sent:
+            opening_resp = await agent.process(ctx, "[STAGE_OPEN: Generate the final notice now.]")
+            opening_msg = opening_resp.message
+            asyncio.create_task(log_interaction(
+                borrower_id=borrower_id,
+                agent_name="FinalNoticeAgent",
+                agent_version="v1.0",
+                prompt_version=get_prompt_version("FinalNoticeAgent"),
+                model=agent.model,
+                model_params={"temperature": 0.05, "max_tokens": 2000, "kind": "stage_open"},
+                input_text="[STAGE_OPEN: Generate the final notice now.]",
+                output_text=opening_msg,
+                structured_context={
+                    "intent": "final_notice_opening",
+                    "stage": Stage.FINAL_NOTICE.value,
+                    "prior_resolution": prior_resolution.get("outcome"),
+                },
+                decision="continue",
+                confidence=0.0,
+                trace_id=workflow_id,
+                input_tokens=(opening_resp.tokens_used.input_tokens if opening_resp.tokens_used else 0),
+                output_tokens=(opening_resp.tokens_used.output_tokens if opening_resp.tokens_used else 0),
+            ))
+            await push_agent_message(workflow_id, opening_msg, Stage.FINAL_NOTICE.value)
+            await session_update(borrower_id, final_notice_opening_msg_sent=True)
 
     for turn in range(5):
         user_input = await _get_user_input(
@@ -726,6 +921,29 @@ async def run_final_notice_stage(payload: Any) -> dict:
             "stage": Stage.FINAL_NOTICE.value, "timestamp": _ts(),
             "advanced": resp.should_advance,
         })
+        _tin = resp.tokens_used.input_tokens if resp.tokens_used else 0
+        _tout = resp.tokens_used.output_tokens if resp.tokens_used else 0
+        asyncio.create_task(log_interaction(
+            borrower_id=borrower_id,
+            agent_name="FinalNoticeAgent",
+            agent_version="v1.0",
+            prompt_version=get_prompt_version("FinalNoticeAgent"),
+            model=agent.model,
+            model_params={"temperature": 0.05, "max_tokens": 2000},
+            input_text=user_input,
+            output_text=resp.message,
+            structured_context={
+                "intent": "final_notice_turn",
+                "stage": Stage.FINAL_NOTICE.value,
+                "prior_resolution": prior_resolution.get("outcome"),
+            },
+            decision=("resolved" if resp.should_advance and ctx.final_notice_outcome == "resolved"
+                      else ("escalated" if resp.should_advance else "continue")),
+            confidence=1.0 if resp.should_advance else 0.0,
+            trace_id=workflow_id,
+            input_tokens=_tin,
+            output_tokens=_tout,
+        ))
 
         # Stash contract_html before advancing so we can push it after the
         # resolution status event (ensures correct render order in the UI)
@@ -748,6 +966,13 @@ async def run_final_notice_stage(payload: Any) -> dict:
         await push_stage_event(workflow_id, f"final_notice_{outcome}",
                                "Case resolved." if outcome == "resolved"
                                else "This matter has been escalated to legal.")
+        if outcome != "resolved" and not _contract_html:
+            _contract_html = _build_legal_notice_contract_html(
+                borrower_id=borrower_id,
+                loan_id=data.get("loan_id", ""),
+                resolution_outcome=str(prior_resolution.get("outcome", "unknown")),
+                offer=ctx.resolution_offer,
+            )
         # Push contract AFTER the resolution status so it renders last
         if _contract_html:
             await push_stage_event(workflow_id, "contract", _contract_html)
@@ -785,11 +1010,14 @@ async def run_final_notice_stage(payload: Any) -> dict:
             "intent": outcome,
             "stage": Stage.FINAL_NOTICE.value,
             "prior_resolution": prior_resolution.get("outcome"),
+            "received_handoff_tokens": int(resolution_handoff_tokens),
+            "handoff_from": "ResolutionAgent",
         },
         decision=outcome,
         confidence=1.0,
-        input_tokens=cost.total_tokens.input_tokens,
-        output_tokens=cost.total_tokens.output_tokens,
+        trace_id=workflow_id,
+        input_tokens=0,
+        output_tokens=0,
     ))
 
     return {

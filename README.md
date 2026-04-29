@@ -158,6 +158,42 @@ Seed used for pipeline split:
 .venv/bin/python scripts/rerun_pipeline_from_snapshot.py --agent-name FinalNoticeAgent --run-id pipeline-a66a2020 --transcripts-file /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/transcripts.json --allow-overwrite-run-id --output-json /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/rerun_result.json
 ```
 
+Important: the `pipeline-a66a2020` bundle is a replay/simulator run and should **not** be used as convergence evidence for real-LLM behavior (`llm_calls=0`, `v2_execution_mode=simulator`).
+
+## 9) Real-LLM Convergence Evidence (Assignment Deliverable)
+
+The assignment-grade claim is: the self-learning loop converges under **live** conditions.
+Only runs that satisfy all of the following are eligible:
+
+- `status == completed`
+- `llm_calls > 0`
+- `v2_execution_mode == real`
+
+Generate an evidence report from MongoDB:
+
+```bash
+.venv/bin/python scripts/report_live_convergence.py \
+  --limit 300 \
+  --min-runs-per-agent 3 \
+  --stability-window 3 \
+  --min-avg-delta 0.02 \
+  --stability-epsilon 0.05 \
+  --output-json artifacts/live_convergence_report.json
+```
+
+How the script marks convergence per agent:
+
+- At least `min-runs-per-agent` eligible live runs exist.
+- Recent deltas are non-negative.
+- Recent average delta (`v2_resolution_rate - v1_resolution_rate`) meets threshold.
+- Consecutive recent deltas are stable within `stability-epsilon`.
+
+The report writes:
+
+- `overall_converged`: true only if all agents with live runs pass.
+- `agents.<Agent>.criteria`: pass/fail for each convergence criterion.
+- `excluded_runs`: completed runs that were excluded (for example simulator/fallback/no-LLM runs).
+
 # UI Screenshots
 Home Page:
 

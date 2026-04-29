@@ -98,6 +98,17 @@ class FinalNoticeAgent(BaseAgent):
                     metadata={"contract_html": contract_html} if contract_html else {},
                 )
 
+            # Explicit disagreement should immediately escalate and trigger
+            # the legal notice PDF (handled by temporal layer).
+            if self._is_rejection_signal(user_input) or self._is_escalation_signal(user_input):
+                context.final_notice_outcome = "escalated"
+                return AgentResponse(
+                    message=self._build_escalation_message(context),
+                    should_advance=True,
+                    context_update={"current_stage": Stage.ESCALATED},
+                    tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
+                )
+
             attempts = max(context.final_notice_confirmation_attempts, 1)
 
             if attempts == 1:
@@ -149,12 +160,17 @@ class FinalNoticeAgent(BaseAgent):
             .strip()
         )
 
+        # Stage-open should only present the notice and request explicit
+        # confirmation in chat. Never auto-close from handoff context alone.
+        if stage_open:
+            outcome = None
+
         asked_before = context.final_notice_confirmation_asked
 
         # Opening notice must ask confirmation and initialize attempt counter.
         if stage_open and outcome is None:
             if not self._contains_accept_question(clean_message):
-                clean_message = f"{clean_message}\n\nDo you accept this offer?".strip()
+                clean_message = f"{clean_message}\n\nDo you agree to this?".strip()
             context.final_notice_confirmation_asked = True
             context.final_notice_confirmation_attempts = max(
                 context.final_notice_confirmation_attempts, 1
@@ -260,6 +276,7 @@ class FinalNoticeAgent(BaseAgent):
             "do you accept" in t
             or "accept this offer" in t
             or "can you confirm you agree" in t
+            or "do you agree to this" in t
         )
 
     def _strip_accept_question(self, text: str) -> str:
@@ -296,7 +313,7 @@ class FinalNoticeAgent(BaseAgent):
     def _build_attempt_two_message(self, context: ConversationContext) -> str:
         return (
             f"Final offer remains unchanged: {self._offer_summary(context)}. "
-            "Do you accept this offer?"
+            "Do you agree to this?"
         )
 
     def _build_attempt_three_message(self, context: ConversationContext, renegotiation: bool) -> str:
@@ -311,7 +328,7 @@ class FinalNoticeAgent(BaseAgent):
             f"{lead}\n\n"
             f"Final offer: {self._offer_summary(context)}\n\n"
             f"{self._consequence_document()}\n\n"
-            "Do you accept this offer now?"
+            "Do you agree to this now?"
         )
 
     def _build_escalation_message(self, context: ConversationContext) -> str:

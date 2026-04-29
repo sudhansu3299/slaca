@@ -227,36 +227,9 @@ class CollectionsWorkflow:
 
         # ── Outcome-based transition (diagram: deal agreed vs no deal) ────
 
-        if r_result["outcome"] == "committed":
-            # deal agreed → EXIT: Log agreement
-            await workflow.execute_activity(
-                "log_agreement",
-                {
-                    "borrower_id": inp.borrower_id,
-                    "loan_id": inp.loan_id,
-                    "workflow_id": inp.workflow_id,
-                    "call_id": r_result.get("call_id", ""),
-                    "offer": r_result.get("offer"),
-                    "conversation": r_result.get("conversation", []),
-                },
-                start_to_close_timeout=SIDE_EFFECT_TIMEOUT,
-                retry_policy=DEFAULT_RETRY,
-            )
-            total_turns = (
-                len(a_result.get("conversation", []))
-                + len(r_result.get("conversation", []))
-            )
-            return CollectionsOutput(
-                borrower_id=inp.borrower_id, loan_id=inp.loan_id,
-                final_stage=Stage.COMPLETE.value,
-                outcome="resolved",
-                total_turns=total_turns,
-                total_tokens_in=total_in, total_tokens_out=total_out,
-                handoff_tokens=handoff_tokens,
-                assessment_attempts=assessment_attempts,
-            )
-
-        # no deal (refused / no_outcome) → Final Notice Agent
+        # Always proceed to Final Notice after resolution (including committed),
+        # so chat can show call recap, ask explicit agreement confirmation, and
+        # then issue settlement/legal PDF deterministically.
 
         await workflow.sleep(STAGE_GAP)
 

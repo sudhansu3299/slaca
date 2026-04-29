@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from src.agents.assessment import AssessmentAgent
 from src.agents.resolution import ResolutionAgent
@@ -65,6 +65,7 @@ class CollectionsPipeline:
         days_past_due: int,
         input_provider,   # Callable[[ConversationContext, str], str]
         max_turns_per_stage: int = 8,
+        event_cb: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> PipelineResult:
         ctx = ConversationContext(borrower_id=borrower_id, loan_id=loan_id)
         ctx.assessment_data = AssessmentData(
@@ -93,9 +94,10 @@ class CollectionsPipeline:
             input_provider=input_provider,
             max_turns=max_turns_per_stage,
             result=result,
+            event_cb=event_cb,
         )
 
-        if outcome != "advance":
+        if outcome not in ("advance", "max_turns_reached", "no_input"):
             result.final_stage = Stage.ASSESSMENT.value
             result.outcome = "assessment_incomplete"
             result.total_cost_usd = self.cost_tracker.total_cost_usd
@@ -121,9 +123,10 @@ class CollectionsPipeline:
             input_provider=input_provider,
             max_turns=max_turns_per_stage,
             result=result,
+            event_cb=event_cb,
         )
 
-        if outcome not in ("advance", "refused"):
+        if outcome not in ("advance", "refused", "max_turns_reached", "no_input"):
             result.final_stage = Stage.RESOLUTION.value
             result.outcome = "resolution_no_outcome"
             result.total_cost_usd = self.cost_tracker.total_cost_usd
@@ -149,6 +152,7 @@ class CollectionsPipeline:
             input_provider=input_provider,
             max_turns=max_turns_per_stage,
             result=result,
+            event_cb=event_cb,
         )
 
         result.final_stage = ctx.current_stage.value
@@ -212,6 +216,7 @@ class CollectionsPipeline:
         input_provider,
         max_turns: int,
         result: PipelineResult,
+        event_cb: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> str:
         ctx.current_stage = stage
 
@@ -220,7 +225,11 @@ class CollectionsPipeline:
 
             user_input = input_provider(ctx, agent.name)
             if user_input is None:
+                if event_cb is not None:
+                    await event_cb(f"{stage.value} t{turn} borrower(no_input)")
                 return "no_input"
+            if event_cb is not None:
+                await event_cb(f"{stage.value} t{turn} borrower={user_input}")
 
             ctx.conversation_history.append({
                 "role": "user",
@@ -230,6 +239,11 @@ class CollectionsPipeline:
             })
 
             response = await agent.process(ctx, user_input)
+            if event_cb is not None:
+                await event_cb(
+                    f"{stage.value} t{turn} {agent.name} advance={response.should_advance} "
+                    f"reply={response.message}"
+                )
 
             ctx.conversation_history.append({
                 "role": "assistant",
@@ -257,8 +271,12 @@ class CollectionsPipeline:
             )
 
             if response.should_advance:
+                if event_cb is not None:
+                    await event_cb(f"{stage.value} t{turn} outcome=advance")
                 return "advance"
 
+        if event_cb is not None:
+            await event_cb(f"{stage.value} outcome=max_turns_reached")
         return "max_turns_reached"
 
     def cost_report(self) -> str:

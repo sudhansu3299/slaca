@@ -1,0 +1,558 @@
+{
+  "generated_at_utc": "2026-04-29T11:53:41.224144+00:00",
+  "filters": {
+    "agent": "",
+    "limit": 50,
+    "required_status": "completed",
+    "required_v2_execution_mode": "real",
+    "required_llm_calls_gt": 0
+  },
+  "thresholds": {
+    "min_runs_per_agent": 3,
+    "stability_window": 3,
+    "min_avg_delta": 0.02,
+    "stability_epsilon": 0.05
+  },
+  "counts": {
+    "runs_scanned": 30,
+    "eligible_real_runs": 0,
+    "excluded_runs": 30,
+    "agents_with_real_runs": 0
+  },
+  "overall_converged": false,
+  "agents": {},
+  "real_runs_by_agent": {},
+  "excluded_runs": [
+    {
+      "run_id": "pipeline-d23f80af",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T09:06:35.028763+00:00",
+      "completed_at": "2026-04-22T09:07:05.171909+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": null,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-60386933",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T09:08:01.494632+00:00",
+      "completed_at": "2026-04-22T09:08:32.019224+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": null,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-34410a09",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T09:18:46.080503+00:00",
+      "completed_at": "2026-04-22T09:19:11.218590+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": null,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-55c22378",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T09:44:16.135032+00:00",
+      "completed_at": "2026-04-22T09:44:53.660659+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-42d7485a",
+      "agent_target": "FinalNoticeAgent",
+      "started_at": "2026-04-22T10:07:19.831896+00:00",
+      "completed_at": "2026-04-22T10:08:00.055884+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": null,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-370e898e",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T11:04:53.382964+00:00",
+      "completed_at": "2026-04-22T11:05:46.591260+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.462,
+      "resolution_delta": 0.462,
+      "p_value": 0.1771,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-6c8c2315",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T11:05:48.105191+00:00",
+      "completed_at": "2026-04-22T11:06:34.818714+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.462,
+      "v2_resolution_rate": 0.4,
+      "resolution_delta": -0.062,
+      "p_value": 0.9727,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-0e537402",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-22T11:13:23.490670+00:00",
+      "completed_at": "2026-04-22T11:14:17.889490+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.4,
+      "v2_resolution_rate": 0.3,
+      "resolution_delta": -0.1,
+      "p_value": 0.9122,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-389fe2f9",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:17:13.744018+00:00",
+      "completed_at": "2026-04-22T11:18:11.230113+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.1,
+      "v2_resolution_rate": 0.462,
+      "resolution_delta": 0.362,
+      "p_value": 0.1747,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-07775dbd",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:18:13.225418+00:00",
+      "completed_at": "2026-04-22T11:18:59.429304+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.462,
+      "v2_resolution_rate": 0.462,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-2f3d9258",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:19:01.440478+00:00",
+      "completed_at": "2026-04-22T11:19:45.882274+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.462,
+      "v2_resolution_rate": 0.462,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-ff7a1121",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:19:47.753842+00:00",
+      "completed_at": "2026-04-22T11:20:25.101963+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.462,
+      "v2_resolution_rate": 0.6,
+      "resolution_delta": 0.138,
+      "p_value": 0.8707,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-5dcc0c21",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:43:13.732176+00:00",
+      "completed_at": "2026-04-22T11:43:59.206761+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.6,
+      "v2_resolution_rate": 0.6,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-a336290e",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:44:49.997600+00:00",
+      "completed_at": "2026-04-22T11:45:23.494562+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.6,
+      "v2_resolution_rate": 0.6,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-bed0ec93",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:48:06.711538+00:00",
+      "completed_at": "2026-04-22T11:48:49.483011+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.6,
+      "v2_resolution_rate": 0.6,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-9e9caabf",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T11:53:53.722647+00:00",
+      "completed_at": "2026-04-22T11:54:39.766306+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.6,
+      "v2_resolution_rate": 0.6,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-66b0ff28",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-22T15:07:11.467772+00:00",
+      "completed_at": "2026-04-22T15:07:59.110389+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.6,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": -0.6,
+      "p_value": 0.5169,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-86570f4c",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T13:47:55.682887+00:00",
+      "completed_at": "2026-04-25T13:47:55.693620+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "fallback_counterfactual",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=fallback_counterfactual"
+      ]
+    },
+    {
+      "run_id": "pipeline-mock-res-20260425135229",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T13:52:29.189968+00:00",
+      "completed_at": "2026-04-25T13:52:29.202534+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "real",
+      "v1_resolution_rate": 1.0,
+      "v2_resolution_rate": 0.583,
+      "resolution_delta": -0.417,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0"
+      ]
+    },
+    {
+      "run_id": "pipeline-mock-res-20260425135243",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T13:52:43.214015+00:00",
+      "completed_at": "2026-04-25T13:52:43.223870+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "real",
+      "v1_resolution_rate": 1.0,
+      "v2_resolution_rate": 0.583,
+      "resolution_delta": -0.417,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0"
+      ]
+    },
+    {
+      "run_id": "pipeline-mock-res-20260425135338",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T13:53:38.904799+00:00",
+      "completed_at": "2026-04-25T13:53:38.919676+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "real",
+      "v1_resolution_rate": 1.0,
+      "v2_resolution_rate": 0.583,
+      "resolution_delta": -0.417,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0"
+      ]
+    },
+    {
+      "run_id": "pipeline-mock-res-20260425135806",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T13:58:07.039210+00:00",
+      "completed_at": "2026-04-25T13:58:07.050678+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "real",
+      "v1_resolution_rate": 1.0,
+      "v2_resolution_rate": 0.583,
+      "resolution_delta": -0.417,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0"
+      ]
+    },
+    {
+      "run_id": "mock-run-29a922",
+      "agent_target": "AssessmentAgent",
+      "started_at": "2026-04-25T14:50:52.511271+00:00",
+      "completed_at": "2026-04-25T14:50:52.511271+00:00",
+      "decision": "promote",
+      "llm_calls": 15,
+      "pipeline_cost_usd": 12.3,
+      "v2_execution_mode": "",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 0.0,
+      "resolution_delta": 0.0,
+      "p_value": null,
+      "real_eligibility_reasons": [
+        "v2_execution_mode=missing"
+      ]
+    },
+    {
+      "run_id": "pipeline-mock-res-20260425194940",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-25T19:49:40.948665+00:00",
+      "completed_at": "2026-04-25T19:49:41.060696+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 1.0,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 0.0,
+      "p_value": 1.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-43020190",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-26T01:43:37.013185+00:00",
+      "completed_at": "2026-04-26T01:44:04.147280+00:00",
+      "decision": "adopt",
+      "llm_calls": 37,
+      "pipeline_cost_usd": 0.031379,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.133,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 0.867,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-1719d89a",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-26T01:47:59.782895+00:00",
+      "completed_at": "2026-04-26T01:48:20.470456+00:00",
+      "decision": "reject",
+      "llm_calls": 26,
+      "pipeline_cost_usd": 0.025393,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.2,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 0.8,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-mockdemo",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-26T04:02:57.798277+00:00",
+      "completed_at": "2026-04-26T04:02:58.019413+00:00",
+      "decision": "reject",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.35,
+      "v2_resolution_rate": 0.5,
+      "resolution_delta": 0.15,
+      "p_value": 0.6311,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-6fd4096b",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-26T04:03:29.364270+00:00",
+      "completed_at": "2026-04-26T04:03:50.058980+00:00",
+      "decision": "adopt",
+      "llm_calls": 26,
+      "pipeline_cost_usd": 0.025597,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.2,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 0.8,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-55414e4c",
+      "agent_target": "ResolutionAgent",
+      "started_at": "2026-04-26T04:03:50.687981+00:00",
+      "completed_at": "2026-04-26T04:04:10.842204+00:00",
+      "decision": "adopt",
+      "llm_calls": 36,
+      "pipeline_cost_usd": 0.027071,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.133,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 0.867,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "v2_execution_mode=simulator"
+      ]
+    },
+    {
+      "run_id": "pipeline-a66a2020",
+      "agent_target": "FinalNoticeAgent",
+      "started_at": "2026-04-26T08:29:23.407946+00:00",
+      "completed_at": "2026-04-26T08:29:23.621442+00:00",
+      "decision": "adopt",
+      "llm_calls": 0,
+      "pipeline_cost_usd": 0.0,
+      "v2_execution_mode": "simulator",
+      "v1_resolution_rate": 0.0,
+      "v2_resolution_rate": 1.0,
+      "resolution_delta": 1.0,
+      "p_value": 0.0,
+      "real_eligibility_reasons": [
+        "llm_calls<=0",
+        "v2_execution_mode=simulator"
+      ]
+    }
+  ]
+}

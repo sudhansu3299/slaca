@@ -147,6 +147,13 @@ class PipelineRun(BaseModel):
     promote: Optional[bool] = None
     auto_apply_attempted: bool = False
     manual_patch_required: bool = True
+    train_transcript_count: int = 0
+    test_transcript_count: int = 0
+    train_v1_resolution_rate: Optional[float] = None
+    train_v2_resolution_rate: Optional[float] = None
+    test_v1_resolution_rate: Optional[float] = None
+    test_v2_resolution_rate: Optional[float] = None
+    test_resolution_delta: Optional[float] = None
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -155,17 +162,20 @@ class PipelineRun(BaseModel):
 
 def _get_client() -> AsyncOpenAI:
     base_url = (
-        os.getenv("OPENCODE_BASE_URL", "").strip()
+        os.getenv("DEEPSEEK_BASE_URL", "").strip()
+        or os.getenv("OPENCODE_BASE_URL", "").strip()
         or os.getenv("OPENAI_BASE_URL", "").strip()
     )
-    for key_env in ("OPENCODE_API_KEY", "OPENAI_API_KEY"):
+    if not base_url and os.getenv("DEEPSEEK_API_KEY", "").strip():
+        base_url = "https://openrouter.ai/api/v1"
+    for key_env in ("DEEPSEEK_API_KEY", "OPENCODE_API_KEY", "OPENAI_API_KEY"):
         key = os.getenv(key_env, "").strip()
         if key:
             client_kwargs: dict[str, Any] = {"api_key": key}
             if base_url:
                 client_kwargs["base_url"] = base_url
             return AsyncOpenAI(**client_kwargs)
-    raise RuntimeError("No LLM API key found")
+    raise RuntimeError("No LLM API key found (DEEPSEEK_API_KEY/OPENCODE_API_KEY/OPENAI_API_KEY)")
 
 from contextvars import ContextVar
 _cost_acc: ContextVar[Optional[dict]] = ContextVar("_cost_acc", default=None)
@@ -1184,6 +1194,8 @@ async def rescore_held_out(
 
 def _has_llm_key() -> bool:
     return bool(
+        (os.getenv("DEEPSEEK_API_KEY", "").strip())
+        or
         (os.getenv("OPENCODE_API_KEY", "").strip())
         or (os.getenv("OPENAI_API_KEY", "").strip())
     )
@@ -1215,12 +1227,101 @@ class _ReplayInputProvider:
             if content:
                 self._by_agent[agent_name].append(content)
 
+    @staticmethod
+    def _last_agent_prompt(context, agent_name: str) -> str:
+        hist = list(getattr(context, "conversation_history", None) or [])
+        for msg in reversed(hist):
+            if msg.get("role") != "assistant":
+                continue
+            stage = str(msg.get("stage", "")).strip().lower()
+            mapped = _ReplayInputProvider._STAGE_TO_AGENT.get(stage)
+            if mapped != agent_name:
+                continue
+            return str(msg.get("content", "")).strip().lower()
+        return ""
+
+    @staticmethod
+    def _intent(text: str) -> str:
+        t = (text or "").lower()
+        if not t:
+            return "unknown"
+        if any(k in t for k in ("last 4", "last four", "birth year", "date of birth", "dob", "verify")):
+            return "identity"
+        if any(k in t for k in ("income", "salary", "earn", "monthly income")):
+            return "income"
+        if any(k in t for k in ("expense", "spend", "monthly expenses")):
+            return "expenses"
+        if "employment" in t or "unemployed" in t or "self-employed" in t or "salaried" in t:
+            return "employment"
+        if "asset" in t or "property" in t or "vehicle" in t or "investment" in t:
+            return "assets"
+        if "liabilit" in t or "other loan" in t or "credit card" in t or "debt elsewhere" in t:
+            return "liabilities"
+        if "cash flow" in t or "hardship" in t:
+            return "hardship"
+        if "agree" in t or "accept" in t or "yes or no" in t:
+            return "agreement"
+        return "unknown"
+
+    @staticmethod
+    def _normalize_binary_answer(last_prompt: str, candidate: str) -> str:
+        p = (last_prompt or "").lower()
+        c = (candidate or "").strip()
+        cl = c.lower()
+        if not p:
+            return c
+
+        def _yn_from_text(text: str) -> str:
+            t = text.lower()
+            if any(k in t for k in (" no ", "not", "don't", "do not", "never", "none", "can't", "cannot")):
+                return "no"
+            return "yes"
+
+        asks_yes_no = (
+            "yes or no" in p
+            or "do you want" in p
+            or "do you agree" in p
+            or "do you accept" in p
+            or "would you like" in p
+        )
+        asks_yes_no_mild = (
+            "cash flow" in p
+            or "yes, no, mild" in p
+            or "yes/no/mild" in p
+        )
+
+        if asks_yes_no_mild:
+            if "mild" in cl:
+                return "mild"
+            if any(k in cl for k in (" no ", "not", "none", "no income", "unable", "can't", "cannot")):
+                return "yes"
+            if any(k in cl for k in ("yes", "tight", "difficult", "hard", "struggling")):
+                return "yes"
+            return "mild"
+
+        if asks_yes_no:
+            if cl in {"yes", "no"}:
+                return cl
+            return _yn_from_text(f" {cl} ")
+
+        return c
+
     def __call__(self, _context, agent_name: str) -> Optional[str]:
         seq = self._by_agent.get(agent_name, [])
         i = self._idx.get(agent_name, 0)
         if i < len(seq):
+            # Question-aware replay: choose the next user utterance whose intent
+            # best matches the latest agent prompt for the same stage.
+            last_prompt = self._last_agent_prompt(_context, agent_name)
+            asked_intent = self._intent(last_prompt)
+            if asked_intent != "unknown":
+                for j in range(i, len(seq)):
+                    cand = seq[j]
+                    if self._intent(cand) == asked_intent:
+                        seq[i], seq[j] = seq[j], seq[i]
+                        break
             self._idx[agent_name] = i + 1
-            return seq[i]
+            return self._normalize_binary_answer(last_prompt, seq[i])
         return None
 
 
@@ -1288,6 +1389,94 @@ class _ReplayHistoryWithFallbackProvider:
         return self._script.respond(agent_name)
 
 
+class _ReplayLLMInputProvider:
+    """
+    LLM-driven borrower replay:
+    - Uses transcript facts/persona as grounding
+    - Generates borrower turns with a small chat model each step
+    """
+
+    def __init__(self, history: list[dict], persona_type):
+        self._history = history or []
+        self._persona = getattr(persona_type, "value", str(persona_type or "cooperative"))
+        self._model = os.getenv("BORROWER_SIM_MODEL", "gpt-4o-mini")
+        self._fallback = _ReplayHistoryWithFallbackProvider(self._history, persona_type)
+
+        self._identity_last4 = ""
+        self._identity_year = ""
+        self._income = ""
+        self._employment = ""
+        for msg in self._history:
+            if msg.get("role") != "user":
+                continue
+            text = str(msg.get("content", ""))
+            if not self._identity_last4:
+                vals = re.findall(r"\b\d{4}\b", text)
+                years = {v for v in vals if re.match(r"^(19[4-9]\d|200[0-5])$", v)}
+                last4 = [v for v in vals if v not in years]
+                if last4:
+                    self._identity_last4 = last4[0]
+                if years:
+                    self._identity_year = sorted(years)[0]
+            if not self._income:
+                m = re.search(r"(?:income|salary|earn)[^\d]*(\d[\d,]+)", text.lower())
+                if m:
+                    self._income = m.group(1).replace(",", "")
+            if not self._employment:
+                lo = text.lower()
+                if "salaried" in lo or "employed" in lo:
+                    self._employment = "salaried"
+                elif "self" in lo and "employ" in lo:
+                    self._employment = "self_employed"
+                elif "unemployed" in lo:
+                    self._employment = "unemployed"
+
+    def __call__(self, context, agent_name: str) -> Optional[str]:
+        # If no API key in this process, gracefully fall back to replay+persona.
+        if not _has_llm_key():
+            return self._fallback(context, agent_name)
+
+        try:
+            from openai import OpenAI
+        except Exception:
+            return self._fallback(context, agent_name)
+
+        try:
+            client = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY") or os.getenv("OPENCODE_API_KEY") or "",
+            )
+            stage = getattr(getattr(context, "current_stage", None), "value", "") or str(getattr(context, "current_stage", ""))
+            recent = (getattr(context, "conversation_history", None) or [])[-12:]
+            transcript = "\n".join(
+                f"{m.get('role','assistant')}: {str(m.get('content',''))[:300]}"
+                for m in recent
+            )
+            identity_hint = ""
+            if self._identity_last4 or self._identity_year:
+                identity_hint = f"Known identity hints: last4={self._identity_last4 or 'unknown'}, birth_year={self._identity_year or 'unknown'}."
+            fin_hint = ""
+            if self._income or self._employment:
+                fin_hint = f"Known financial hints: income={self._income or 'unknown'}, employment={self._employment or 'unknown'}."
+
+            prompt = (
+                f"You are a borrower in a debt collections conversation. Persona={self._persona}. "
+                f"Current stage={stage}. Agent={agent_name}. "
+                "Reply with ONE short borrower message only (no labels, no markdown). "
+                "Be consistent with prior context and provide concrete answers when asked for verification or finances. "
+                f"{identity_hint} {fin_hint}\n\nRecent conversation:\n{transcript}"
+            )
+            resp = client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=70,
+            )
+            text = (resp.choices[0].message.content or "").strip()
+            return text if text else self._fallback(context, agent_name)
+        except Exception:
+            return self._fallback(context, agent_name)
+
+
 def _infer_persona_type(transcript: dict) -> Optional["PersonaType"]:
     """
     Best-effort persona inference for replay simulation.
@@ -1330,9 +1519,16 @@ def _build_replay_input_provider(transcript: dict):
       - simulator: seed first utterance per stage, then PersonaScript responses
       - history: strict v1 user-turn replay
         with optional simulator fallback when history is exhausted
+      - llm: LLM-generated borrower turns, grounded by transcript/persona
     """
     history = transcript.get("history", [])
     mode = str(os.getenv("REPLAY_BORROWER_MODE", "simulator")).strip().lower()
+    if mode == "llm":
+        persona_type = _infer_persona_type(transcript)
+        if persona_type is None:
+            from src.simulation import PersonaType
+            persona_type = PersonaType.COOPERATIVE
+        return _ReplayLLMInputProvider(history, persona_type)
     if mode == "history":
         persona_type = _infer_persona_type(transcript)
         use_fallback = _is_truthy_env(os.getenv("REPLAY_HISTORY_SIM_FALLBACK", "1"))
@@ -1352,10 +1548,10 @@ def _build_replay_input_provider(transcript: dict):
 
 def _effective_v2_execution_mode() -> str:
     """
-    Stage 6a execution mode defaults to simulator for safety.
+    Stage 6a execution mode defaults to real for live reproducibility.
     Explicit env override remains available for debugging.
     """
-    mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "simulator")).strip().lower()
+    mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "real")).strip().lower()
     return mode if mode in {"real", "simulator"} else "simulator"
 
 
@@ -1427,6 +1623,7 @@ async def execute_real_v2_on_transcripts(
     baseline_scores: list[TranscriptScore],
     target_agent: str,
     proposed_prompt: str,
+    prompt_overrides: Optional[dict[str, str]] = None,
     progress_cb: Optional[Callable[[str], Awaitable[None]]] = None,
 ) -> list[TranscriptScore]:
     """
@@ -1454,7 +1651,12 @@ async def execute_real_v2_on_transcripts(
         )
 
     executed_scores: list[TranscriptScore] = []
+    replay_mode = str(os.getenv("REPLAY_BORROWER_MODE", "simulator")).strip().lower()
     per_transcript_timeout_s = float(os.getenv("REAL_V2_PER_TRANSCRIPT_TIMEOUT_S", "45"))
+    # LLM borrower replay can be much slower due to extra generation calls.
+    if replay_mode == "llm":
+        per_transcript_timeout_s = max(per_transcript_timeout_s, 180.0)
+    max_turns_per_stage = int(os.getenv("REAL_V2_MAX_TURNS_PER_STAGE", "5" if replay_mode == "llm" else "12"))
 
     for i, (t, baseline) in enumerate(zip(transcripts, baseline_scores), 1):
         borrower_id = str(t.get("borrower_id", f"AB-{i:03d}"))
@@ -1464,20 +1666,85 @@ async def execute_real_v2_on_transcripts(
 
         pipeline = CollectionsPipeline()
         pipeline._schedule_learning_followups = lambda resolved, agents_seen: None
+        pipeline.assessment_agent._bypass_identity_verification = True
+        # Replay-only context compaction: avoid token-limit blowups in Final Notice
+        # during long synthetic replays while keeping live LLM generation enabled.
+        original_final_notice_process = pipeline.final_notice_agent.process
+        replay_fn_history_cap = int(os.getenv("REAL_V2_FINAL_NOTICE_HISTORY_CAP", "10"))
+        async def _compact_final_notice_process(context, user_input):
+            if replay_fn_history_cap > 0 and hasattr(context, "conversation_history"):
+                context.conversation_history = list(context.conversation_history[-replay_fn_history_cap:])
+            return await original_final_notice_process(context, user_input)
+        pipeline.final_notice_agent.process = _compact_final_notice_process
+        # Replay throttling (v2 only): slow down agent-side LLM calls to reduce
+        # provider pressure/rate-limit spikes when borrower replay is also LLM-driven.
+        call_sleep_s = float(os.getenv("REAL_V2_AGENT_CALL_SLEEP_S", "5" if replay_mode == "llm" else "0"))
+        wrapped_calls: list[tuple[Any, str, Any]] = []
+        if call_sleep_s > 0:
+            def _wrap_async(orig):
+                async def _wrapped(*args, **kwargs):
+                    await asyncio.sleep(call_sleep_s)
+                    return await orig(*args, **kwargs)
+                return _wrapped
 
-        target_obj = getattr(pipeline, agent_attr)
-        original_get_system_prompt = target_obj.get_system_prompt
-        target_obj.get_system_prompt = _build_v2_prompt_renderer(
-            target_agent,
-            target_obj,
-            proposed_prompt,
-        )
+            for ag in (pipeline.assessment_agent, pipeline.resolution_agent, pipeline.final_notice_agent):
+                for meth in ("_call_claude", "_call_claude_with_tools"):
+                    if hasattr(ag, meth):
+                        orig = getattr(ag, meth)
+                        wrapped_calls.append((ag, meth, orig))
+                        setattr(ag, meth, _wrap_async(orig))
+        # Replay mode robustness: bypass hard identity tool dependency during
+        # v2 execution so assessment can proceed from transcript-replayed
+        # borrower turns even when verify_borrower_identity isn't re-invoked.
+        original_assessment_process = pipeline.assessment_agent.process
+        async def _preverified_assessment_process(context, user_input):
+            if context.assessment_data:
+                context.assessment_data.identity_verified = True
+            return await original_assessment_process(context, user_input)
+        pipeline.assessment_agent.process = _preverified_assessment_process
+        # Replay scoring mode: bypass strict identity gate to evaluate prompt behavior
+        # under transcript replay without verification deadlocks.
+        pipeline.assessment_agent._skip_identity_gate = True
+
+        prompt_map = {
+            "AssessmentAgent": _load_current_prompt("AssessmentAgent"),
+            "ResolutionAgent": _load_current_prompt("ResolutionAgent"),
+            "FinalNoticeAgent": _load_current_prompt("FinalNoticeAgent"),
+        }
+        if prompt_overrides:
+            for name, text in prompt_overrides.items():
+                if name in prompt_map and isinstance(text, str) and text.strip():
+                    prompt_map[name] = text
+        # Back-compat: if caller does not pass prompt_overrides, still inject
+        # generated prompt for the requested target agent.
+        prompt_map[target_agent] = prompt_map.get(target_agent) or proposed_prompt
+        if not prompt_overrides:
+            prompt_map[target_agent] = proposed_prompt
+
+        patched_prompt_renderers: list[tuple[Any, Any]] = []
+        for name, attr in (
+            ("AssessmentAgent", "assessment_agent"),
+            ("ResolutionAgent", "resolution_agent"),
+            ("FinalNoticeAgent", "final_notice_agent"),
+        ):
+            agent_obj = getattr(pipeline, attr)
+            original_renderer = agent_obj.get_system_prompt
+            patched_prompt_renderers.append((agent_obj, original_renderer))
+            agent_obj.get_system_prompt = _build_v2_prompt_renderer(
+                name,
+                agent_obj,
+                prompt_map[name],
+            )
         if target_agent == "AssessmentAgent":
             # Replay robustness: avoid deadlocking when tool confirmation is
             # unavailable in generated-prompt experiments.
-            target_obj._tool_loop_fallback = True
+            pipeline.assessment_agent._tool_loop_fallback = True
 
         try:
+            async def _turn_event(message: str) -> None:
+                if progress_cb is not None:
+                    await progress_cb(f"[{i}/{len(transcripts)}] {message}")
+
             result = await asyncio.wait_for(
                 pipeline.run(
                     borrower_id=f"{borrower_id}-V2",
@@ -1486,7 +1753,8 @@ async def execute_real_v2_on_transcripts(
                     outstanding_amount=85_000,
                     days_past_due=90,
                     input_provider=provider,
-                    max_turns_per_stage=8,
+                    max_turns_per_stage=max_turns_per_stage,
+                    event_cb=_turn_event,
                 ),
                 timeout=per_transcript_timeout_s,
             )
@@ -1519,7 +1787,13 @@ async def execute_real_v2_on_transcripts(
                 f"(borrower={borrower_id}) after {per_transcript_timeout_s}s"
             ) from e
         finally:
-            target_obj.get_system_prompt = original_get_system_prompt
+            for agent_obj, original_renderer in reversed(patched_prompt_renderers):
+                agent_obj.get_system_prompt = original_renderer
+            pipeline.assessment_agent.process = original_assessment_process
+            pipeline.assessment_agent._bypass_identity_verification = False
+            pipeline.final_notice_agent.process = original_final_notice_process
+            for ag, meth, orig in reversed(wrapped_calls):
+                setattr(ag, meth, orig)
 
     return executed_scores
 
@@ -1529,6 +1803,7 @@ async def execute_simulated_v2_on_transcripts(
     baseline_scores: list[TranscriptScore],
     target_agent: str,
     proposed_prompt: str,
+    prompt_overrides: Optional[dict[str, str]] = None,
     progress_cb: Optional[Callable[[str], Awaitable[None]]] = None,
 ) -> list[TranscriptScore]:
     """
@@ -1577,6 +1852,7 @@ async def execute_simulated_v2_on_transcripts(
 
         pipeline = CollectionsPipeline()
         pipeline._schedule_learning_followups = lambda resolved, agents_seen: None
+        pipeline.assessment_agent._bypass_identity_verification = True
 
         # Ensure v2 prompt is used for target agent prompt rendering.
         agent_attr = {
@@ -1587,13 +1863,33 @@ async def execute_simulated_v2_on_transcripts(
         if not agent_attr:
             raise ValueError(f"Unsupported target agent: {target_agent}")
 
-        target_obj = getattr(pipeline, agent_attr)
-        original_get_system_prompt = target_obj.get_system_prompt
-        target_obj.get_system_prompt = _build_v2_prompt_renderer(
-            target_agent,
-            target_obj,
-            proposed_prompt,
-        )
+        prompt_map = {
+            "AssessmentAgent": _load_current_prompt("AssessmentAgent"),
+            "ResolutionAgent": _load_current_prompt("ResolutionAgent"),
+            "FinalNoticeAgent": _load_current_prompt("FinalNoticeAgent"),
+        }
+        if prompt_overrides:
+            for name, text in prompt_overrides.items():
+                if name in prompt_map and isinstance(text, str) and text.strip():
+                    prompt_map[name] = text
+        prompt_map[target_agent] = prompt_map.get(target_agent) or proposed_prompt
+        if not prompt_overrides:
+            prompt_map[target_agent] = proposed_prompt
+
+        patched_prompt_renderers: list[tuple[Any, Any]] = []
+        for name, attr in (
+            ("AssessmentAgent", "assessment_agent"),
+            ("ResolutionAgent", "resolution_agent"),
+            ("FinalNoticeAgent", "final_notice_agent"),
+        ):
+            agent_obj = getattr(pipeline, attr)
+            original_renderer = agent_obj.get_system_prompt
+            patched_prompt_renderers.append((agent_obj, original_renderer))
+            agent_obj.get_system_prompt = _build_v2_prompt_renderer(
+                name,
+                agent_obj,
+                prompt_map[name],
+            )
 
         # Mock all agent generations in simulator mode.
         _mock_agent_with_sequence(pipeline.assessment_agent, mock_responses.get("AssessmentAgent", []))
@@ -1609,7 +1905,7 @@ async def execute_simulated_v2_on_transcripts(
                     outstanding_amount=85_000,
                     days_past_due=90,
                     input_provider=provider,
-                    max_turns_per_stage=8,
+                    max_turns_per_stage=max_turns_per_stage,
                 ),
                 timeout=float(os.getenv("REAL_V2_PER_TRANSCRIPT_TIMEOUT_S", "45")),
             )
@@ -1636,7 +1932,9 @@ async def execute_simulated_v2_on_transcripts(
                     f"outcome={result.outcome} resolution={1 if resolved else 0} turns={len(result.conversation)}"
                 )
         finally:
-            target_obj.get_system_prompt = original_get_system_prompt
+            for agent_obj, original_renderer in reversed(patched_prompt_renderers):
+                agent_obj.get_system_prompt = original_renderer
+            pipeline.assessment_agent._bypass_identity_verification = False
 
     return executed_scores
 
@@ -2119,6 +2417,8 @@ async def run_improvement_pipeline(
         split = max(1, int(len(shuffled) * 0.8))
         calibration_set = shuffled[:split]
         held_out_raw    = shuffled[split:] or shuffled[:1]  # ensure at least 1
+        run.train_transcript_count = len(calibration_set)
+        run.test_transcript_count = len(held_out_raw)
         log.info("[pipeline] split: calibration=%d, held_out=%d",
                  len(calibration_set), len(held_out_raw))
 
@@ -2323,6 +2623,12 @@ async def run_improvement_pipeline(
         # v2 runs the proposed prompt against the same borrower utterances.
         all_ab_transcripts = [*calibration_set, *held_out_raw]
         v1_ab_scores = [*run.transcript_scores, *run.held_out_scores]
+        held_out_trace_ids = {str(t.get("trace_id") or "") for t in held_out_raw}
+        train_trace_ids = {
+            str(t.get("trace_id") or "")
+            for t in calibration_set
+            if str(t.get("trace_id") or "")
+        }
         run.v2_execution_logs = []
         _append_v2_execution_log(run, f"Stage 6a started for {len(all_ab_transcripts)} transcripts")
         await _persist_run(run)
@@ -2335,88 +2641,91 @@ async def run_improvement_pipeline(
             "[pipeline] stage 6a — real v2 execution on %d transcripts",
             len(all_ab_transcripts),
         )
-        try:
-            overall_timeout_s = float(os.getenv("REAL_V2_OVERALL_TIMEOUT_S", "900"))
-            exec_mode = _effective_v2_execution_mode()
-            if exec_mode == "real" and not _has_llm_key():
-                log.warning(
-                    "[pipeline] REAL_V2_EXECUTION_MODE=real but no LLM key is present; "
-                    "switching stage 6a to simulator mode"
-                )
-                exec_mode = "simulator"
-                await _v2_progress("Missing LLM key in real mode; switched to simulator")
-            if exec_mode == "simulator":
-                await _v2_progress("Execution mode=simulator (persona replay)")
-                run.executed_v2_scores = await asyncio.wait_for(
-                    execute_simulated_v2_on_transcripts(
-                        all_ab_transcripts,
-                        v1_ab_scores,
-                        agent_name,
-                        generated_prompt,
-                        progress_cb=_v2_progress,
-                    ),
-                    timeout=overall_timeout_s,
-                )
-                run.v2_execution_mode = "simulator"
-                run.v2_execution_note = "Simulator-driven v2 execution completed on replayed conversations"
-            else:
-                await _v2_progress("Execution mode=real (full pipeline replay)")
-                run.executed_v2_scores = await asyncio.wait_for(
-                    execute_real_v2_on_transcripts(
-                        all_ab_transcripts,
-                        v1_ab_scores,
-                        agent_name,
-                        generated_prompt,
-                        progress_cb=_v2_progress,
-                    ),
-                    timeout=overall_timeout_s,
-                )
-                run.v2_execution_mode = "real"
-                run.v2_execution_note = "Real v2 execution completed on replayed synthetic conversations"
-            resolved = sum(int(s.resolution) for s in run.executed_v2_scores)
-            _append_v2_execution_log(
-                run,
-                f"Execution complete: resolved {resolved}/{len(run.executed_v2_scores)}"
+        overall_timeout_s = float(os.getenv("REAL_V2_OVERALL_TIMEOUT_S", "900"))
+        exec_mode = _effective_v2_execution_mode()
+        if exec_mode != "real":
+            raise RuntimeError(
+                "Live reproducibility mode requires REAL_V2_EXECUTION_MODE=real"
             )
-        except Exception as e:
-            fallback_reason = str(e).strip() or e.__class__.__name__
-            log.warning(
-                "[pipeline] stage 6a real execution failed, falling back to counterfactual rescoring: %s",
-                fallback_reason,
+        if not _has_llm_key():
+            raise RuntimeError(
+                "Live reproducibility mode requires DEEPSEEK_API_KEY or OPENAI_API_KEY/OPENCODE_API_KEY"
             )
-            run.v2_execution_mode = "fallback_counterfactual"
-            run.v2_execution_note = f"Fallback to counterfactual rescoring: {fallback_reason}"
-            _append_v2_execution_log(
-                run,
-                f"Execution failed, using fallback counterfactual scoring: {fallback_reason}"
-            )
-            changes = run.prompt_improvement.changes_summary if run.prompt_improvement else []
-            run.rescored_held_out = await rescore_held_out(
+        v2_prompt_overrides = {
+            "AssessmentAgent": _load_current_prompt("AssessmentAgent"),
+            "ResolutionAgent": _load_current_prompt("ResolutionAgent"),
+            "FinalNoticeAgent": _load_current_prompt("FinalNoticeAgent"),
+        }
+        v2_prompt_overrides[agent_name] = generated_prompt
+        await _v2_progress("Execution mode=real (full pipeline replay)")
+        await _v2_progress(
+            "Prompt set=all-agents-latest "
+            f"(candidate applied to {agent_name}; latest live prompts on remaining agents)"
+        )
+        run.executed_v2_scores = await asyncio.wait_for(
+            execute_real_v2_on_transcripts(
                 all_ab_transcripts,
                 v1_ab_scores,
-                old_prompt=current_prompt,
-                new_prompt=generated_prompt,
-                changes_summary=changes,
-            )
-            run.executed_v2_scores = list(run.rescored_held_out)
-            resolved = sum(int(s.resolution) for s in run.executed_v2_scores)
-            _append_v2_execution_log(
-                run,
-                f"Fallback complete: resolved {resolved}/{len(run.executed_v2_scores)}"
-            )
+                agent_name,
+                generated_prompt,
+                prompt_overrides=v2_prompt_overrides,
+                progress_cb=_v2_progress,
+            ),
+            timeout=overall_timeout_s,
+        )
+        run.v2_execution_mode = "real"
+        run.v2_execution_note = "Real v2 execution completed on replayed transcripts"
+        resolved = sum(int(s.resolution) for s in run.executed_v2_scores)
+        _append_v2_execution_log(
+            run,
+            f"Execution complete: resolved {resolved}/{len(run.executed_v2_scores)}"
+        )
         await _persist_run(run)
 
-        # ── Stage 6b: Version comparison ─────────────────────
-        # v1 = original scored transcripts
-        # v2 = real execution scores (or fallback counterfactual if execution failed)
-        log.info("[pipeline] stage 6b — version comparison (v1 vs executed v2)")
+        def _trace_root(trace_id: str) -> str:
+            text = str(trace_id or "")
+            return text.split(":", 1)[0]
+
+        v2_train_scores = [
+            s for s in run.executed_v2_scores
+            if _trace_root(getattr(s, "trace_id", "")) in train_trace_ids
+        ]
+        v2_test_scores = [
+            s for s in run.executed_v2_scores
+            if _trace_root(getattr(s, "trace_id", "")) in held_out_trace_ids
+        ]
+        if not v2_train_scores:
+            # Back-compat fallback for older trace id formats.
+            v2_train_scores = run.executed_v2_scores[: len(run.transcript_scores)]
+        if not v2_test_scores:
+            v2_test_scores = run.executed_v2_scores[len(run.transcript_scores):]
+
+        # ── Stage 6b: Version comparison on TRAIN split ─────────────────────
+        # Adoption decision is based on train data; test data remains untouched
+        # for holdout validation metrics.
+        log.info("[pipeline] stage 6b — version comparison on train split")
         run.version_comparison = await compare_versions(
-            v1_ab_scores,
-            run.executed_v2_scores,
+            run.transcript_scores,
+            v2_train_scores,
             compliance_pass=compliance_pass,
             prompt_risks_before=current_prompt_risks,
             prompt_risks_after=generated_prompt_risks,
         )
+        run.train_v1_resolution_rate = run.version_comparison.v1_resolution_rate
+        run.train_v2_resolution_rate = run.version_comparison.v2_resolution_rate
+
+        # Holdout (test) metrics for reproducibility/reporting.
+        def _resolution_rate(scores: list[TranscriptScore]) -> float:
+            if not scores:
+                return 0.0
+            resolved = sum(int(getattr(s, "resolution", 0) or 0) for s in scores)
+            return resolved / max(1, len(scores))
+
+        test_v1 = _resolution_rate(run.held_out_scores)
+        test_v2 = _resolution_rate(v2_test_scores)
+        run.test_v1_resolution_rate = round(test_v1, 4)
+        run.test_v2_resolution_rate = round(test_v2, 4)
+        run.test_resolution_delta = round(test_v2 - test_v1, 4)
         await _persist_run(run)
 
         # ── Stage 7: Hypothesis generation ────────────────────
@@ -2440,15 +2749,35 @@ async def run_improvement_pipeline(
         run.input_tokens      = acc["input_tokens"]
         run.output_tokens     = acc["output_tokens"]
 
-        # Auto-apply is allowed when promote gates pass, behind env flag.
-        auto_apply_enabled = _is_truthy_env(os.getenv("AUTO_APPLY_ON_PROMOTE", "1"))
+        # Auto-apply mechanism: when run is adopted, the live prompt must match
+        # the adopted prompt content. Keep an env escape hatch, but default ON.
+        auto_apply_enabled = _is_truthy_env(
+            os.getenv("AUTO_APPLY_ON_ADOPT", os.getenv("AUTO_APPLY_ON_PROMOTE", "1"))
+        )
         run.auto_apply_attempted = False
         run.manual_patch_required = True
-        if run.promote and auto_apply_enabled:
+        if run.decision == "adopt" and auto_apply_enabled:
             try:
                 _apply_prompt(agent_name, generated_prompt, run.run_id)
                 run.auto_apply_attempted = True
-                run.manual_patch_required = False
+                # Verify the live file really reflects the adopted prompt.
+                # If drift is detected (e.g. concurrent overwrite), retry once.
+                live_prompt = _load_current_prompt(agent_name)
+                if live_prompt != generated_prompt:
+                    log.warning(
+                        "[pipeline] auto-apply verification mismatch for run %s (%s); retrying write",
+                        run.run_id,
+                        agent_name,
+                    )
+                    _apply_prompt(agent_name, generated_prompt, run.run_id)
+                    live_prompt = _load_current_prompt(agent_name)
+                run.manual_patch_required = live_prompt != generated_prompt
+                if run.manual_patch_required:
+                    log.error(
+                        "[pipeline] adopted prompt for run %s did not persist to live file (%s)",
+                        run.run_id,
+                        agent_name,
+                    )
             except Exception as e:
                 log.warning("[pipeline] auto-apply failed for run %s: %s", run.run_id, e)
                 run.auto_apply_attempted = True

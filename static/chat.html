@@ -634,6 +634,8 @@ function setStage(s) {
   pillEl.className = `pill ${s}`;
   pillEl.textContent = s.replace("_", " ");
   nameEl.textContent = STAGE_NAMES[s] || "";
+  // Defensive UI sync: once we leave resolution, never keep ringing banner visible.
+  if (s !== "resolution") setVoice(false);
 }
 
 function setVoice(on) {

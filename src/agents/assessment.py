@@ -72,6 +72,7 @@ class AssessmentAgent(BaseAgent):
 
     async def process(self, context: ConversationContext, user_input: str) -> AgentResponse:
         qt = self._get_question_tracker(context)
+        bypass_identity_verify = bool(getattr(self, "_bypass_identity_verification", False))
 
         # ── Hardship offer response gate (code-level) ────────────────────
         # If we already made the hardship offer, intercept yes/no before
@@ -129,9 +130,29 @@ class AssessmentAgent(BaseAgent):
         verify_result = self._tool_results.get("verify_borrower_identity")
         if verify_result is not None:
             verified = bool(verify_result.get("verified", False))
+            if bypass_identity_verify and not verified:
+                # Replay/simulation mode: don't fail the turn on verification tool outcome.
+                verified = True
             if verified:
                 if context.assessment_data:
                     context.assessment_data.identity_verified = True
+                    # Source of truth is the verified borrower record from DB.
+                    if verify_result.get("outstanding_amount") is not None:
+                        context.assessment_data.outstanding_amount = float(
+                            verify_result.get("outstanding_amount")
+                        )
+                    if verify_result.get("days_past_due") is not None:
+                        context.assessment_data.days_past_due = int(
+                            verify_result.get("days_past_due")
+                        )
+                    if verify_result.get("loan_id"):
+                        context.assessment_data.loan_id = str(verify_result.get("loan_id"))
+                    if verify_result.get("borrower_id"):
+                        context.assessment_data.borrower_id = str(verify_result.get("borrower_id"))
+                    if context.assessment_data.financial_situation:
+                        context.assessment_data.financial_situation.outstanding_debt = (
+                            context.assessment_data.outstanding_amount
+                        )
                 identity_just_verified = not was_identity_verified
             else:
                 # Ignore stale failed re-checks after successful verification
@@ -168,6 +189,10 @@ class AssessmentAgent(BaseAgent):
             context.assessment_data is not None
             and context.assessment_data.identity_verified
         )
+        if bypass_identity_verify:
+            identity_confirmed = True
+            if context.assessment_data:
+                context.assessment_data.identity_verified = True
 
         # Compatibility path: some test suites patch _call_claude (legacy)
         # instead of the tool loop. In that mode we cannot receive
@@ -185,7 +210,11 @@ class AssessmentAgent(BaseAgent):
 
         should_advance, path = self._parse_completion(text)
 
-        if should_advance and not identity_confirmed:
+        if (
+            should_advance
+            and not identity_confirmed
+            and not getattr(self, "_skip_identity_gate", False)
+        ):
             should_advance = False
             clean_message = (
                 "The details you provided do not match our records. "

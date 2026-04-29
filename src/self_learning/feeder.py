@@ -32,7 +32,7 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
-TRIGGER_EVERY_N_CONVERSATIONS: int = max(60, _int_env("AUTO_PIPELINE_TRIGGER_EVERY", 60))
+TRIGGER_EVERY_N_CONVERSATIONS: int = max(1, _int_env("AUTO_PIPELINE_TRIGGER_EVERY", 30))
 TRANSCRIPT_BATCH_SIZE: int = max(1, _int_env("AUTO_PIPELINE_TRANSCRIPT_BATCH", 30))
 ALL_AGENTS: list[str] = [
     "AssessmentAgent",

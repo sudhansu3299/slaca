@@ -259,6 +259,32 @@ class TestProcessMocked:
         assert response.message.lower().startswith("identity verified")
 
     @pytest.mark.asyncio
+    async def test_updates_outstanding_from_verified_identity_record(self):
+        agent = AssessmentAgent()
+        ctx = make_context()
+        assert ctx.assessment_data.outstanding_amount == 85_000
+
+        async def _mock(*args, **kwargs):
+            agent._tool_results = {
+                "verify_borrower_identity": {
+                    "verified": True,
+                    "borrower_id": "BRW-EXAMPLE",
+                    "loan_id": "LN-4412",
+                    "outstanding_amount": 210_000,
+                    "days_past_due": 120,
+                }
+            }
+            return "What is your monthly income?", TokenUsage(110, 24)
+
+        with patch.object(agent, "_call_claude_with_tools", _mock):
+            await agent.process(ctx, "last 4 is 4412 and birth year is 1990")
+
+        assert ctx.assessment_data.identity_verified is True
+        assert ctx.assessment_data.outstanding_amount == 210_000
+        assert ctx.assessment_data.days_past_due == 120
+        assert ctx.assessment_data.loan_id == "LN-4412"
+
+    @pytest.mark.asyncio
     async def test_output_within_token_limit(self):
         agent = AssessmentAgent()
         ctx = make_context()

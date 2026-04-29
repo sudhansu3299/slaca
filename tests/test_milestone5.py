@@ -128,6 +128,20 @@ class TestSystemPrompt:
 
 class TestFinalNoticeProcess:
     @pytest.mark.asyncio
+    async def test_stage_open_never_auto_resolves(self):
+        agent = FinalNoticeAgent()
+        ctx = make_final_notice_context()
+
+        with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
+            "Confirmed. COLLECTIONS_COMPLETE"
+        )):
+            response = await agent.process(ctx, "[STAGE_OPEN: Generate the final notice now.]")
+
+        assert response.should_advance is False
+        assert ctx.final_notice_outcome is None
+        assert "do you agree to this" in response.message.lower()
+
+    @pytest.mark.asyncio
     async def test_resolves_on_complete_marker(self):
         agent = FinalNoticeAgent()
         ctx = make_final_notice_context()
@@ -217,17 +231,11 @@ class TestFinalNoticeProcess:
         llm_mock = AsyncMock(return_value=("unused", TokenUsage(input_tokens=1, output_tokens=1)))
         with patch.object(agent, "_call_claude_with_tools", llm_mock):
             first = await agent.process(ctx, "no")
-            second = await agent.process(ctx, "no")
-            third = await agent.process(ctx, "no")
 
-        assert first.should_advance is False
-        assert "final offer remains unchanged" in first.message.lower()
-        assert second.should_advance is False
-        assert "final confirmation" in second.message.lower()
-        assert "legal consequences notice" in second.message.lower()
-        assert ctx.final_notice_reask_used is True
-        assert third.should_advance is True
+        # Explicit "no" should immediately escalate (binary agreement flow).
+        assert first.should_advance is True
         assert ctx.final_notice_outcome == "escalated"
+        assert "legal consequences notice" in first.message.lower()
         llm_mock.assert_not_called()
 
     @pytest.mark.asyncio

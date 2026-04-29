@@ -331,6 +331,14 @@ body { background:var(--bg); color:var(--text); font-family:'Public Sans','Helve
 .dec-rolled { color:var(--amber); }
 .dec-observed { color:var(--muted); }
 .agent-insight { margin-top:10px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; }
+.convergence-wrap { margin-top:10px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; }
+.convergence-stack { margin-top:10px; display:flex; flex-direction:column; gap:12px; }
+.convergence-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+.convergence-title { font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:700; }
+.convergence-meta { font-size:11px; color:var(--muted2); }
+.convergence-chart { width:100%; height:220px; border:1px solid var(--border); border-radius:10px; background:var(--surface); overflow:hidden; }
+.convergence-foot { margin-top:8px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.conv-tip { position:fixed; z-index:10000; background:var(--surface3); color:var(--text); border:1px solid var(--border2); border-radius:8px; padding:6px 8px; font-size:11px; pointer-events:none; box-shadow:0 8px 22px rgba(0,0,0,.25); white-space:nowrap; display:none; }
 
 /* empty / loading */
 .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
@@ -441,15 +449,15 @@ body { background:var(--bg); color:var(--text); font-family:'Public Sans','Helve
             Use one of the two actions below:
             <br>1) Generate synthetic transcripts only (increments Redis call counter)
             <br>2) Generate transcripts and run the improvement pipeline loop
-            <br><br>Auto-feeder triggers at 60 completed conversations.
+            <br><br>Auto-feeder triggers at 30 completed conversations.
           </div>
           <div class="fld">
             <label>Total Transcripts</label>
-            <input type="number" id="genTotal" value="60" min="8" max="200">
+            <input type="number" id="genTotal" value="30" min="8" max="200">
         </div>
         <div class="fld">
           <label>Batch Size</label>
-          <input type="number" id="genBatch" value="8" min="4" max="50">
+            <input type="number" id="genBatch" value="30" min="4" max="80">
         </div>
         <div class="fld">
           <label>Learning Agent Focus</label>
@@ -716,6 +724,22 @@ body { background:var(--bg); color:var(--text); font-family:'Public Sans','Helve
     </div>
   </div>
 
+  <div id="testTrendSection" style="margin-top:16px;display:none">
+    <div class="sec-hdr" style="margin-bottom:10px">
+      <div>
+        <span class="sec-title">Test Set Resolution Trend (Holdout 20%)</span>
+        <span class="sec-note">Before vs after prompt update</span>
+      </div>
+    </div>
+    <div class="detail-card">
+      <div class="detail-card-body open" style="display:block">
+        <div id="testResolutionChart" class="metric-plot-canvas">
+          <div class="empty" style="padding:20px">Loading test-set trend…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /pane-pipeline -->
 
 <!-- ═══════════════════════════════════════════════════
@@ -861,7 +885,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
   document.getElementById('pane-'+name).classList.add('active');
-  if (name === 'pipeline') { loadPipelineRuns(); loadFeederStatus(); loadCostBreakdown(); }
+  if (name === 'pipeline') { loadPipelineRuns(); loadFeederStatus(); loadCostBreakdown(); loadTestResolutionTrend(); }
   if (name === 'generate') loadGenerationJobs();
   if (name === 'analytics') loadAgentAnalytics();
 }
@@ -994,9 +1018,21 @@ function conversationTokenLines(tokensByAgent) {
     ['FinalNoticeAgent', 'Final notice agent'],
   ];
   return rows.map(([key, label]) => {
-    const n = Number(tba[key]?.total_tokens ?? 0);
-    return `<div class="tok-spent-line">${label}: ${n.toLocaleString()} tokens spent</div>`;
+    const calls = Number(tba[key]?.calls ?? 0);
+    const vals = (tba[key]?.input_tokens_per_call || []).map(n => Number(n)).filter(n => Number.isFinite(n));
+    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+    const avgText = vals.length ? Math.round(avg).toLocaleString() : '—';
+    return `<div class="tok-spent-line">${label}: avg ${avgText} input tokens per LLM call${calls ? ` (${calls} calls)` : ''}</div>`;
   }).join('');
+}
+function summaryContextTokenLines(summaryContextTokens) {
+  const sct = summaryContextTokens || {};
+  const a = Number(sct.after_assessment_agent ?? 0);
+  const r = Number(sct.after_resolution_agent ?? 0);
+  return [
+    `After assessment agent: ${a.toLocaleString()} tokens`,
+    `After resolution agent: ${r.toLocaleString()} tokens`,
+  ].map(x => `<div class="tok-spent-line">${x}</div>`).join('');
 }
 function buildEvalCard(ev, idx) {
   const cid = 'ec'+idx, overall = ev.overall_score;
@@ -1055,6 +1091,8 @@ function buildEvalCard(ev, idx) {
       </div>
       <div class="panel-title" style="margin-top:2px;font-size:10px;color:var(--muted2)">This conversation</div>
       <div style="margin:0 0 10px 0;line-height:1.45" class="tok-spent-block">${conversationTokenLines(ev.tokens_by_agent)}</div>
+      <div class="panel-title" style="margin-top:2px;font-size:10px;color:var(--muted2)">Summary context length</div>
+      <div style="margin:0 0 10px 0;line-height:1.45" class="tok-spent-block">${summaryContextTokenLines(ev.summary_context_tokens)}</div>
       <div id="turns-${cid}">${turns||'<div class="c-muted" style="font-size:11px">No transcript</div>'}</div>
       ${ev.llm_feedback?`<div class="feedback-box"><strong>Judge reasoning:</strong> ${ev.llm_feedback}</div>`:''}
     </div>
@@ -1193,6 +1231,7 @@ async function loadPipelineRuns() {
 
     // Render score trend table (last 10)
     renderScoreTrend(visibleRuns, total);
+    loadTestResolutionTrend();
   } catch(e) { console.warn('loadPipelineRuns error', e); }
 }
 
@@ -1724,7 +1763,7 @@ async function loadFeederStatus() {
   try {
     const d = await fetch('/api/admin/pipeline/feeder-status').then(r=>r.json());
     const count     = d.call_count ?? 0;
-    const threshold = d.trigger_every_n ?? 60;
+    const threshold = d.trigger_every_n ?? 30;
     const perAgentRemaining = d.transcripts_until_next_by_agent || {};
     const perAgentCounts = d.agent_transcript_counts || {};
     const nextIn = (typeof d.next_trigger_in === 'number' && d.next_trigger_in >= 0)
@@ -1819,6 +1858,74 @@ function renderScoreTrend(runs, totalCount = runs.length) {
   section.style.display = runs.length > 0 ? 'block' : 'none';
 }
 
+function renderTestResolutionTrend(points) {
+  const section = document.getElementById('testTrendSection');
+  const chartEl = document.getElementById('testResolutionChart');
+  if (!section || !chartEl) return;
+  if (!points || !points.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const width = Math.max(720, chartEl.clientWidth || 720);
+  const height = 230;
+  const pad = { t: 18, r: 18, b: 34, l: 42 };
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+
+  const before = points.map(p => Number(p.test_v1_resolution_rate || 0));
+  const after = points.map(p => Number(p.test_v2_resolution_rate || 0));
+  const all = [...before, ...after];
+  const minY = Math.max(0, Math.min(...all) - 0.05);
+  const maxY = Math.min(1, Math.max(...all) + 0.05);
+  const ySpan = Math.max(0.1, maxY - minY);
+
+  const x = (i) => pad.l + (points.length <= 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
+  const y = (v) => pad.t + (1 - ((v - minY) / ySpan)) * innerH;
+  const linePath = (arr) => arr.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+
+  const beforePath = linePath(before);
+  const afterPath = linePath(after);
+  const labels = points.map((_, i) => `<text x="${x(i).toFixed(1)}" y="${height - 12}" text-anchor="middle" fill="var(--muted)" font-size="9">#${i + 1}</text>`).join('');
+  const dots = points.map((p, i) => {
+    const tip = `${p.run_id} | before ${(before[i] * 100).toFixed(1)}% | after ${(after[i] * 100).toFixed(1)}%`;
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(after[i]).toFixed(1)}" r="3.2" fill="var(--green)"><title>${tip}</title></circle>`;
+  }).join('');
+
+  chartEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Test set resolution trend">
+      <line x1="${pad.l}" y1="${pad.t + innerH}" x2="${width - pad.r}" y2="${pad.t + innerH}" stroke="var(--border)"/>
+      <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t + innerH}" stroke="var(--border)"/>
+      <path d="${beforePath}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <path d="${afterPath}" fill="none" stroke="var(--green)" stroke-width="2.4"/>
+      ${dots}
+      ${labels}
+      <text x="${pad.l}" y="${pad.t - 4}" fill="var(--muted)" font-size="10">Resolution %</text>
+      <text x="${width - 175}" y="${pad.t + 10}" fill="var(--accent)" font-size="10">Before (test)</text>
+      <text x="${width - 175}" y="${pad.t + 24}" fill="var(--green)" font-size="10">After v2 (test)</text>
+    </svg>
+  `;
+}
+
+async function loadTestResolutionTrend() {
+  const section = document.getElementById('testTrendSection');
+  const chartEl = document.getElementById('testResolutionChart');
+  if (!section || !chartEl) return;
+  chartEl.innerHTML = `<div class="empty" style="padding:20px"><div class="spinner"></div>Loading test-set trend…</div>`;
+  try {
+    const d = await fetch('/api/admin/pipeline/test-resolution-trend?limit=20').then(r => r.json());
+    const points = d.points || [];
+    if (!points.length) {
+      section.style.display = 'none';
+      return;
+    }
+    renderTestResolutionTrend(points);
+  } catch (e) {
+    chartEl.innerHTML = `<div class="empty" style="padding:20px">Error loading test-set trend.</div>`;
+  }
+}
+
 // ── GENERATION ────────────────────────────────────────────
 let _genPollTimer = null;
 let _currentJobId = null;
@@ -1832,10 +1939,10 @@ async function triggerGeneration(runPipeline) {
   btnLearn.disabled = true;
   activeBtn.textContent = '⏳ Starting…';
 
-  const pipelineEvery = parseInt(document.getElementById('genBatch').value) || 8;
+  const pipelineEvery = parseInt(document.getElementById('genBatch').value) || 30;
   const body = {
-    total:              parseInt(document.getElementById('genTotal').value) || 60,
-    batch_size:         parseInt(document.getElementById('genBatch').value) || 8,
+    total:              parseInt(document.getElementById('genTotal').value) || 30,
+    batch_size:         parseInt(document.getElementById('genBatch').value) || 60,
     agent_target:       document.getElementById('genAgent').value,
     run_pipeline_every: pipelineEvery,
     run_pipeline:       !!runPipeline,
@@ -1990,6 +2097,170 @@ function _decisionClass(decision) {
   return 'dec-observed';
 }
 
+function _escAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showConvTip(evt, text) {
+  const el = document.getElementById('convTip');
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.left = (evt.clientX + 12) + 'px';
+  el.style.top = (evt.clientY + 12) + 'px';
+}
+
+function hideConvTip() {
+  const el = document.getElementById('convTip');
+  if (!el) return;
+  el.style.display = 'none';
+}
+
+function _renderConvergenceChart(convergence) {
+  const points = convergence?.points || [];
+  if (!points.length) {
+    return `<div class="convergence-stack"><div class="convergence-wrap" style="margin-top:0"><div class="empty" style="padding:18px">No real-run convergence data yet.</div></div></div>`;
+  }
+
+  const width = 900, height = 220;
+  const m = {top: 16, right: 20, bottom: 34, left: 42};
+  const pw = width - m.left - m.right;
+  const ph = height - m.top - m.bottom;
+  const deltaPoints = points.filter(p => String(p?.decision || '').toLowerCase().startsWith('adopt'));
+  const nDelta = deltaPoints.length;
+  const deltaNoData = nDelta === 0;
+  const xAtDelta = (i) => m.left + (nDelta === 1 ? pw / 2 : (i * pw / (nDelta - 1)));
+
+  // ── Chart 1: Δ resolution rate vs baseline v1 ─────────────────────────
+  const yDeltaAt = (v) => {
+    const clamped = Math.max(-1, Math.min(1, Number(v) || 0));
+    return m.top + (1 - ((clamped + 1) / 2)) * ph;
+  };
+  const deltaPath = deltaPoints.map((p, i) => `${i===0?'M':'L'} ${xAtDelta(i).toFixed(2)} ${yDeltaAt(p.resolution_delta).toFixed(2)}`).join(' ');
+  const deltaRolling = deltaPoints.map((_, i) => {
+    const s = Math.max(0, i - 2);
+    const slice = deltaPoints.slice(s, i + 1).map(p => Number(p.resolution_delta) || 0);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+  const deltaRollingPath = deltaRolling.map((v, i) => `${i===0?'M':'L'} ${xAtDelta(i).toFixed(2)} ${yDeltaAt(v).toFixed(2)}`).join(' ');
+  const deltaYTicks = [-1, -0.5, 0, 0.5, 1];
+  const deltaGrid = deltaYTicks.map(t => {
+    const y = yDeltaAt(t);
+    const stroke = t === 0 ? 'var(--accent)' : 'var(--border)';
+    const strokeWidth = t === 0 ? 1.5 : 1;
+    return `<line x1="${m.left}" y1="${y}" x2="${width-m.right}" y2="${y}" stroke="${stroke}" stroke-width="${strokeWidth}"/><text x="${m.left-8}" y="${y+4}" text-anchor="end" fill="var(--muted2)" font-size="10">${Math.round(t*100)}%</text>`;
+  }).join('');
+  const deltaMarks = deltaPoints.map((p, i) => {
+    const x = xAtDelta(i), y = yDeltaAt(p.resolution_delta);
+    const c = 'var(--green)';
+    const lbl = p.version || p.run_id || `r${i+1}`;
+    const dPct = (Number(p.resolution_delta || 0) * 100);
+    const deltaTxt = `${dPct >= 0 ? '+' : ''}${dPct.toFixed(1)}%`;
+    const tip = _escAttr(`${lbl}: Δ vs its v1 ${deltaTxt}`);
+    return `<circle cx="${x}" cy="${y}" r="6" fill="transparent" onmousemove="showConvTip(event,&quot;${tip}&quot;)" onmouseleave="hideConvTip()"></circle>
+            <circle cx="${x}" cy="${y}" r="4" fill="${c}" onmousemove="showConvTip(event,&quot;${tip}&quot;)" onmouseleave="hideConvTip()"></circle>
+            <text x="${x}" y="${height-10}" text-anchor="middle" fill="var(--muted2)" font-size="10">${escHtml(lbl).slice(0,12)}</text>`;
+  }).join('');
+
+  // ── Chart 2: Rolling resolution rate (last 5 runs) ─────────────────────
+  const yRateAt = (v) => {
+    const clamped = Math.max(0, Math.min(1, Number(v) || 0));
+    return m.top + (1 - clamped) * ph;
+  };
+  const yRateTicks = [0, 0.25, 0.5, 0.75, 1];
+  const rateGrid = yRateTicks.map(t => {
+    const y = yRateAt(t);
+    const stroke = t === 0 ? 'var(--accent)' : 'var(--border)';
+    const strokeWidth = t === 0 ? 1.5 : 1;
+    return `<line x1="${m.left}" y1="${y}" x2="${width-m.right}" y2="${y}" stroke="${stroke}" stroke-width="${strokeWidth}"/><text x="${m.left-8}" y="${y+4}" text-anchor="end" fill="var(--muted2)" font-size="10">${Math.round(t*100)}%</text>`;
+  }).join('');
+
+  // Plot only the last 5 points for an independent resolution-rate view.
+  const rollingWindow = 5;
+  const ratePoints = points.slice(-rollingWindow);
+  const nRate = ratePoints.length;
+  const xAtRate = (i) => m.left + (nRate === 1 ? pw / 2 : (i * pw / (nRate - 1)));
+
+  // Stable color per prompt version (consistent within this chart render).
+  const uniqueVers = Array.from(new Set(ratePoints.map(p => p.version || p.run_id || ''))).filter(Boolean);
+  const palette = ['var(--accent)', 'var(--green)', 'var(--purple)', 'var(--amber)', 'var(--red)'];
+  const colorByVersion = {};
+  uniqueVers.forEach((v, idx) => { colorByVersion[v] = palette[idx % palette.length]; });
+
+  const ratePath = ratePoints.map((p, i) => `${i===0?'M':'L'} ${xAtRate(i).toFixed(2)} ${yRateAt(p.v2_resolution_rate).toFixed(2)}`).join(' ');
+
+  // Dashed rolling avg (3-run) over the displayed last-5 window.
+  const rollingAvgWindow = 3;
+  const rateRolling = ratePoints.map((_, i) => {
+    const s = Math.max(0, i - (rollingAvgWindow - 1));
+    const slice = ratePoints.slice(s, i + 1).map(p => Number(p.v2_resolution_rate) || 0);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+  const rateRollingPath = rateRolling.map((v, i) => `${i===0?'M':'L'} ${xAtRate(i).toFixed(2)} ${yRateAt(v).toFixed(2)}`).join(' ');
+
+  const rateMarks = ratePoints.map((p, i) => {
+    const x = xAtRate(i), y = yRateAt(p.v2_resolution_rate);
+    const ver = p.version || p.run_id || `r${i+1}`;
+    const c = colorByVersion[ver] || 'var(--amber)';
+    const ratePct = (Number(p.v2_resolution_rate || 0) * 100);
+    const tip = _escAttr(`${ver}: ${ratePct.toFixed(1)}% resolution`);
+    const shortVer = escHtml(String(ver)).slice(0, 12);
+    return `<circle cx="${x}" cy="${y}" r="6" fill="transparent" onmousemove="showConvTip(event,&quot;${tip}&quot;)" onmouseleave="hideConvTip()"></circle>
+            <circle cx="${x}" cy="${y}" r="4" fill="${c}" onmousemove="showConvTip(event,&quot;${tip}&quot;)" onmouseleave="hideConvTip()"></circle>
+            <text x="${x}" y="${height-10}" text-anchor="middle" fill="var(--muted2)" font-size="10">${shortVer}</text>`;
+  }).join('');
+
+  // For the resolution-rate chart we still show the same plateau flag
+  // computed server-side for the convergence window.
+  const plateau = convergence?.plateau ? 'yes' : 'no';
+  const band = typeof convergence?.stability_band === 'number' ? `${(convergence.stability_band*100).toFixed(1)}%` : '—';
+  const lastRollingRate = rateRolling.length ? rateRolling[rateRolling.length - 1] : null;
+  const lastRollingTxt = (typeof lastRollingRate === 'number') ? `${(lastRollingRate * 100).toFixed(1)}%` : '—';
+
+  return `
+    <div class="convergence-stack">
+      <div class="convergence-wrap" style="margin-top:0">
+        <div class="convergence-head">
+          <div class="convergence-title">Adopted Δ (pipeline v2-v1)</div>
+          <div class="convergence-meta">Adopted points plotted: ${nDelta}</div>
+        </div>
+        <div class="convergence-chart">
+          <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+            ${deltaGrid}
+            ${deltaNoData ? `<text x="${m.left}" y="${height - 10}" fill="var(--muted2)" font-size="12">No adopted runs yet.</text>` : ''}
+            ${deltaNoData ? '' : `<path d="${deltaPath}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`}
+            ${deltaNoData ? '' : `<path d="${deltaRollingPath}" fill="none" stroke="var(--purple)" stroke-width="2" stroke-dasharray="4 3"/>`}
+            ${deltaNoData ? '' : `${deltaMarks}`}
+          </svg>
+        </div>
+        <div class="convergence-foot">
+          <span>Y: adopted Δ (pipeline v2-v1) · Dashed: 3-run rolling avg</span>
+          <span>Stability band: ${band}</span>
+        </div>
+      </div>
+
+      <div class="convergence-wrap">
+        <div class="convergence-head">
+          <div class="convergence-title">Resolution Rate — rolling last ${rollingWindow} runs</div>
+          <div class="convergence-meta">Last rolling avg: ${lastRollingTxt} · Plateau: ${plateau}</div>
+        </div>
+        <div class="convergence-chart">
+          <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+            ${rateGrid}
+            <path d="${ratePath}" fill="none" stroke="var(--green)" stroke-width="2.5" opacity="0.75"/>
+            <path d="${rateRollingPath}" fill="none" stroke="var(--purple)" stroke-width="2" stroke-dasharray="4 3"/>
+            ${rateMarks}
+          </svg>
+        </div>
+        <div class="convergence-foot">
+          <span>Y: v2 resolution rate · Dashed: rolling avg</span>
+          <span>Hover: version + rate</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderAgentAnalytics() {
   const host = document.getElementById('agentAnalyticsContent');
   if (!host) return;
@@ -2024,6 +2295,12 @@ function renderAgentAnalytics() {
       <td>${typeof r.cohen_d==='number' ? r.cohen_d.toFixed(3) : '—'}</td>
       <td>${escHtml(r.primary_change || '—')}</td>
       <td><span class="dec-chip ${_decisionClass(r.decision)}">${r.decision || 'Observed'}</span></td>
+      <td>${r.applied_to_prompt ? `<span class="dec-chip adopted">Yes</span>` : `<span class="dec-chip rejected">No</span>`}</td>
+      <td>${r.backup_path ? `<code>${escHtml(r.backup_path)}</code>` : '—'}</td>
+      <td>${(r.is_active && r.backup_filename)
+        ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 8px" onclick='rollbackPromptFromAnalytics(${JSON.stringify(_activeAgentTab)}, ${JSON.stringify(r.backup_filename)}, this)'>Rollback</button>`
+        : (r.is_active ? '<span class="dec-chip active">Active</span>' : '—')
+      }</td>
     </tr>
   `).join('');
 
@@ -2066,15 +2343,17 @@ function renderAgentAnalytics() {
       <table class="analytics-table">
         <thead>
           <tr>
-            <th>Version</th><th>n</th><th>Mean</th><th>SD</th><th>95% CI</th><th>p vs prev</th><th>Cohen's d</th><th>Primary change</th><th>Decision</th>
+            <th>Version</th><th>n</th><th>Mean</th><th>SD</th><th>95% CI</th><th>p vs prev</th><th>Cohen's d</th><th>Primary change</th><th>Decision</th><th>Applied</th><th>Backup</th><th>Rollback</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="9" style="color:var(--muted);text-align:center">No prompt-version samples found.</td></tr>`}
+          ${rows || `<tr><td colspan="12" style="color:var(--muted);text-align:center">No prompt-version samples found.</td></tr>`}
         </tbody>
       </table>
     </div>
+    ${_renderConvergenceChart(agent.convergence)}
     <div class="agent-insight">${escHtml(agent.insight || '')}</div>
+    <div id="convTip" class="conv-tip"></div>
   `;
 }
 
@@ -2093,6 +2372,32 @@ async function loadAgentAnalytics(force=false) {
     renderAgentAnalytics();
   } catch (e) {
     document.getElementById('agentAnalyticsContent').innerHTML = `<div class="empty" style="padding:20px">Failed to load analytics: ${escHtml(e.message || String(e))}</div>`;
+  }
+}
+
+async function rollbackPromptFromAnalytics(agentName, backupFilename, btn) {
+  const ok = confirm(`Rollback ${agentName} using backup ${backupFilename}?`);
+  if (!ok) return;
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Rolling back…';
+  try {
+    const resp = await fetch('/api/admin/pipeline/rollback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agent_name: agentName, backup_filename: backupFilename}),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error || data.detail) {
+      throw new Error(data.error || data.detail || 'Rollback failed');
+    }
+    toast(`Rollback successful: ${agentName}`);
+    _agentAnalytics = null;
+    await loadAgentAnalytics(true);
+  } catch (e) {
+    toast(`Rollback failed: ${e.message || e}`);
+    btn.disabled = false;
+    btn.textContent = old;
   }
 }
 

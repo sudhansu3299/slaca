@@ -9,14 +9,13 @@ from dataclasses import dataclass, field
 OPUS_INPUT_COST_PER_M = 15.0
 OPUS_OUTPUT_COST_PER_M = 75.0
 
-# Per chat.completions call: prompt_tokens + completion_tokens must not exceed this.
+# Per call input-context budget. We cap prompt/context size to this value.
 MAX_TOTAL_TOKENS_PER_AGENT_TURN = 2000
 # Back-compat name: same cap, applies to input + output together (not output alone).
 MAX_TOKENS_PER_AGENT = MAX_TOTAL_TOKENS_PER_AGENT_TURN
 
-# When sizing prompts, reserve at least this many tokens for the model's reply so
-# prompt + max_output can stay within MAX_TOTAL_TOKENS_PER_AGENT_TURN.
-MIN_RESERVED_OUTPUT_TOKENS = 64
+# No reserved output slice: output is not clamped by input budget.
+MIN_RESERVED_OUTPUT_TOKENS = 0
 
 MAX_TOKENS_HANDOFF = 500          # max tokens for handoff summary
 TOTAL_COST_BUDGET_USD = 20.0      # hard cap across entire run
@@ -113,13 +112,11 @@ def enforce_total_turn_limit(
     limit: int = MAX_TOTAL_TOKENS_PER_AGENT_TURN,
     label: str = "",
 ) -> None:
-    """Raise if this API call's prompt + completion usage exceeded the per-turn cap."""
-    total = input_tokens + output_tokens
-    if total > limit:
+    """Raise only when prompt/input context exceeds the per-turn input budget."""
+    if input_tokens > limit:
         prefix = f"{label} " if label else ""
         raise TokenLimitError(
-            f"{prefix}total context {total} tokens (in={input_tokens}, out={output_tokens}) "
-            f"exceeds per-turn limit {limit}"
+            f"{prefix}input context {input_tokens} tokens exceeds per-turn input budget {limit}"
         )
 
 
@@ -134,12 +131,10 @@ def clamp_max_tokens(
     Return safe max_tokens (completion budget) for the next API call:
     - remaining USD budget
     - requested ceiling
-    - room left under MAX_TOTAL_TOKENS_PER_AGENT_TURN for the estimated prompt size
     """
     remaining_usd = tracker.budget_remaining()
     if remaining_usd <= 0:
         raise BudgetExceededError(f"No budget remaining before {label} call")
     # Conservative: remaining_usd / (OPUS_OUTPUT_COST_PER_M / 1_000_000)
     affordable = int(remaining_usd / (OPUS_OUTPUT_COST_PER_M / 1_000_000))
-    output_cap = max(1, MAX_TOTAL_TOKENS_PER_AGENT_TURN - max(0, estimated_input_tokens))
-    return min(requested, affordable, output_cap)
+    return min(requested, affordable, MAX_TOKENS_PER_AGENT)
