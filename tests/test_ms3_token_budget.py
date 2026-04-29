@@ -7,12 +7,14 @@ MS3 validation: Token budget enforcement layer.
 """
 
 import pytest
-from src.prompt_builder import PromptBuilder, PROMPT_TOKEN_LIMITS, estimate_tokens
-from src.models import ConversationContext, Stage, AssessmentData, ResolutionPath, ResolutionOffer
-from src.handoff import HandoffBuilder, HandoffSummary
-from src.token_budget import MAX_TOKENS_HANDOFF, MAX_TOKENS_PER_AGENT
+from src.prompt_builder import PromptBuilder, PROMPT_TOKEN_LIMITS, AGENT_PROMPT_BUDGETS
+from src.token_budget import MAX_TOKENS_HANDOFF, MAX_TOTAL_TOKENS_PER_AGENT_TURN, MIN_RESERVED_OUTPUT_TOKENS, estimate_tokens
 from src.question_tracker import QuestionTracker, FactKey
-from src.handoff import _serialise_qt
+from src.handoff import _serialise_qt, HandoffBuilder
+from src.models import ConversationContext, Stage, AssessmentData, ResolutionPath
+
+
+_MAX_BODY = MAX_TOTAL_TOKENS_PER_AGENT_TURN - MIN_RESERVED_OUTPUT_TOKENS
 
 
 def make_context_with_history(n_turns: int = 5) -> ConversationContext:
@@ -29,14 +31,21 @@ def make_context_with_history(n_turns: int = 5) -> ConversationContext:
 
 
 class TestPromptLimits:
-    def test_agent2_limit_is_1500(self):
-        assert PROMPT_TOKEN_LIMITS["ResolutionAgent"] == 1500
+    def test_agent2_system_cap_is_1500(self):
+        assert AGENT_PROMPT_BUDGETS["ResolutionAgent"].max_system == 1500
+        assert AGENT_PROMPT_BUDGETS["ResolutionAgent"].max_handoff == 500
 
-    def test_agent3_limit_is_1500(self):
-        assert PROMPT_TOKEN_LIMITS["FinalNoticeAgent"] == 1500
+    def test_agent3_system_cap_is_1500(self):
+        assert AGENT_PROMPT_BUDGETS["FinalNoticeAgent"].max_system == 1500
+        assert AGENT_PROMPT_BUDGETS["FinalNoticeAgent"].max_handoff == 500
 
-    def test_agent1_limit_is_larger(self):
-        assert PROMPT_TOKEN_LIMITS["AssessmentAgent"] > 1500
+    def test_agent1_system_cap_is_2000_no_handoff(self):
+        assert AGENT_PROMPT_BUDGETS["AssessmentAgent"].max_system == 2000
+        assert AGENT_PROMPT_BUDGETS["AssessmentAgent"].max_handoff == 0
+
+    def test_shared_total_body_budget(self):
+        for cfg in AGENT_PROMPT_BUDGETS.values():
+            assert cfg.total_limit == _MAX_BODY
 
 
 class TestPromptBuilder:
@@ -71,7 +80,8 @@ class TestPromptBuilder:
             system_prompt="x",
             context_block="x",
             history_block="x",
-            total_estimated_tokens=2000,  # over 1500
+            user_input="y",
+            total_estimated_tokens=5000,
         )
         with pytest.raises(ValueError, match="exceeds limit"):
             pb.assert_within_limit(over)
@@ -95,8 +105,7 @@ class TestPromptBuilder:
         giant_system = "X " * 2000  # ~4000 chars ≈ 1000 tokens
         ctx = make_context_with_history(10)
         components = pb.build(giant_system, ctx, None, "Do you accept?")
-        # Should not raise — compression kicks in
-        assert components.total_estimated_tokens > 0
+        assert components.total_estimated_tokens <= PROMPT_TOKEN_LIMITS["FinalNoticeAgent"]
 
     def test_history_most_recent_kept(self):
         pb = PromptBuilder("ResolutionAgent")

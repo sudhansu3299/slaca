@@ -23,8 +23,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from src.token_budget import MAX_TOKENS_HANDOFF
-from src.prompt_builder import estimate_tokens
+from src.token_budget import MAX_TOKENS_HANDOFF, estimate_tokens
 
 
 # ──────────────────────────────────────────────────────────── #

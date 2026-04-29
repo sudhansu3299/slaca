@@ -10,6 +10,8 @@ from src.models import (
 )
 from src.token_budget import CostTracker
 from src.prompts import resolution_system_prompt
+from src.handoff import HandoffBuilder
+from src.prompt_builder import build_llm_turn
 
 # Policy-defined offer ranges
 OFFER_POLICY = {
@@ -44,7 +46,7 @@ class ResolutionAgent(BaseAgent):
     - Presents policy-bound offer (lump sum / installment / hardship)
     - Handles objections by restating terms, not comforting
     - Pushes for explicit commitment
-    - Hard cap: 2000 output tokens per turn
+    - Hard cap: 2000 tokens (prompt + completion) per LLM API call; prompt shaped via PromptBuilder
     """
 
     def __init__(self, cost_tracker: Optional[CostTracker] = None):
@@ -123,11 +125,8 @@ class ResolutionAgent(BaseAgent):
             context.resolution_offer = self.generate_offer(context)
 
         system = self.get_system_prompt(context)
-        context_str = self.format_context_for_agent(context)
-
-        messages = [
-            {"role": "user", "content": f"{context_str}\n\nBorrower says: {user_input}"}
-        ]
+        summary = HandoffBuilder.build(context, Stage.ASSESSMENT, Stage.RESOLUTION)
+        system, messages = build_llm_turn(self.name, system, context, summary, user_input)
 
         # Voice turns should be short: cap at 300 tokens.
         # Tool loop is used so Claude can call classify_borrower_behaviour when ready.

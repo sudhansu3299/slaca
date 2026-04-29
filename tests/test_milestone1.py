@@ -11,7 +11,7 @@ import pytest
 
 from src.token_budget import (
     CostTracker, TokenUsage, BudgetExceededError, TokenLimitError,
-    enforce_output_limit, clamp_max_tokens, TOTAL_COST_BUDGET_USD,
+    enforce_output_limit, enforce_total_turn_limit, clamp_max_tokens, TOTAL_COST_BUDGET_USD,
     MAX_TOKENS_PER_AGENT, MAX_TOKENS_HANDOFF,
 )
 from src.question_tracker import QuestionTracker, FactKey
@@ -53,12 +53,24 @@ class TestTokenBudget:
         after = tracker.budget_remaining()
         assert after < before
 
+    def test_enforce_total_turn_limit_pass(self):
+        enforce_total_turn_limit(1200, 799, label="TestAgent")
+
+    def test_enforce_total_turn_limit_fail(self):
+        with pytest.raises(TokenLimitError):
+            enforce_total_turn_limit(1500, 501, label="X")
+
     def test_enforce_output_limit_pass(self):
         enforce_output_limit(1999, MAX_TOKENS_PER_AGENT)  # should not raise
 
     def test_enforce_output_limit_fail(self):
         with pytest.raises(TokenLimitError):
             enforce_output_limit(2001, MAX_TOKENS_PER_AGENT)
+
+    def test_clamp_max_tokens_respects_per_turn_total(self):
+        tracker = CostTracker()
+        clamped = clamp_max_tokens(9999, tracker, estimated_input_tokens=1700)
+        assert clamped <= 300
 
     def test_clamp_max_tokens_respects_limit(self):
         tracker = CostTracker()

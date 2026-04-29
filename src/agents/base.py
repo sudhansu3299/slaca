@@ -11,8 +11,12 @@ from pydantic import BaseModel
 
 from src.models import ConversationContext
 from src.token_budget import (
-    CostTracker, TokenUsage, clamp_max_tokens, enforce_output_limit,
+    CostTracker,
+    TokenUsage,
+    clamp_max_tokens,
+    enforce_total_turn_limit,
     MAX_TOKENS_PER_AGENT,
+    estimate_tokens,
 )
 from src.question_tracker import QuestionTracker, FactKey
 
@@ -79,6 +83,23 @@ class BaseAgent(ABC):
             built.append({"role": m.get("role", "user"), "content": content})
         return built
 
+    def _estimate_openai_prompt_tokens(self, messages: list[dict[str, Any]]) -> int:
+        """Heuristic prompt size for budgeting (API tokenizer may differ slightly)."""
+        total = 0
+        for m in messages:
+            c = m.get("content", "")
+            if isinstance(c, list):
+                c = json.dumps(c)
+            elif c is None:
+                c = ""
+            elif not isinstance(c, str):
+                c = str(c)
+            total += estimate_tokens(c)
+            tc = m.get("tool_calls")
+            if tc:
+                total += estimate_tokens(json.dumps(tc))
+        return total
+
     def _build_openai_tools(self, tools: list[dict]) -> list[dict[str, Any]]:
         openai_tools: list[dict[str, Any]] = []
         for tool in tools:
@@ -124,10 +145,13 @@ class BaseAgent(ABC):
         """
         self.cost_tracker.check_budget()
 
+        built = self._build_openai_messages(system, messages)
+        est_in = self._estimate_openai_prompt_tokens(built)
         safe_max = clamp_max_tokens(
             max_tokens or MAX_TOKENS_PER_AGENT,
             self.cost_tracker,
             label=self.name,
+            estimated_input_tokens=est_in,
         )
 
         opencode_key = _first_nonempty_env("OPENCODE_API_KEY")
@@ -167,7 +191,7 @@ class BaseAgent(ABC):
             model=self.model,
             max_tokens=safe_max,
             temperature=temperature,
-            messages=self._build_openai_messages(system, messages),
+            messages=built,
         )
         message = response.choices[0].message if response.choices else None
         text = self._content_to_text(message.content if message else "")
@@ -176,7 +200,12 @@ class BaseAgent(ABC):
             output_tokens=(response.usage.completion_tokens if response.usage else 0),
         )
 
-        enforce_output_limit(usage.output_tokens, MAX_TOKENS_PER_AGENT, label=self.name)
+        if response.usage:
+            enforce_total_turn_limit(
+                response.usage.prompt_tokens or 0,
+                response.usage.completion_tokens or 0,
+                label=self.name,
+            )
         self.cost_tracker.record(self.name, usage)
 
         return text, usage
@@ -207,11 +236,6 @@ class BaseAgent(ABC):
         self._tool_loop_fallback = False
 
         self.cost_tracker.check_budget()
-        safe_max = clamp_max_tokens(
-            max_tokens or MAX_TOKENS_PER_AGENT,
-            self.cost_tracker,
-            label=self.name,
-        )
 
         api_key = (
             _first_nonempty_env("OPENCODE_API_KEY")
@@ -245,6 +269,14 @@ class BaseAgent(ABC):
 
         # Agentic tool loop — max 5 rounds to prevent runaway calls
         for _round in range(5):
+            tools_blob = json.dumps(openai_tools)
+            est_in = self._estimate_openai_prompt_tokens(current_messages) + estimate_tokens(tools_blob)
+            safe_max = clamp_max_tokens(
+                max_tokens or MAX_TOKENS_PER_AGENT,
+                self.cost_tracker,
+                label=self.name,
+                estimated_input_tokens=est_in,
+            )
             response = await client.chat.completions.create(
                 model=self.model,
                 max_tokens=safe_max,
@@ -254,6 +286,11 @@ class BaseAgent(ABC):
                 tool_choice="auto",
             )
             if response.usage:
+                enforce_total_turn_limit(
+                    response.usage.prompt_tokens or 0,
+                    response.usage.completion_tokens or 0,
+                    label=self.name,
+                )
                 total_input += response.usage.prompt_tokens or 0
                 total_output += response.usage.completion_tokens or 0
 
@@ -302,7 +339,6 @@ class BaseAgent(ABC):
             final_text = self._content_to_text(message.content if message else "")
 
         usage = TokenUsage(input_tokens=total_input, output_tokens=total_output)
-        enforce_output_limit(usage.output_tokens, MAX_TOKENS_PER_AGENT, label=self.name)
         self.cost_tracker.record(self.name, usage)
 
         return final_text, usage

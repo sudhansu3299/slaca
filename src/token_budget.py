@@ -2,18 +2,31 @@
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 # Claude Opus 4 pricing (per million tokens, as of 2025)
 # Input: $15/M  Output: $75/M
 OPUS_INPUT_COST_PER_M = 15.0
 OPUS_OUTPUT_COST_PER_M = 75.0
 
-MAX_TOKENS_PER_AGENT = 2000       # max output tokens per agent turn
+# Per chat.completions call: prompt_tokens + completion_tokens must not exceed this.
+MAX_TOTAL_TOKENS_PER_AGENT_TURN = 2000
+# Back-compat name: same cap, applies to input + output together (not output alone).
+MAX_TOKENS_PER_AGENT = MAX_TOTAL_TOKENS_PER_AGENT_TURN
+
+# When sizing prompts, reserve at least this many tokens for the model's reply so
+# prompt + max_output can stay within MAX_TOTAL_TOKENS_PER_AGENT_TURN.
+MIN_RESERVED_OUTPUT_TOKENS = 64
+
 MAX_TOKENS_HANDOFF = 500          # max tokens for handoff summary
 TOTAL_COST_BUDGET_USD = 20.0      # hard cap across entire run
+
+CHARS_PER_TOKEN = 4
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token count for budgeting (matches PromptBuilder / handoff heuristics)."""
+    return max(1, len(text) // CHARS_PER_TOKEN)
 
 
 @dataclass
@@ -87,21 +100,46 @@ class TokenLimitError(RuntimeError):
 
 
 def enforce_output_limit(tokens: int, limit: int = MAX_TOKENS_PER_AGENT, label: str = "") -> None:
-    """Raise if actual output exceeded limit."""
+    """Raise if actual output exceeded limit (output-only check; prefer enforce_total_turn_limit)."""
     if tokens > limit:
         raise TokenLimitError(
             f"{label} output {tokens} tokens exceeds limit {limit}"
         )
 
 
-def clamp_max_tokens(requested: int, tracker: CostTracker, label: str = "") -> int:
+def enforce_total_turn_limit(
+    input_tokens: int,
+    output_tokens: int,
+    limit: int = MAX_TOTAL_TOKENS_PER_AGENT_TURN,
+    label: str = "",
+) -> None:
+    """Raise if this API call's prompt + completion usage exceeded the per-turn cap."""
+    total = input_tokens + output_tokens
+    if total > limit:
+        prefix = f"{label} " if label else ""
+        raise TokenLimitError(
+            f"{prefix}total context {total} tokens (in={input_tokens}, out={output_tokens}) "
+            f"exceeds per-turn limit {limit}"
+        )
+
+
+def clamp_max_tokens(
+    requested: int,
+    tracker: CostTracker,
+    label: str = "",
+    *,
+    estimated_input_tokens: int = 0,
+) -> int:
     """
-    Return safe max_tokens based on remaining cost budget.
-    Approximates by assuming 3 output tokens cost per input token equivalent.
+    Return safe max_tokens (completion budget) for the next API call:
+    - remaining USD budget
+    - requested ceiling
+    - room left under MAX_TOTAL_TOKENS_PER_AGENT_TURN for the estimated prompt size
     """
     remaining_usd = tracker.budget_remaining()
     if remaining_usd <= 0:
         raise BudgetExceededError(f"No budget remaining before {label} call")
     # Conservative: remaining_usd / (OPUS_OUTPUT_COST_PER_M / 1_000_000)
     affordable = int(remaining_usd / (OPUS_OUTPUT_COST_PER_M / 1_000_000))
-    return min(requested, affordable, MAX_TOKENS_PER_AGENT)
+    output_cap = max(1, MAX_TOTAL_TOKENS_PER_AGENT_TURN - max(0, estimated_input_tokens))
+    return min(requested, affordable, output_cap)

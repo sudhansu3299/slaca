@@ -9,6 +9,8 @@ from src.agents.base import BaseAgent, AgentResponse
 from src.models import ConversationContext, Stage
 from src.token_budget import CostTracker, TokenUsage
 from src.prompts import final_notice_system_prompt
+from src.handoff import HandoffBuilder
+from src.prompt_builder import build_llm_turn
 
 CONSEQUENCES = [
     "Immediate credit bureau reporting (7-year negative record)",
@@ -54,11 +56,10 @@ class FinalNoticeAgent(BaseAgent):
     def __init__(self, cost_tracker: Optional[CostTracker] = None):
         super().__init__("FinalNoticeAgent", cost_tracker)
 
-    def get_system_prompt(self, context: ConversationContext) -> str:
+    def _compose_system_prompt(self, context: ConversationContext, voice_handoff_block: str) -> str:
         qt = self._get_question_tracker(context)
         known_facts = qt.as_context_str()
         offer_block = self._format_final_offer(context)
-        voice_handoff_block = self._format_voice_handoff(context)
         guidance = getattr(self, "_injected_guidance", "")
         return final_notice_system_prompt(
             known_facts,
@@ -66,6 +67,9 @@ class FinalNoticeAgent(BaseAgent):
             voice_handoff_block,
             guidance,
         )
+
+    def get_system_prompt(self, context: ConversationContext) -> str:
+        return self._compose_system_prompt(context, self._format_voice_handoff(context))
 
     async def process(self, context: ConversationContext, user_input: str) -> AgentResponse:
         stage_open = user_input.strip().startswith("[STAGE_OPEN:")
@@ -125,12 +129,9 @@ class FinalNoticeAgent(BaseAgent):
                 tokens_used=TokenUsage(input_tokens=0, output_tokens=0),
             )
 
-        system = self.get_system_prompt(context)
-        context_str = self.format_context_for_agent(context)
-
-        messages = [
-            {"role": "user", "content": f"{context_str}\n\nBorrower says: {user_input}"}
-        ]
+        system = self._compose_system_prompt(context, "")
+        summary = HandoffBuilder.build(context, Stage.RESOLUTION, Stage.FINAL_NOTICE)
+        system, messages = build_llm_turn(self.name, system, context, summary, user_input)
 
         # Reset tool results for this turn so stale results from previous turns
         # don't bleed into the contract metadata check below

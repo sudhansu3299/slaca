@@ -296,6 +296,8 @@ async def log_interaction(
     confidence: float = 0.0,
     reasoning_summary: str = "",
     trace_id: Optional[str] = None,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
 ) -> str:
     """Write an interaction record. Returns interaction_id."""
     interaction_id = f"int-{uuid.uuid4().hex[:12]}"
@@ -319,6 +321,8 @@ async def log_interaction(
             "confidence": confidence,
             "reasoning_summary": reasoning_summary,
             "trace_id": trace_id or interaction_id,
+            "input_tokens": int(max(0, input_tokens)),
+            "output_tokens": int(max(0, output_tokens)),
             "timestamp": _now(),
         })
     except Exception as e:

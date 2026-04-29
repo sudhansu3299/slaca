@@ -276,6 +276,8 @@ async def run_assessment_stage(payload: Any) -> dict:
             await push_agent_message(workflow_id, resp.message, Stage.ASSESSMENT.value)
 
         # ── MongoDB: log this turn (async, non-blocking) ─── #
+        _tin = resp.tokens_used.input_tokens if resp.tokens_used else 0
+        _tout = resp.tokens_used.output_tokens if resp.tokens_used else 0
         asyncio.create_task(log_interaction(
             borrower_id=borrower_id,
             agent_name="AssessmentAgent",
@@ -292,6 +294,8 @@ async def run_assessment_stage(payload: Any) -> dict:
                 "advanced": resp.should_advance,
             },
             decision="advance" if resp.should_advance else "continue",
+            input_tokens=_tin,
+            output_tokens=_tout,
         ))
 
         # ── Redis: update summary ─────────────────────────── #
@@ -508,6 +512,8 @@ async def run_resolution_stage(payload: Any) -> dict:
         },
         decision=outcome,
         confidence=1.0 if outcome == "committed" else 0.0,
+        input_tokens=cost.total_tokens.input_tokens,
+        output_tokens=cost.total_tokens.output_tokens,
     ))
 
     summary2 = HandoffBuilder.build(ctx, Stage.RESOLUTION, Stage.FINAL_NOTICE)
@@ -782,6 +788,8 @@ async def run_final_notice_stage(payload: Any) -> dict:
         },
         decision=outcome,
         confidence=1.0,
+        input_tokens=cost.total_tokens.input_tokens,
+        output_tokens=cost.total_tokens.output_tokens,
     ))
 
     return {

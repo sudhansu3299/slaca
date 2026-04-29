@@ -12,6 +12,7 @@ from src.models import ConversationContext, Stage, ResolutionPath, FinancialSitu
 from src.question_tracker import QuestionTracker, FactKey
 from src.token_budget import CostTracker
 from src.prompts import assessment_system_prompt
+from src.prompt_builder import build_llm_turn
 
 # Facts required before advancing to Resolution
 REQUIRED_FACTS = {
@@ -38,7 +39,7 @@ class AssessmentAgent(BaseAgent):
     - Stores monthly income/expenses via store_financial_data tool
     - Gathers financial picture and recommends resolution path
     - Tracks all questions via QuestionTracker (no repeats)
-    - Hard cap: 2000 output tokens per turn
+    - Hard cap: 2000 tokens total (prompt + completion) per LLM API call
     """
 
     def __init__(self, cost_tracker: Optional[CostTracker] = None):
@@ -106,10 +107,8 @@ class AssessmentAgent(BaseAgent):
         if not context.hardship_offer_pending and self._is_hardship_signal(user_input):
             context.hardship_offer_pending = True
 
-        context_str = self.format_context_for_agent(context)
         system = self.get_system_prompt(context)
-
-        messages = [{"role": "user", "content": f"{context_str}\n\nBorrower says: {user_input}"}]
+        system, messages = build_llm_turn(self.name, system, context, None, user_input)
 
         # Use tool-call loop — Claude will call verify_borrower_identity and/or
         # store_financial_data as facts arrive, then produce its final reply

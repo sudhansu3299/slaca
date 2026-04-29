@@ -986,6 +986,18 @@ async function loadSdVarianceTrend(force=false) {
 }
 
 const _transcripts = {};
+function conversationTokenLines(tokensByAgent) {
+  const tba = tokensByAgent || {};
+  const rows = [
+    ['AssessmentAgent', 'Assessment agent'],
+    ['ResolutionAgent', 'Resolution agent'],
+    ['FinalNoticeAgent', 'Final notice agent'],
+  ];
+  return rows.map(([key, label]) => {
+    const n = Number(tba[key]?.total_tokens ?? 0);
+    return `<div class="tok-spent-line">${label}: ${n.toLocaleString()} tokens spent</div>`;
+  }).join('');
+}
 function buildEvalCard(ev, idx) {
   const cid = 'ec'+idx, overall = ev.overall_score;
   _transcripts[cid] = ev.transcript_full || [];
@@ -1041,6 +1053,8 @@ function buildEvalCard(ev, idx) {
         Transcript
         <button onclick="expandTranscript('${cid}',event)" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline">See all</button>
       </div>
+      <div class="panel-title" style="margin-top:2px;font-size:10px;color:var(--muted2)">This conversation</div>
+      <div style="margin:0 0 10px 0;line-height:1.45" class="tok-spent-block">${conversationTokenLines(ev.tokens_by_agent)}</div>
       <div id="turns-${cid}">${turns||'<div class="c-muted" style="font-size:11px">No transcript</div>'}</div>
       ${ev.llm_feedback?`<div class="feedback-box"><strong>Judge reasoning:</strong> ${ev.llm_feedback}</div>`:''}
     </div>
@@ -1125,7 +1139,9 @@ async function loadPipelineRuns() {
     }
     // Stop polling if no running runs
     const anyRunning = runs.some(r=>r.status==='running');
+    const hadPollTimer = !!_pollTimer;
     if (!anyRunning && _pollTimer) { clearInterval(_pollTimer); _pollTimer=null; }
+    if (hadPollTimer && !anyRunning && runs.length) { loadCostBreakdown(); }
 
     const total = runs.length;
     const visibleRuns = runs.slice(0, 10);
@@ -1699,6 +1715,7 @@ async function loadCostBreakdown() {
     </tr>`;
 
     document.getElementById('costBody').innerHTML = rows + totalRow;
+
   } catch(e) { console.warn('loadCostBreakdown error', e); }
 }
 

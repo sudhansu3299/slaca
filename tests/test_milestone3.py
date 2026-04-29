@@ -263,13 +263,16 @@ class TestProcessMocked:
         agent = AssessmentAgent()
         ctx = make_context()
 
-        # Simulate a response right at the limit
+        # Simulate usage right at the per-call total cap (input + output ≤ 2000)
         with patch.object(agent, "_call_claude_with_tools", mock_claude_response(
-            "x" * (MAX_TOKENS_PER_AGENT * 4),  # ~2000 tokens of chars
-            output_tokens=MAX_TOKENS_PER_AGENT
+            "x" * (500 * 4),
+            input_tokens=1000,
+            output_tokens=1000,
         )):
             response = await agent.process(ctx, "test")
-        assert response.tokens_used.output_tokens == MAX_TOKENS_PER_AGENT
+        u = response.tokens_used
+        assert u is not None
+        assert u.input_tokens + u.output_tokens <= MAX_TOKENS_PER_AGENT
 
 
 # ------------------------------------------------------------------ #
@@ -293,5 +296,7 @@ async def test_live_assessment_first_turn():
     print(tracker.report())
 
     assert len(response.message) > 10
-    assert response.tokens_used.output_tokens <= MAX_TOKENS_PER_AGENT
+    tu = response.tokens_used
+    assert tu is not None
+    assert tu.input_tokens + tu.output_tokens <= MAX_TOKENS_PER_AGENT
     assert tracker.total_cost_usd < 20.0

@@ -18,10 +18,9 @@ from pydantic import BaseModel, Field
 
 from src.models import ConversationContext, ResolutionPath, Stage
 from src.question_tracker import QuestionTracker, FactKey
-from src.token_budget import MAX_TOKENS_HANDOFF
+from src.token_budget import MAX_TOKENS_HANDOFF, estimate_tokens as _estimate_tokens
 
-# 1 token ≈ 4 chars (conservative)
-CHARS_PER_TOKEN = 4
+# 1 token ≈ 4 chars — implemented in src.token_budget.estimate_tokens
 
 
 class HandoffSummary(BaseModel):
@@ -146,10 +145,6 @@ class HandoffSummary(BaseModel):
 
     def estimated_tokens(self) -> int:
         return _estimate_tokens(self.to_prompt_block())
-
-
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // CHARS_PER_TOKEN)
 
 
 def _enforce_token_limit(text: str, label: str = "") -> None:

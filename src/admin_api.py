@@ -452,9 +452,22 @@ async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
         turns_cursor = db.interactions.find(
             {"trace_id": trace_id},
             {"agent_name": 1, "input": 1, "output": 1, "decision": 1,
-             "timestamp": 1, "agent_version": 1, "model": 1, "_id": 0}
+             "timestamp": 1, "agent_version": 1, "model": 1,
+             "input_tokens": 1, "output_tokens": 1, "_id": 0}
         ).sort("timestamp", 1)
         turns = await turns_cursor.to_list(length=100)
+
+        tokens_by_agent: dict[str, dict[str, int]] = {}
+        for turn in turns:
+            an = (turn.get("agent_name") or "").strip() or "Unknown"
+            rec = tokens_by_agent.setdefault(
+                an, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+            )
+            it = int(turn.get("input_tokens") or 0)
+            ot = int(turn.get("output_tokens") or 0)
+            rec["input_tokens"] += it
+            rec["output_tokens"] += ot
+            rec["total_tokens"] += it + ot
 
         # Reconstruct conversation_history list (format expected by evaluators)
         history = []
@@ -499,6 +512,7 @@ async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
             "history":      history,
             "existing_eval": existing_eval,
             "agent_version": turns[0].get("agent_version", "v1.0") if turns else "v1.0",
+            "tokens_by_agent": tokens_by_agent,
         })
 
     return transcripts
@@ -697,6 +711,7 @@ async def _run_evaluations(transcript: dict, force_llm: bool = False) -> dict:
         # Transcript preview (last 6 turns)
         "transcript_preview": transcript["history"][-6:],
         "transcript_full":    transcript["history"],
+        "tokens_by_agent":    transcript.get("tokens_by_agent") or {},
     }
 
 
