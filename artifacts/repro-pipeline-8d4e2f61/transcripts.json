@@ -1,0 +1,74 @@
+[
+  {
+    "trace_id": "mock-v2-078a3903",
+    "borrower_id": "mock-b-200",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-3861387b",
+    "borrower_id": "mock-b-201",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-addc0585",
+    "borrower_id": "mock-b-203",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-f4833b8e",
+    "borrower_id": "mock-b-202",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  }
+]

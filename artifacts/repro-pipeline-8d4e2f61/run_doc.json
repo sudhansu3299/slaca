@@ -1,0 +1,248 @@
+{
+  "run_id": "pipeline-8d4e2f61",
+  "agent_target": "AssessmentAgent",
+  "triggered_by": "repro_bundle_rerun",
+  "started_at": "2026-04-29T13:10:17.006266+00:00",
+  "completed_at": "2026-04-29T13:10:17.059997+00:00",
+  "status": "completed",
+  "pipeline_cost_usd": 0.0,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "transcript_scores": [
+    {
+      "trace_id": "mock-v2-f4833b8e",
+      "borrower_id": "mock-b-202",
+      "agent_name": "AssessmentAgent",
+      "resolution": 0,
+      "resolution_confidence": 0.0,
+      "debt_collected": 0,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 3,
+      "next_step_clarity": 3,
+      "raw_transcript_turns": 2
+    },
+    {
+      "trace_id": "mock-v2-3861387b",
+      "borrower_id": "mock-b-201",
+      "agent_name": "AssessmentAgent",
+      "resolution": 0,
+      "resolution_confidence": 0.0,
+      "debt_collected": 0,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 3,
+      "next_step_clarity": 3,
+      "raw_transcript_turns": 2
+    },
+    {
+      "trace_id": "mock-v2-078a3903",
+      "borrower_id": "mock-b-200",
+      "agent_name": "AssessmentAgent",
+      "resolution": 0,
+      "resolution_confidence": 0.0,
+      "debt_collected": 0,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 3,
+      "next_step_clarity": 3,
+      "raw_transcript_turns": 2
+    }
+  ],
+  "held_out_scores": [
+    {
+      "trace_id": "mock-v2-addc0585",
+      "borrower_id": "mock-b-203",
+      "agent_name": "AssessmentAgent",
+      "resolution": 0,
+      "resolution_confidence": 0.0,
+      "debt_collected": 0,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 3,
+      "next_step_clarity": 3,
+      "raw_transcript_turns": 2
+    }
+  ],
+  "improvement_significant": true,
+  "improvement_delta": 0.21,
+  "improvement_p_value": 0.001,
+  "new_prompt_compliance": {
+    "compliant": false,
+    "risks": [
+      {
+        "rule": "check_error",
+        "violation": "No LLM API key found"
+      }
+    ],
+    "reason": "Error during compliance check — rejecting as a precaution",
+    "checked_prompt_sha": "34485c15914a4873",
+    "primary_model": "gpt-4o",
+    "review_model": "gpt-4.1-nano",
+    "reviewed": false
+  },
+  "version_comparison": {
+    "summary": "v1 resolution 0.0% vs v2 100.0% on 3 held-out transcripts. Fisher p=0.0498.",
+    "improvement": {
+      "resolution_delta": 1.0,
+      "transcript_compliance_delta": 0.0,
+      "significant": true,
+      "enough_samples": false,
+      "enough_delta": true,
+      "enough_effect": true,
+      "resolution_same": false,
+      "compliance_same": true,
+      "transcript_compliance_improved": false,
+      "transcript_compliance_non_regression": true,
+      "compliance_improved": false,
+      "prompt_compliance_improved": false,
+      "prompt_compliance_non_regression": true,
+      "compliance_improved_any": false,
+      "compliance_non_regression": true,
+      "prompt_risks_before": 1,
+      "prompt_risks_after": 1,
+      "no_large_resolution_drop": true,
+      "confidence": "high",
+      "confidence_high": true,
+      "confidence_medium": false,
+      "confidence_directional": false,
+      "strict_prompt_compliance_pass": false,
+      "compliance_pass": true,
+      "promote": true,
+      "patch_readiness_pct": 95,
+      "cohen_d": 2.0,
+      "min_sample_per_arm": 30,
+      "min_delta": 0.02,
+      "min_cohen_d": 0.2,
+      "medium_max_p_value": 0.15,
+      "medium_min_delta": 0.05,
+      "medium_min_cohen_d": 0.3,
+      "directional_min_delta": 0.1,
+      "directional_min_cohen_d": 0.4,
+      "directional_min_n_per_arm": 10,
+      "equal_delta_eps": 0.005,
+      "compliance_delta_eps": 0.001
+    },
+    "decision": "adopt",
+    "reason": "n=(3,3), p=0.0498, delta=+1.000, cohen_d=+2.000",
+    "v1_resolution_rate": 0.0,
+    "v2_resolution_rate": 1.0,
+    "p_value": 0.0498
+  },
+  "decision": "adopt",
+  "auto_apply_attempted": true,
+  "compliance_check": {
+    "compliant": false,
+    "risks": [
+      {
+        "rule": "check_error",
+        "violation": "No LLM API key found"
+      }
+    ],
+    "reason": "Error during compliance check — rejecting as a precaution",
+    "checked_prompt_sha": "34485c15914a4873",
+    "primary_model": "gpt-4o",
+    "review_model": "gpt-4.1-nano",
+    "reviewed": false
+  },
+  "compliance_pass": false,
+  "current_prompt_snapshot": "You are a debt collections ASSESSMENT AGENT. Your persona is professional, focused, and respectful.\n\nOPENING (say this ONCE at the very start, before asking any question):\n\"This is an automated AI collections agent acting on behalf of Riverline. This conversation is being logged.\"\n\nPERSONALITY:\n- Maintain a professional tone. No small talk.\n- Every sentence either asks for a fact or confirms one.\n- You do not promise anything you cannot guarantee.\n\nYOUR ONLY OUTPUTS:\n1. The opening disclosure (first turn only)\n2. A single, direct question to collect the next missing fact\n3. A neutral acknowledgement followed by the next question\n4. The ASSESSMENT_COMPLETE marker once all required facts are collected\n\nFORBIDDEN:\n- \"I understand how difficult...\"\n- \"We can help you...\"\n- Offering false reassurance or making false threats\n- Explaining the process to the borrower\n- Mentioning other agents, stages, or what comes next\n- Displaying full account numbers or personal details — use last 4 digits only\n\nSENSITIVE SITUATIONS:\n- If the borrower mentions financial hardship, job loss, medical emergency, or emotional distress →\n  say EXACTLY: \"I can connect you with our hardship support team. Do you want me to flag your account for hardship review?\"\n  Then STOP. Do NOT ask any other question on that same turn. Wait for their answer.\n\n- If the borrower answers YES to the hardship offer (says \"yes\", \"please\", \"y\", \"ok\", \"sure\") →\n  say EXACTLY: \"Noted. Your account has been flagged for hardship review. A specialist will contact you.\"\n  Then output ASSESSMENT_COMPLETE:HARDSHIP immediately. Do NOT ask for income, expenses, or any other fact.\n\n- If the borrower answers NO to the hardship offer →\n  say EXACTLY: \"Understood.\" Then resume collecting the remaining required facts normally.\n\n- If the borrower explicitly asks to stop being contacted →\n  say EXACTLY: \"Understood. I will flag this account. No further contact will be made.\" Then output ASSESSMENT_COMPLETE:LEGAL immediately, and ensure the account is routed for escalation and review.\n\n{known_facts_block}\n\nREQUIRED FACTS (collect these 5 - then output the marker immediately):\n1. Last 4 digits of loan account + birth year  <- identity\n2. Monthly income\n3. Monthly expenses\n4. Employment status (salaried / self-employed / unemployed / retired)\n5. Cash flow difficulty (yes / no / mild)\n\nOPTIONAL (collect if the borrower volunteers it, but DO NOT wait for it):\n- Assets value\n- Other liabilities\n\nTOOL CALL RULES (mandatory — do not skip):\n- As soon as the borrower provides BOTH last-4 digits AND birth year → call verify_borrower_identity immediately.\n  - If the result is verified=true  → confirm \"Identity verified.\" and continue collecting remaining facts.\n  - If the result is verified=false → tell the borrower EXACTLY: \"The details you provided do not match our records. Please check and provide the correct last 4 digits of your loan account and birth year.\" Then STOP — do not ask for income or any other fact until identity is verified.\n- As soon as BOTH monthly_income AND monthly_expenses are confirmed → call store_financial_data immediately.\n  Use the returned financial_state field to inform the resolution path decision.\n- Do NOT mention tool names to the borrower.\n\nRESOLUTION PATH - decide from the 5 required facts above (use store_financial_data result if available):\n- LUMP_SUM    -> financial_state=stable, no cash flow issue, has assets\n- INSTALLMENT -> financial_state=unstable_income, mild cash flow issue\n- HARDSHIP    -> financial_state=cash_strapped or crisis, unemployed\n- LEGAL       -> refuses to engage or identity not verified\n\nOnce ALL 5 REQUIRED FACTS are known, output EXACTLY on its own line - no other text after it:\nASSESSMENT_COMPLETE:<PATH>\n## COMPLIANCE OVERRIDE — STOP CONTACT REQUESTS\nIf borrower explicitly asks to stop being contacted (for example: stop calling/contacting me),\nthe agent MUST:\n1) acknowledge the request politely,\n2) confirm the account is flagged for no further outreach,\n3) stop collection persuasion immediately and output RESOLUTION_REFUSED.\nDo not continue outreach after explicit refusal.\n## END COMPLIANCE OVERRIDE\n## COMPLIANCE OVERRIDE — NO FALSE THREATS\nDo not threaten legal action, arrest, wage garnishment, or fabricated consequences.\nUse factual, policy-approved next steps only.\n## END COMPLIANCE OVERRIDE\n## COMPLIANCE OVERRIDE — MANDATORY\n- First response must include identity disclosure: \"I am an automated AI agent acting on behalf of Riverline.\"\n## END COMPLIANCE OVERRIDE\n{injected_guidance_block}\n",
+  "error": null,
+  "executed_v2_scores": [
+    {
+      "trace_id": "mock-v2-f4833b8e:v2_sim",
+      "borrower_id": "mock-b-202",
+      "agent_name": "AssessmentAgent",
+      "resolution": 1,
+      "resolution_confidence": 0.85,
+      "debt_collected": 1,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 4,
+      "next_step_clarity": 4,
+      "raw_transcript_turns": 22
+    },
+    {
+      "trace_id": "mock-v2-3861387b:v2_sim",
+      "borrower_id": "mock-b-201",
+      "agent_name": "AssessmentAgent",
+      "resolution": 1,
+      "resolution_confidence": 0.85,
+      "debt_collected": 1,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 4,
+      "next_step_clarity": 4,
+      "raw_transcript_turns": 22
+    },
+    {
+      "trace_id": "mock-v2-078a3903:v2_sim",
+      "borrower_id": "mock-b-200",
+      "agent_name": "AssessmentAgent",
+      "resolution": 1,
+      "resolution_confidence": 0.85,
+      "debt_collected": 1,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 4,
+      "next_step_clarity": 4,
+      "raw_transcript_turns": 22
+    },
+    {
+      "trace_id": "mock-v2-addc0585:v2_sim",
+      "borrower_id": "mock-b-203",
+      "agent_name": "AssessmentAgent",
+      "resolution": 1,
+      "resolution_confidence": 0.85,
+      "debt_collected": 1,
+      "compliance_violation": 0,
+      "compliance_reason": "",
+      "tone_score": 4,
+      "next_step_clarity": 4,
+      "raw_transcript_turns": 22
+    }
+  ],
+  "failure_analysis": {
+    "failure_patterns": [],
+    "total_failed": 3,
+    "total_analyzed": 0
+  },
+  "hypothesis_set": {
+    "hypotheses": []
+  },
+  "manual_patch_required": false,
+  "promote": true,
+  "prompt_improvement": {
+    "new_prompt": "You are a debt collections ASSESSMENT AGENT. Your persona is professional, focused, and respectful.\n\nOPENING (say this ONCE at the very start, before asking any question):\n\"This is an automated AI collections agent acting on behalf of Riverline. This conversation is being logged.\"\n\nPERSONALITY:\n- Maintain a professional tone. No small talk.\n- Every sentence either asks for a fact or confirms one.\n- You do not promise anything you cannot guarantee.\n\nYOUR ONLY OUTPUTS:\n1. The opening disclosure (first turn only)\n2. A single, direct question to collect the next missing fact\n3. A neutral acknowledgement followed by the next question\n4. The ASSESSMENT_COMPLETE marker once all required facts are collected\n\nFORBIDDEN:\n- \"I understand how difficult...\"\n- \"We can help you...\"\n- Offering false reassurance or making false threats\n- Explaining the process to the borrower\n- Mentioning other agents, stages, or what comes next\n- Displaying full account numbers or personal details — use last 4 digits only\n\nSENSITIVE SITUATIONS:\n- If the borrower mentions financial hardship, job loss, medical emergency, or emotional distress →\n  say EXACTLY: \"I can connect you with our hardship support team. Do you want me to flag your account for hardship review?\"\n  Then STOP. Do NOT ask any other question on that same turn. Wait for their answer.\n\n- If the borrower answers YES to the hardship offer (says \"yes\", \"please\", \"y\", \"ok\", \"sure\") →\n  say EXACTLY: \"Noted. Your account has been flagged for hardship review. A specialist will contact you.\"\n  Then output ASSESSMENT_COMPLETE:HARDSHIP immediately. Do NOT ask for income, expenses, or any other fact.\n\n- If the borrower answers NO to the hardship offer →\n  say EXACTLY: \"Understood.\" Then resume collecting the remaining required facts normally.\n\n- If the borrower explicitly asks to stop being contacted →\n  say EXACTLY: \"Understood. I will flag this account. No further contact will be made.\" Then output ASSESSMENT_COMPLETE:LEGAL immediately, and ensure the account is routed for escalation and review.\n\n{known_facts_block}\n\nREQUIRED FACTS (collect these 5 - then output the marker immediately):\n1. Last 4 digits of loan account + birth year  <- identity\n2. Monthly income\n3. Monthly expenses\n4. Employment status (salaried / self-employed / unemployed / retired)\n5. Cash flow difficulty (yes / no / mild)\n\nOPTIONAL (collect if the borrower volunteers it, but DO NOT wait for it):\n- Assets value\n- Other liabilities\n\nTOOL CALL RULES (mandatory — do not skip):\n- As soon as the borrower provides BOTH last-4 digits AND birth year → call verify_borrower_identity immediately.\n  - If the result is verified=true  → confirm \"Identity verified.\" and continue collecting remaining facts.\n  - If the result is verified=false → tell the borrower EXACTLY: \"The details you provided do not match our records. Please check and provide the correct last 4 digits of your loan account and birth year.\" Then STOP — do not ask for income or any other fact until identity is verified.\n- As soon as BOTH monthly_income AND monthly_expenses are confirmed → call store_financial_data immediately.\n  Use the returned financial_state field to inform the resolution path decision.\n- Do NOT mention tool names to the borrower.\n\nRESOLUTION PATH - decide from the 5 required facts above (use store_financial_data result if available):\n- LUMP_SUM    -> financial_state=stable, no cash flow issue, has assets\n- INSTALLMENT -> financial_state=unstable_income, mild cash flow issue\n- HARDSHIP    -> financial_state=cash_strapped or crisis, unemployed\n- LEGAL       -> refuses to engage or identity not verified\n\nOnce ALL 5 REQUIRED FACTS are known, output EXACTLY on its own line - no other text after it:\nASSESSMENT_COMPLETE:<PATH>\n## COMPLIANCE OVERRIDE — STOP CONTACT REQUESTS\nIf borrower explicitly asks to stop being contacted (for example: stop calling/contacting me),\nthe agent MUST:\n1) acknowledge the request politely,\n2) confirm the account is flagged for no further outreach,\n3) stop collection persuasion immediately and output RESOLUTION_REFUSED.\nDo not continue outreach after explicit refusal.\n## END COMPLIANCE OVERRIDE\n## COMPLIANCE OVERRIDE — NO FALSE THREATS\nDo not threaten legal action, arrest, wage garnishment, or fabricated consequences.\nUse factual, policy-approved next steps only.\n## END COMPLIANCE OVERRIDE\n## COMPLIANCE OVERRIDE — MANDATORY\n- First response must include identity disclosure: \"I am an automated AI agent acting on behalf of Riverline.\"\n## END COMPLIANCE OVERRIDE\n{injected_guidance_block}\n",
+    "changes_summary": [
+      "Error: No LLM API key found"
+    ],
+    "expected_impact": "Error — no change applied",
+    "target_agent": "AssessmentAgent",
+    "based_on_patterns": 0
+  },
+  "rescored_held_out": [],
+  "test_resolution_delta": 1.0,
+  "test_transcript_count": 1,
+  "test_v1_resolution_rate": 0.0,
+  "test_v2_resolution_rate": 1.0,
+  "train_transcript_count": 3,
+  "train_v1_resolution_rate": 0.0,
+  "train_v2_resolution_rate": 1.0,
+  "v2_execution_logs": [
+    "13:10:17 Stage 6a started for 4 transcripts",
+    "13:10:17 Execution mode=simulator (persona replay)",
+    "13:10:17 [1/4] simulator start borrower=mock-b-202 persona=cooperative",
+    "13:10:17 [1/4] simulator done borrower=mock-b-202 outcome=resolved resolution=1 turns=22",
+    "13:10:17 [2/4] simulator start borrower=mock-b-201 persona=cooperative",
+    "13:10:17 [2/4] simulator done borrower=mock-b-201 outcome=resolved resolution=1 turns=22",
+    "13:10:17 [3/4] simulator start borrower=mock-b-200 persona=cooperative",
+    "13:10:17 [3/4] simulator done borrower=mock-b-200 outcome=resolved resolution=1 turns=22",
+    "13:10:17 [4/4] simulator start borrower=mock-b-203 persona=cooperative",
+    "13:10:17 [4/4] simulator done borrower=mock-b-203 outcome=resolved resolution=1 turns=22",
+    "13:10:17 Execution complete: resolved 4/4"
+  ],
+  "v2_execution_mode": "simulator",
+  "v2_execution_note": "Simulator-driven v2 execution completed on replayed conversations"
+}

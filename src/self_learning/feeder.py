@@ -172,9 +172,8 @@ async def _fetch_and_run(
         agents = ALL_AGENTS
 
     try:
-        # Safety default for all auto/manual feeder-triggered runs.
-        # Debugging can still explicitly override via environment.
-        os.environ.setdefault("REAL_V2_EXECUTION_MODE", "simulator")
+        # Default to real v2 replay (live LLM); pipeline rejects non-real mode.
+        os.environ.setdefault("REAL_V2_EXECUTION_MODE", "real")
         os.environ.setdefault("REPLAY_BORROWER_MODE", "simulator")
 
         transcripts = await _fetch_last_n_transcripts(TRANSCRIPT_BATCH_SIZE)

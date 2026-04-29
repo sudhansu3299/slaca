@@ -1168,6 +1168,7 @@ async function triggerPipeline() {
 
 async function loadPipelineRuns() {
   try {
+    _setPipelineUiError('');
     const d = await fetch('/api/admin/pipeline/runs?limit=30').then(r=>r.json());
     const runs = d.runs || [];
     if (!runs.length) {
@@ -1202,8 +1203,12 @@ async function loadPipelineRuns() {
       const by      = r.triggered_by || '';
       const trigCls = by.includes('auto') ? 'auto' : 'manual';
       const cancellable = r.status === 'running';
+      const hasError = !!(r.error && String(r.error).trim());
       const stopBtn = cancellable
         ? `<button class="btn-stop" onclick="stopPipelineRun(event, '${r.run_id}')">✕ Stop</button>`
+        : '';
+      const errBadge = hasError
+        ? `<span title="${escHtml(String(r.error))}" style="font-size:10px;color:var(--red);font-weight:700">⚠ error</span>`
         : '';
       return `<div class="run-row ${sel}" onclick="selectRun('${r.run_id}')">
         <div class="run-status ${r.status}"></div>
@@ -1215,6 +1220,7 @@ async function loadPipelineRuns() {
           <span class="trigger-badge ${trigCls}">${trigCls}</span>
         </div>
         <div class="run-actions">
+          ${errBadge}
           <div class="run-decision ${dec}">${dec}</div>
           ${stopBtn}
         </div>
@@ -1232,7 +1238,11 @@ async function loadPipelineRuns() {
     // Render score trend table (last 10)
     renderScoreTrend(visibleRuns, total);
     loadTestResolutionTrend();
-  } catch(e) { console.warn('loadPipelineRuns error', e); }
+  } catch(e) {
+    console.warn('loadPipelineRuns error', e);
+    const msg = e?.message || String(e) || 'unknown error';
+    _setPipelineUiError(`Failed to load pipeline runs: ${msg}`);
+  }
 }
 
 async function selectRun(runId, silent=false) {
@@ -1251,7 +1261,22 @@ async function selectRun(runId, silent=false) {
       }
     });
     renderRunDetail(run);
-  } catch(e) { if (!silent) toast('Error: '+e.message); }
+  } catch(e) {
+    const msg = e?.message || String(e) || 'unknown error';
+    _setPipelineUiError(`Failed to load run ${runId}: ${msg}`);
+    if (!silent) {
+      toast('Error: ' + msg);
+      return;
+    }
+    // During background polling we still render the failure inline so users
+    // can debug run/detail fetch issues without opening devtools.
+    renderRunDetail({
+      run_id: runId,
+      status: 'failed',
+      error: `Run detail fetch failed: ${msg}`,
+      v2_execution_logs: [`[ui] selectRun failed for ${runId}: ${msg}`],
+    });
+  }
 }
 
 function renderRunDetail(run) {
@@ -1584,6 +1609,25 @@ function detailCard(id, title, body, open=false) {
 function toggleDetail(id) {
   document.getElementById('dbd-'+id).classList.toggle('open');
   document.getElementById('dti-'+id).classList.toggle('open');
+}
+
+function _setPipelineUiError(message) {
+  const host = document.getElementById('runHistory');
+  if (!host) return;
+  const existing = document.getElementById('pipelineUiError');
+  if (!message) {
+    if (existing) existing.remove();
+    return;
+  }
+  const html = `
+    <div id="pipelineUiError" style="margin:8px;padding:10px 12px;border-radius:10px;background:color-mix(in oklch, var(--red) 14%, white);color:var(--red);font-size:11px;line-height:1.45">
+      ${escHtml(message)}
+    </div>`;
+  if (existing) {
+    existing.outerHTML = html;
+  } else {
+    host.insertAdjacentHTML('afterbegin', html);
+  }
 }
 
 function escHtml(t) {

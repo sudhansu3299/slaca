@@ -1,9 +1,9 @@
 {
   "run_id": "pipeline-a66a2020",
   "agent_target": "FinalNoticeAgent",
-  "status": "completed",
-  "decision": "adopt",
-  "started_at": "2026-04-29T13:10:18.601495+00:00",
-  "completed_at": "2026-04-29T13:10:18.932690+00:00",
-  "generated_at_utc": "2026-04-29T13:10:18.936228+00:00"
+  "status": "failed",
+  "decision": "pending",
+  "started_at": "2026-04-29T19:13:40.573726+00:00",
+  "completed_at": "2026-04-29T19:13:40.587810+00:00",
+  "generated_at_utc": "2026-04-29T19:13:40.588633+00:00"
 }

@@ -1,0 +1,66 @@
+[
+  {
+    "trace_id": "mock-v2-078a3903",
+    "borrower_id": "mock-b-200",
+    "agent_name": "AssessmentAgent",
+    "role": "assistant",
+    "prompt_version": "improved-v2",
+    "structured_context": {
+      "completeness_score": 0.62,
+      "identity_verified": true
+    },
+    "input": "user: i need help with my account",
+    "output": "assistant: here is your updated account info with empathy",
+    "decision": "complete",
+    "timestamp": "2026-04-25T14:50:52.511271+00:00",
+    "created_at": "2026-04-25T14:50:52.511271+00:00"
+  },
+  {
+    "trace_id": "mock-v2-3861387b",
+    "borrower_id": "mock-b-201",
+    "agent_name": "AssessmentAgent",
+    "role": "assistant",
+    "prompt_version": "improved-v2",
+    "structured_context": {
+      "completeness_score": 0.625,
+      "identity_verified": false
+    },
+    "input": "user: i need help with my account",
+    "output": "assistant: here is your updated account info with empathy",
+    "decision": "complete",
+    "timestamp": "2026-04-25T14:50:52.511271+00:00",
+    "created_at": "2026-04-25T14:50:52.511271+00:00"
+  },
+  {
+    "trace_id": "mock-v2-addc0585",
+    "borrower_id": "mock-b-203",
+    "agent_name": "AssessmentAgent",
+    "role": "assistant",
+    "prompt_version": "improved-v2",
+    "structured_context": {
+      "completeness_score": 0.635,
+      "identity_verified": true
+    },
+    "input": "user: i need help with my account",
+    "output": "assistant: here is your updated account info with empathy",
+    "decision": "complete",
+    "timestamp": "2026-04-25T14:50:52.511271+00:00",
+    "created_at": "2026-04-25T14:50:52.511271+00:00"
+  },
+  {
+    "trace_id": "mock-v2-f4833b8e",
+    "borrower_id": "mock-b-202",
+    "agent_name": "AssessmentAgent",
+    "role": "assistant",
+    "prompt_version": "improved-v2",
+    "structured_context": {
+      "completeness_score": 0.63,
+      "identity_verified": false
+    },
+    "input": "user: i need help with my account",
+    "output": "assistant: here is your updated account info with empathy",
+    "decision": "complete",
+    "timestamp": "2026-04-25T14:50:52.511271+00:00",
+    "created_at": "2026-04-25T14:50:52.511271+00:00"
+  }
+]

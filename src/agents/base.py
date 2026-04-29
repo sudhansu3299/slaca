@@ -126,6 +126,32 @@ class BaseAgent(ABC):
                 total += estimate_tokens(json.dumps(tc))
         return total
 
+    def _estimate_budgeted_input_context_tokens(
+        self,
+        system: str,
+        messages: list[dict[str, Any]],
+    ) -> int:
+        """
+        Policy-scoped budget estimate used by enforce_total_turn_limit.
+
+        The per-turn input budget is intended to cap reusable agent context
+        (system prompt + carried summary/handoff), not fresh borrower text.
+        We therefore exclude user-role content from this check.
+        """
+        total = estimate_tokens(system or "")
+        for m in messages:
+            if str(m.get("role", "")).lower() == "user":
+                continue
+            c = m.get("content", "")
+            if isinstance(c, list):
+                c = json.dumps(c)
+            elif c is None:
+                c = ""
+            elif not isinstance(c, str):
+                c = str(c)
+            total += estimate_tokens(c)
+        return total
+
     def _build_openai_tools(self, tools: list[dict]) -> list[dict[str, Any]]:
         openai_tools: list[dict[str, Any]] = []
         for tool in tools:
@@ -173,6 +199,7 @@ class BaseAgent(ABC):
 
         built = self._build_openai_messages(system, messages)
         est_in = self._estimate_openai_prompt_tokens(built)
+        budgeted_input_tokens = self._estimate_budgeted_input_context_tokens(system, messages)
         safe_max = clamp_max_tokens(
             max_tokens or MAX_TOKENS_PER_AGENT,
             self.cost_tracker,
@@ -217,7 +244,7 @@ class BaseAgent(ABC):
 
         if response.usage:
             enforce_total_turn_limit(
-                response.usage.prompt_tokens or 0,
+                budgeted_input_tokens,
                 response.usage.completion_tokens or 0,
                 label=self.name,
             )
@@ -273,6 +300,7 @@ class BaseAgent(ABC):
         total_input = 0
         total_output = 0
         current_messages = self._build_openai_messages(system, messages)
+        budgeted_input_tokens = self._estimate_budgeted_input_context_tokens(system, messages)
         openai_tools = self._build_openai_tools(tools)
 
         # Agentic tool loop — max 5 rounds to prevent runaway calls
@@ -299,7 +327,7 @@ class BaseAgent(ABC):
             response = await client.chat.completions.create(**request_kwargs)
             if response.usage:
                 enforce_total_turn_limit(
-                    response.usage.prompt_tokens or 0,
+                    budgeted_input_tokens,
                     response.usage.completion_tokens or 0,
                     label=self.name,
                 )

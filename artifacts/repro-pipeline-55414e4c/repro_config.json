@@ -1,0 +1,28 @@
+{
+  "generated_at_utc": "2026-04-29T19:09:25.799669+00:00",
+  "run_id": "pipeline-55414e4c",
+  "agent_target": "ResolutionAgent",
+  "triggered_by": "repro_bundle_rerun",
+  "git_commit": "aa9704790e33389fbaf4d9cc1df2bb975db4f759",
+  "pipeline_split_seed": 2226789600,
+  "seed_formula": "int(md5(run_id).hexdigest(), 16) % (2**32)",
+  "env": {
+    "MONGODB_URL": "",
+    "MONGODB_DB": "",
+    "OPENAI_BASE_URL": "",
+    "OPENCODE_BASE_URL": "",
+    "AGENT_MODEL": "deepseek/deepseek-v4-flash",
+    "EVAL_MODEL": "",
+    "EVAL_TEMP": "",
+    "PROMPT_GENERATION_MODEL": "",
+    "PROMPT_GENERATION_TEMP": "",
+    "REAL_V2_EXECUTION_MODE": "simulator",
+    "REPLAY_BORROWER_MODE": "simulator"
+  },
+  "files": {
+    "run_doc_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-55414e4c/run_doc.json",
+    "scores_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-55414e4c/per_conversation_scores.json",
+    "scores_csv": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-55414e4c/per_conversation_scores.csv",
+    "transcripts_json": "/Users/sudhansu/project-slaca/artifacts/repro-pipeline-55414e4c/transcripts.json"
+  }
+}

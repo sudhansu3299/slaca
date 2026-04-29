@@ -1552,7 +1552,7 @@ def _effective_v2_execution_mode() -> str:
     Explicit env override remains available for debugging.
     """
     mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "real")).strip().lower()
-    return mode if mode in {"real", "simulator"} else "simulator"
+    return mode if mode in {"real", "simulator"} else "real"
 
 
 def _is_resolved_outcome(outcome: Any) -> bool:
@@ -1618,6 +1618,19 @@ def _build_v2_prompt_renderer(agent_name: str, agent_obj, prompt_template: str):
     return _render
 
 
+def _canonical_borrower_id_for_replay_db(borrower_id: str) -> str:
+    """
+    Pipeline tools (e.g. store_financial_data) FK to borrowers.borrower_id.
+    Replay runs must not use synthetic suffixes like -V2 / -V2SIM on that id.
+    Trace/score rows already distinguish v2 via trace_id (e.g. :v2_real).
+    """
+    bid = str(borrower_id)
+    for suf in ("-V2SIM", "-V2"):
+        if bid.endswith(suf):
+            return bid[: -len(suf)]
+    return bid
+
+
 async def execute_real_v2_on_transcripts(
     transcripts: list[dict],
     baseline_scores: list[TranscriptScore],
@@ -1660,9 +1673,14 @@ async def execute_real_v2_on_transcripts(
 
     for i, (t, baseline) in enumerate(zip(transcripts, baseline_scores), 1):
         borrower_id = str(t.get("borrower_id", f"AB-{i:03d}"))
+        ctx_borrower_id = _canonical_borrower_id_for_replay_db(
+            str(baseline.borrower_id or borrower_id)
+        )
         provider = _build_replay_input_provider(t)
         if progress_cb is not None:
-            await progress_cb(f"[{i}/{len(transcripts)}] replay start borrower={borrower_id}")
+            await progress_cb(
+                f"[{i}/{len(transcripts)}] replay start borrower={ctx_borrower_id}"
+            )
 
         pipeline = CollectionsPipeline()
         pipeline._schedule_learning_followups = lambda resolved, agents_seen: None
@@ -1747,7 +1765,7 @@ async def execute_real_v2_on_transcripts(
 
             result = await asyncio.wait_for(
                 pipeline.run(
-                    borrower_id=f"{borrower_id}-V2",
+                    borrower_id=ctx_borrower_id,
                     loan_id=str(t.get("loan_id", f"LN-{i:03d}")),
                     principal_amount=100_000,
                     outstanding_amount=85_000,
@@ -1773,18 +1791,18 @@ async def execute_real_v2_on_transcripts(
             executed_scores.append(score)
             if progress_cb is not None:
                 await progress_cb(
-                    f"[{i}/{len(transcripts)}] replay done borrower={borrower_id} "
+                    f"[{i}/{len(transcripts)}] replay done borrower={ctx_borrower_id} "
                     f"outcome={result.outcome} resolution={score.resolution} turns={len(result.conversation)}"
                 )
         except asyncio.TimeoutError as e:
             if progress_cb is not None:
                 await progress_cb(
-                    f"[{i}/{len(transcripts)}] replay timeout borrower={borrower_id} "
+                    f"[{i}/{len(transcripts)}] replay timeout borrower={ctx_borrower_id} "
                     f"after {per_transcript_timeout_s:.1f}s"
                 )
             raise RuntimeError(
                 f"real v2 replay timed out at transcript {i}/{len(transcripts)} "
-                f"(borrower={borrower_id}) after {per_transcript_timeout_s}s"
+                f"(borrower={ctx_borrower_id}) after {per_transcript_timeout_s}s"
             ) from e
         finally:
             for agent_obj, original_renderer in reversed(patched_prompt_renderers):
@@ -1842,12 +1860,15 @@ async def execute_simulated_v2_on_transcripts(
 
     for i, (t, baseline) in enumerate(zip(transcripts, baseline_scores), 1):
         borrower_id = str(t.get("borrower_id", f"AB-{i:03d}"))
+        ctx_borrower_id = _canonical_borrower_id_for_replay_db(
+            str(baseline.borrower_id or borrower_id)
+        )
         persona = _infer_persona_type(t) or PersonaType.COOPERATIVE
         provider = _build_replay_input_provider(t)
         mock_responses = SimulationEngine.get_mock_llm_responses(persona)
         if progress_cb is not None:
             await progress_cb(
-                f"[{i}/{len(transcripts)}] simulator start borrower={borrower_id} persona={persona.value}"
+                f"[{i}/{len(transcripts)}] simulator start borrower={ctx_borrower_id} persona={persona.value}"
             )
 
         pipeline = CollectionsPipeline()
@@ -1899,7 +1920,7 @@ async def execute_simulated_v2_on_transcripts(
         try:
             result = await asyncio.wait_for(
                 pipeline.run(
-                    borrower_id=f"{borrower_id}-V2SIM",
+                    borrower_id=ctx_borrower_id,
                     loan_id=str(t.get("loan_id", f"LN-{i:03d}")),
                     principal_amount=100_000,
                     outstanding_amount=85_000,

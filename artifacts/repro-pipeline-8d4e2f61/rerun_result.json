@@ -1,0 +1,9 @@
+{
+  "run_id": "pipeline-8d4e2f61",
+  "agent_target": "AssessmentAgent",
+  "status": "failed",
+  "decision": "pending",
+  "started_at": "2026-04-29T19:13:40.573523+00:00",
+  "completed_at": "2026-04-29T19:13:40.586729+00:00",
+  "generated_at_utc": "2026-04-29T19:13:40.587440+00:00"
+}

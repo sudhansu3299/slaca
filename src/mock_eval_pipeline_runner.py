@@ -276,7 +276,7 @@ async def run(cfg: RunnerConfig) -> None:
     os.environ.setdefault("AB_MIN_SAMPLE_PER_ARM", "20")
     os.environ.setdefault("AB_MIN_RESOLUTION_DELTA", "0.02")
     os.environ.setdefault("AB_MIN_COHEN_D", "0.20")
-    os.environ.setdefault("REAL_V2_EXECUTION_MODE", "simulator")
+    os.environ.setdefault("REAL_V2_EXECUTION_MODE", "real")
     os.environ.setdefault("REPLAY_BORROWER_MODE", "simulator")
 
     if cfg.ensure_v2:

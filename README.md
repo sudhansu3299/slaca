@@ -115,47 +115,15 @@ If admin panel looks stale:
 
 ## 8) Reproducibility
 
-This repo includes scripts to export and rerun evaluation artifacts for a specific `eval_pipeline` run.
+See **[architecture/REPRO_RUNBOOK.md](architecture/REPRO_RUNBOOK.md)** for what reproducibility means here, required bundle files, export/rerun commands, and the three reference `pipeline-*` bundles (Assessment, Resolution, Final Notice).
 
-### What is captured
-
-For a given `run_id`, reproducibility export writes:
-
-- Full run doc from MongoDB: `run_doc.json`
-- Per-conversation scores: `per_conversation_scores.json` and `per_conversation_scores.csv`
-- Transcript snapshot for replay: `transcripts.json`
-- Optional raw interactions: `interactions.json`
-- Config + seed snapshot: `repro_config.json`
-- One-command rerun helpers: `RERUN_COMMAND.txt` and `RERUN.sh`
-
-Seed used for pipeline split:
-
-- `pipeline_split_seed = int(md5(run_id).hexdigest(), 16) % (2**32)`
-
-### Export a reproducibility bundle
+Quick export (any completed `run_id`):
 
 ```bash
 .venv/bin/python scripts/export_repro_bundle.py \
   --run-id <RUN_ID> \
   --output-dir artifacts/repro-<RUN_ID> \
   --export-interactions
-```
-
-### Rerun evaluation pipeline end-to-end from snapshot
-
-```bash
-.venv/bin/python scripts/rerun_pipeline_from_snapshot.py \
-  --agent-name <AssessmentAgent|ResolutionAgent|FinalNoticeAgent> \
-  --run-id <RUN_ID> \
-  --transcripts-file artifacts/repro-<RUN_ID>/transcripts.json \
-  --allow-overwrite-run-id \
-  --output-json artifacts/repro-<RUN_ID>/rerun_result.json
-```
-
-### Example used in current evolution report
-
-```bash
-.venv/bin/python scripts/rerun_pipeline_from_snapshot.py --agent-name FinalNoticeAgent --run-id pipeline-a66a2020 --transcripts-file /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/transcripts.json --allow-overwrite-run-id --output-json /Users/sudhansu/project-slaca/artifacts/repro-pipeline-a66a2020/rerun_result.json
 ```
 
 Important: the `pipeline-a66a2020` bundle is a replay/simulator run and should **not** be used as convergence evidence for real-LLM behavior (`llm_calls=0`, `v2_execution_mode=simulator`).

@@ -1,0 +1,542 @@
+[
+  {
+    "trace_id": "mock-v2-07bb8115",
+    "borrower_id": "mock-b-229",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-10c88842",
+    "borrower_id": "mock-b-212",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-1810ff87",
+    "borrower_id": "mock-b-282",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-24e2e517",
+    "borrower_id": "mock-b-218",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-2733f3de",
+    "borrower_id": "mock-b-240",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-2d38593e",
+    "borrower_id": "mock-b-225",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-338c8a81",
+    "borrower_id": "mock-b-234",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-36437f86",
+    "borrower_id": "mock-b-270",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-40ff3368",
+    "borrower_id": "mock-b-238",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-4c79a7cc",
+    "borrower_id": "mock-b-258",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-5ef71114",
+    "borrower_id": "mock-b-284",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-6ac7e466",
+    "borrower_id": "mock-b-260",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-74f5064e",
+    "borrower_id": "mock-b-272",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-7af5cb8f",
+    "borrower_id": "mock-b-254",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-852377d7",
+    "borrower_id": "mock-b-245",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-aa3fea1d",
+    "borrower_id": "mock-b-214",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-d7c05cfb",
+    "borrower_id": "mock-b-251",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-e69620f3",
+    "borrower_id": "mock-b-232",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-f0c22269",
+    "borrower_id": "mock-b-211",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "mock-v2-fe229e10",
+    "borrower_id": "mock-b-288",
+    "primary_agent": "AssessmentAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "user: i need help with my account",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant: here is your updated account info with empathy",
+        "timestamp": "2026-04-25T14:50:52.511271+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-000",
+    "borrower_id": "BRW-AN-Res-20260425194941-000",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.063175+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "Terms are approved with deadline 48 hours. Can you confirm you agree today? Confirmed. RESOLUTION_COMPLETE",
+        "timestamp": "2026-04-25T19:49:41.063175+00:00",
+        "advanced": true
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-001",
+    "borrower_id": "BRW-AN-Res-20260425194941-001",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.066082+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.066082+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-002",
+    "borrower_id": "BRW-AN-Res-20260425194941-002",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.066503+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.066503+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-003",
+    "borrower_id": "BRW-AN-Res-20260425194941-003",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.067330+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "Terms are approved with deadline 48 hours. Can you confirm you agree today? Confirmed. RESOLUTION_COMPLETE",
+        "timestamp": "2026-04-25T19:49:41.067330+00:00",
+        "advanced": true
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-004",
+    "borrower_id": "BRW-AN-Res-20260425194941-004",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.068147+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.068147+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-005",
+    "borrower_id": "BRW-AN-Res-20260425194941-005",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.068594+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.068594+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-006",
+    "borrower_id": "BRW-AN-Res-20260425194941-006",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.068934+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "Terms are approved with deadline 48 hours. Can you confirm you agree today? Confirmed. RESOLUTION_COMPLETE",
+        "timestamp": "2026-04-25T19:49:41.068934+00:00",
+        "advanced": true
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-007",
+    "borrower_id": "BRW-AN-Res-20260425194941-007",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.069265+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.069265+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-008",
+    "borrower_id": "BRW-AN-Res-20260425194941-008",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.069608+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "These are the approved terms and deadline. Please confirm commitment.",
+        "timestamp": "2026-04-25T19:49:41.069608+00:00",
+        "advanced": false
+      }
+    ]
+  },
+  {
+    "trace_id": "trace-Res-patch-v1-20260425194941-009",
+    "borrower_id": "BRW-AN-Res-20260425194941-009",
+    "primary_agent": "ResolutionAgent",
+    "history": [
+      {
+        "role": "user",
+        "content": "Mock borrower utterance",
+        "timestamp": "2026-04-25T19:49:41.069904+00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "Terms are approved with deadline 48 hours. Can you confirm you agree today? Confirmed. RESOLUTION_COMPLETE",
+        "timestamp": "2026-04-25T19:49:41.069904+00:00",
+        "advanced": true
+      }
+    ]
+  }
+]

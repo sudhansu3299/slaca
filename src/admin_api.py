@@ -1251,21 +1251,13 @@ async def trigger_pipeline(body: dict = {}):
     agent_name  = body.get("agent_name", "AssessmentAgent")
     limit       = int(body.get("limit", 30))
     triggered_by = body.get("triggered_by", "admin_ui")
-    requested_exec_mode = str(body.get("v2_execution_mode", "")).strip().lower()
     requested_replay_mode = str(body.get("replay_borrower_mode", "")).strip().lower()
     force_simulator = _to_bool(body.get("force_simulator"), default=False)
 
-    valid_exec_modes = {"real", "simulator"}
     valid_replay_modes = {"history", "simulator", "llm"}
 
-    if requested_exec_mode in valid_exec_modes:
-        exec_mode = requested_exec_mode
-    elif force_simulator:
-        exec_mode = "simulator"
-    else:
-        exec_mode = str(os.getenv("REAL_V2_EXECUTION_MODE", "real")).strip().lower()
-        if exec_mode not in valid_exec_modes:
-            exec_mode = "real"
+    # Stage 6a only runs real LLM replay; keep env aligned so feeder/UI never hit simulator defaults.
+    exec_mode = "real"
 
     if requested_replay_mode in valid_replay_modes:
         replay_mode = requested_replay_mode

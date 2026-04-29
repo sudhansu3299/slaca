@@ -1,0 +1,9 @@
+bucket,trace_id,borrower_id,agent_name,resolution,resolution_confidence,debt_collected,compliance_violation,compliance_reason,tone_score,next_step_clarity,raw_transcript_turns
+transcript_scores,mock-v2-f4833b8e,mock-b-202,AssessmentAgent,0,0.0,0,0,,3,3,2
+transcript_scores,mock-v2-3861387b,mock-b-201,AssessmentAgent,0,0.0,0,0,,3,3,2
+transcript_scores,mock-v2-078a3903,mock-b-200,AssessmentAgent,0,0.0,0,0,,3,3,2
+held_out_scores,mock-v2-addc0585,mock-b-203,AssessmentAgent,0,0.0,0,0,,3,3,2
+executed_v2_scores,mock-v2-f4833b8e:v2_sim,mock-b-202,AssessmentAgent,1,0.85,1,0,,4,4,22
+executed_v2_scores,mock-v2-3861387b:v2_sim,mock-b-201,AssessmentAgent,1,0.85,1,0,,4,4,22
+executed_v2_scores,mock-v2-078a3903:v2_sim,mock-b-200,AssessmentAgent,1,0.85,1,0,,4,4,22
+executed_v2_scores,mock-v2-addc0585:v2_sim,mock-b-203,AssessmentAgent,1,0.85,1,0,,4,4,22
