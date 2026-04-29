@@ -180,7 +180,7 @@ Home Page:
 ## Admin Panel
 
 Chat-wise scores and trends
-<img width="1771" height="963" alt="image" src="https://github.com/user-attachments/assets/3614d778-f7a4-4f55-937c-b7f6080d438d" />
+<img width="1334" height="728" alt="image" src="https://github.com/user-attachments/assets/c65c4533-ee8b-4136-acda-763891f202ae" />
 
 Synthetic conversations creator
 <img width="1641" height="939" alt="image" src="https://github.com/user-attachments/assets/963219a5-8b56-4d6b-9473-13ac8f4b3693" />
@@ -191,9 +191,14 @@ Self-Improvement Pipeline
 Meta-Evaluator
 <img width="1575" height="1022" alt="image" src="https://github.com/user-attachments/assets/fdb8e6ec-9b7b-40a5-956c-3332ef7fe068" />
 
-Agent Analytics
-<img width="1615" height="668" alt="image" src="https://github.com/user-attachments/assets/a97e2455-9b8c-46f2-8a42-4792b7736ede" />
+Agent Analytics with versioning
+<img width="1308" height="711" alt="image" src="https://github.com/user-attachments/assets/9c9e1189-05ac-49b1-909d-f7d6aa37205e" />
 
+Trend of current version vs v1
+<img width="1295" height="608" alt="image" src="https://github.com/user-attachments/assets/4fc0233d-a4a5-4a56-85d1-a078389ff53d" />
+
+Test vs train trend
+<img width="1328" height="321" alt="image" src="https://github.com/user-attachments/assets/06aca673-f1b2-4524-83df-bc3706fa3748" />
 
 
 ### Cost per Self-Learning Loop
