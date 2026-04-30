@@ -218,6 +218,10 @@ Trend of current version vs v1
 Test vs train trend
 <img width="1328" height="321" alt="image" src="https://github.com/user-attachments/assets/06aca673-f1b2-4524-83df-bc3706fa3748" />
 
+### Evolution Metrics
+This is found at architecture/evolution_report.md on how to run this locally
+
+<img width="1147" height="785" alt="image" src="https://github.com/user-attachments/assets/e5437d70-f7e5-4a2f-a04d-6f6a4fa87e83" />
 
 ### Cost per Self-Learning Loop
 <img width="1324" height="664" alt="image" src="https://github.com/user-attachments/assets/8d0f6399-8b1c-449b-aacf-1462c8a544b6" />
