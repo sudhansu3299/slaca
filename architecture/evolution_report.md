@@ -119,6 +119,17 @@ Top level:
   - `run_count`, `points` (per-run metrics + `iteration`)  
   - `convergence`: `status`, `points` (convergence series), `baseline_v1_rate`, `plateau`, `stability_band`, etc.
 
+## Train trend for the new version
+
+Trend for all agents at n = 25
+
+Delta~ 0% and Test Set diff: 0
+![img_1.png](img_1.png)
+
+![img.png](img.png)
+
+This feels like the resolution is coming to a plateau.
+
 ## Implementation pointers
 
 - Script: `scripts/evolution_report.py`  

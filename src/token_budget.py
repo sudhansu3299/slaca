@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Claude Opus 4 pricing (per million tokens, as of 2025)
+# Claude Opus-class pricing (per million tokens); aligned with src/cost.py MODEL_PRICING["claude-opus-4-5"]
 # Input: $15/M  Output: $75/M
 OPUS_INPUT_COST_PER_M = 15.0
 OPUS_OUTPUT_COST_PER_M = 75.0

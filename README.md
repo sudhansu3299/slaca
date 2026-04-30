@@ -166,6 +166,20 @@ The report writes:
 - `agents.<Agent>.criteria`: pass/fail for each convergence criterion.
 - `excluded_runs`: completed runs that were excluded (for example simulator/fallback/no-LLM runs).
 
+## 10) LLM cost (current defaults and per-loop breakdown)
+
+**Budget:** each tracked run enforces **`TOTAL_COST_BUDGET_USD = 20.0`** (`src/token_budget.py`).
+
+**Default models and list pricing** (override with **`AGENT_MODEL`**, **`SIMULATION_MODEL`**, **`EVAL_MODEL`** in `.env`): committed table in **`src/cost.py`** — production agent turns in the Admin breakdown use **`gpt-4o`** (**$2.50** / **$10.00** per 1M input / output tokens); judge-style pipeline buckets default to **`gpt-4o-mini`** (**$0.15** / **$0.60** per 1M).
+
+**Live numbers:** the Admin “Cost per Self-Learning Loop” chart reads **`GET /api/admin/stats/cost-breakdown`** (latest loop scope, sibling runs in the same trigger cohort, optional pipeline-cost splits — see `src/admin_api.py`).
+
+**Written methodology + example JSON:** **[architecture/LLM_LOOP_COST_BREAKDOWN.md](architecture/LLM_LOOP_COST_BREAKDOWN.md)** and **[architecture/LLM_LOOP_COST_BREAKDOWN.json](architecture/LLM_LOOP_COST_BREAKDOWN.json)**. To dump your stack’s payload:
+
+```bash
+curl -sS "http://localhost:8000/api/admin/stats/cost-breakdown" | jq .
+```
+
 # UI Screenshots
 Home Page:
 

@@ -83,3 +83,8 @@ Details: [`architecture/evolution_report.md`](./evolution_report.md).
 ---
 
 *Assessment §1 matches the **Prompt Version History** UI you shared. **Resolution §2** is fully filled from `EVOLUTION_REPORT_2026-04-26.md`. **Final Notice §3** has **verified** v1 + v4; **v2–v3** are **interpolated** (see §3 footnote) until you paste live Admin values.*
+
+
+## Trade offs:
+1. This can be better with more transcripts, but we are consistently hitting rate limits with my openai key n~30
+2. This could have been tried more number of models, gpt 5.x versions or deepseek or sonnet for prompt generation and judge eval

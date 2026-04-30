@@ -1,0 +1,41 @@
+{
+  "generated_at_utc": "2026-04-30T12:00:00+00:00",
+  "documentation": "architecture/LLM_LOOP_COST_BREAKDOWN.md",
+  "source_endpoint": "GET /api/admin/stats/cost-breakdown",
+  "pricing_reference": {
+    "files": ["src/cost.py", "src/token_budget.py"],
+    "budget_usd": 20.0,
+    "env_defaults": {
+      "AGENT_MODEL": "gpt-4o",
+      "SIMULATION_MODEL": "gpt-4o-mini",
+      "EVAL_MODEL": "gpt-4o-mini",
+      "LATEST_LOOP_WINDOW_MINUTES": "20"
+    },
+    "model_pricing_usd_per_million_tokens": {
+      "gpt-4o": {"input": 2.5, "output": 10.0},
+      "gpt-4o-mini": {"input": 0.15, "output": 0.6},
+      "gpt-4.1-mini": {"input": 0.4, "output": 1.6},
+      "claude-opus-4-5": {"input": 15.0, "output": 75.0},
+      "claude-haiku-4-5": {"input": 1.0, "output": 5.0},
+      "claude-sonnet-4-5": {"input": 3.0, "output": 15.0}
+    }
+  },
+  "example_snapshot_illustrative_only": {
+    "note": "Not from a live DB in CI; mirrors typical full-loop magnitude. Regenerate via curl to localhost when the stack and Mongo are populated.",
+    "total_cost_usd": 2.2398,
+    "budget_usd": 20.0,
+    "pct_used": 11.2,
+    "remaining_usd": 17.7602,
+    "within_budget": true,
+    "tracked_pipeline_cost": true,
+    "rows": [
+      {"operation": "Simulate borrower conversations", "model": "gpt-4o", "count": 274, "count_unit": "turns", "cost_usd": 2.192, "source": "estimated"},
+      {"operation": "LLM-as-judge scoring", "model": "gpt-4o-mini", "count": 48, "count_unit": "scoring calls", "cost_usd": 0.0153, "source": "actual"},
+      {"operation": "Prompt generation (proposer)", "model": "gpt-4o", "count": 1, "count_unit": "proposals", "cost_usd": 0.0102, "source": "actual"},
+      {"operation": "Improvement pipeline failure analysis", "model": "gpt-4o-mini", "count": 1, "count_unit": "analysis calls", "cost_usd": 0.006, "source": "actual"},
+      {"operation": "Compliance adversarial checks", "model": "gpt-4o-mini", "count": 2, "count_unit": "checks", "cost_usd": 0.0051, "source": "actual"},
+      {"operation": "A/B comparison + hypothesis synthesis", "model": "gpt-4o-mini", "count": 1, "count_unit": "pipeline runs", "cost_usd": 0.006, "source": "actual"},
+      {"operation": "L3 meta-evaluator scoring consistency audit", "model": "gpt-4o-mini", "count": 1, "count_unit": "meta run", "cost_usd": 0.0052, "source": "actual"}
+    ]
+  }
+}
