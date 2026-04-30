@@ -113,9 +113,13 @@ If admin panel looks stale:
 6. Admin UI: `static/admin.html`
 7. Docker setup: `docker-compose.yml`, `Dockerfile`
 
-## 8) Reproducibility
+## 8) Reproducibility and evolution reports
 
-See **[architecture/REPRO_RUNBOOK.md](architecture/REPRO_RUNBOOK.md)** for what reproducibility means here, required bundle files, export/rerun commands, and the three reference `pipeline-*` bundles (Assessment, Resolution, Final Notice).
+**Reproducibility (bundles, export, rerun)** — see the repro runbook: **[architecture/REPRO_RUNBOOK.md](architecture/REPRO_RUNBOOK.md)** (`REPRO_RUNBOOK.md`). It covers what “repro” means in this repo, required bundle files, export/rerun commands, and the reference `pipeline-*` bundles (Assessment, Resolution, Final Notice).
+
+**Evolution report (evaluators, version history vs Admin UI)** — human-facing tables for all three agents (including `Sim` vs `Real` rows and Prompt Version History alignment): **[architecture/EVOLUTION_REPORT_EVALUATOR_ALL_AGENTS.md](architecture/EVOLUTION_REPORT_EVALUATOR_ALL_AGENTS.md)**.
+
+**Generating HTML/JSON evolution charts from Mongo or saved `run_doc` bundles** — step-by-step for `scripts/evolution_report.py` and `artifacts/evolution_report.html`: **[architecture/evolution_report.md](architecture/evolution_report.md)**.
 
 Quick export (any completed `run_id`):
 

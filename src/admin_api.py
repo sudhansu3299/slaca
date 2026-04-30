@@ -27,6 +27,13 @@ from typing import Any, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from src.pipeline_report_metrics import (
+    analytics_train_v1_v2_rates,
+    build_convergence_payload,
+    is_mock_pipeline_run,
+    test_holdout_resolution_point,
+)
+
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -362,9 +369,7 @@ def _normalize_prompt_version(version: str) -> str:
 
 
 def _is_mock_pipeline_run(run: dict) -> bool:
-    rid = str(run.get("run_id", "")).lower()
-    trig = str(run.get("triggered_by", "")).lower()
-    return rid.startswith("mock-") or ("mock" in rid) or ("mock" in trig)
+    return is_mock_pipeline_run(run)
 
 
 def _order_prompt_versions_for_analytics(
@@ -453,122 +458,6 @@ def _insight_from_rows(rows: list[dict]) -> str:
             "Prefer additional samples before adopting."
         )
     return "Latest version is borderline; gather more samples before treating as durable improvement."
-
-
-def _build_convergence_payload(
-    runs: list[dict[str, Any]],
-    prompt_changes: list[dict[str, Any]],
-    plateau_window: int = 3,
-    plateau_delta_eps: float = 0.015,
-    plateau_band_eps: float = 0.03,
-) -> dict[str, Any]:
-    """
-    Build convergence trend for agent analytics from completed real v2 runs.
-    """
-    version_by_run: dict[str, str] = {}
-    for change in prompt_changes:
-        rid = str(change.get("run_id") or "").strip()
-        new_ver = _normalize_prompt_version(str(change.get("new_version") or "").strip())
-        if rid and new_ver:
-            version_by_run[rid] = new_ver
-
-    eligible: list[dict[str, Any]] = []
-
-    def _rate_from_scores(scores: Any) -> Optional[float]:
-        """
-        Convert a list of stored TranscriptScore-like dicts into a resolution rate.
-        Expected:
-          - each element has {"resolution": 0|1} (but we defensively handle missing)
-        """
-        if not isinstance(scores, list) or not scores:
-            return None
-        try:
-            res = 0
-            n = 0
-            for s in scores:
-                if not isinstance(s, dict):
-                    continue
-                if "resolution" not in s:
-                    continue
-                n += 1
-                res += 1 if int(s.get("resolution") or 0) == 1 else 0
-            if n <= 0:
-                return None
-            return float(res / n)
-        except Exception:
-            return None
-    for run in sorted(runs, key=lambda r: str(r.get("started_at") or "")):
-        if str(run.get("status") or "").lower() != "completed":
-            continue
-        exec_mode = str(run.get("v2_execution_mode") or "").lower() or "unknown"
-        vc = run.get("version_comparison") or {}
-
-        executed_scores = run.get("executed_v2_scores") or []
-        v2_rate = _rate_from_scores(executed_scores)
-        if v2_rate is None:
-            v2_rate = vc.get("v2_resolution_rate")
-            if isinstance(v2_rate, (int, float)):
-                v2_rate = float(v2_rate)
-            else:
-                continue
-
-        # v1 is scored from the current prompt before applying the new prompt.
-        v1_scores = (run.get("transcript_scores") or []) + (run.get("held_out_scores") or [])
-        v1_rate = _rate_from_scores(v1_scores)
-        if v1_rate is None:
-            v1_rate = vc.get("v1_resolution_rate")
-            if isinstance(v1_rate, (int, float)):
-                v1_rate = float(v1_rate)
-            else:
-                # If we can't compute v1, we can still plot v2 rate but delta becomes 0.
-                v1_rate = 0.0
-        rid = str(run.get("run_id") or "")
-        eligible.append({
-            "run_id": rid,
-            "started_at": run.get("started_at"),
-            "version": version_by_run.get(rid, rid),
-            "v2_resolution_rate": float(v2_rate),
-            "v2_execution_mode": exec_mode,
-            "v1_resolution_rate": float(v1_rate),
-            "resolution_delta": float(v2_rate) - float(v1_rate),
-            "decision": str(run.get("decision") or "pending"),
-        })
-
-    if not eligible:
-        return {"status": "insufficient_data", "points": []}
-
-    # Compare each run against a fixed baseline v1:
-    # baseline_v1_rate = v1-resolution-rate from the first eligible real run overall.
-    baseline_v1_rate = float(eligible[0].get("v1_resolution_rate", 0.0))
-
-    # Plot only the last 10 improvements (density), but keep the baseline constant.
-    display_points = eligible[-10:] if len(eligible) > 10 else eligible
-
-    rates = [float(p["v2_resolution_rate"]) for p in display_points]
-    for p in display_points:
-        p["delta_from_v1"] = float(p["v2_resolution_rate"]) - baseline_v1_rate
-    trend_non_decreasing = all(rates[i] >= rates[i - 1] - 1e-9 for i in range(1, len(rates)))
-    stability_band = (max(rates) - min(rates)) if len(rates) > 1 else 0.0
-
-    if len(eligible) >= plateau_window:
-        tail = display_points[-plateau_window:] if len(display_points) >= plateau_window else display_points
-        tail_rates = [float(p["v2_resolution_rate"]) for p in tail]
-        # Plateau is defined as "resolution rate is stable in the recent window".
-        plateau = (max(tail_rates) - min(tail_rates) <= plateau_band_eps)
-    else:
-        plateau = False
-
-    return {
-        "status": "ok",
-        "points": display_points,
-        "baseline_v1_rate": round(baseline_v1_rate, 4),
-        "trend_non_decreasing": trend_non_decreasing,
-        "stability_band": round(stability_band, 4),
-        "plateau": plateau,
-        "plateau_window": plateau_window,
-        "plateau_delta_eps": plateau_delta_eps,
-        "plateau_band_eps": plateau_band_eps,
-    }
 
 
 async def _fetch_last_n_transcripts(n: int = 5) -> list[dict]:
@@ -1388,53 +1277,12 @@ async def get_test_resolution_trend(agent_name: Optional[str] = None, limit: int
     """Return holdout/test resolution trend across recent completed runs."""
     from src.self_learning.improvement_pipeline import list_pipeline_runs as _list
 
-    def _rate(scores: Any) -> Optional[float]:
-        if not isinstance(scores, list) or not scores:
-            return None
-        valid = [s for s in scores if isinstance(s, dict) and "resolution" in s]
-        if not valid:
-            return None
-        resolved = sum(1 for s in valid if int(s.get("resolution") or 0) == 1)
-        return float(resolved / len(valid))
-
-    def _trace_root(value: Any) -> str:
-        return str(value or "").split(":", 1)[0]
-
     runs = await _list(agent_name, max(1, min(int(limit), 100)))
     points: list[dict[str, Any]] = []
     for run in sorted(runs, key=lambda r: str(r.get("started_at") or "")):
-        if str(run.get("status") or "").lower() != "completed":
-            continue
-
-        test_before = run.get("test_v1_resolution_rate")
-        test_after = run.get("test_v2_resolution_rate")
-        test_delta = run.get("test_resolution_delta")
-
-        if not isinstance(test_before, (int, float)) or not isinstance(test_after, (int, float)):
-            held_out = run.get("held_out_scores") or []
-            executed = run.get("executed_v2_scores") or []
-            held_out_ids = {_trace_root(t.get("trace_id")) for t in held_out if isinstance(t, dict)}
-            executed_test = [
-                s for s in executed
-                if isinstance(s, dict) and _trace_root(s.get("trace_id")) in held_out_ids
-            ]
-            r_before = _rate(held_out)
-            r_after = _rate(executed_test) if executed_test else _rate(executed)
-            if r_before is None or r_after is None:
-                continue
-            test_before = r_before
-            test_after = r_after
-            test_delta = float(r_after - r_before)
-
-        points.append({
-            "run_id": run.get("run_id"),
-            "agent_target": run.get("agent_target"),
-            "started_at": run.get("started_at"),
-            "decision": run.get("decision"),
-            "test_v1_resolution_rate": round(float(test_before), 4),
-            "test_v2_resolution_rate": round(float(test_after), 4),
-            "test_resolution_delta": round(float(test_delta), 4),
-        })
+        pt = test_holdout_resolution_point(run)
+        if pt is not None:
+            points.append(pt)
 
     return {"points": points[-10:], "total": len(points)}
 
@@ -1773,7 +1621,7 @@ async def _build_agent_analytics(db, agent_name: str) -> dict[str, Any]:
         "cards": cards,
         "cards_source_version": latest_metrics_source_version,
         "version_history": rows,
-        "convergence": _build_convergence_payload(runs, prompt_changes),
+        "convergence": build_convergence_payload(runs, prompt_changes),
         "insight": _insight_from_rows(rows),
         "patch_readiness": {
             "run_id": (latest_run or {}).get("run_id"),

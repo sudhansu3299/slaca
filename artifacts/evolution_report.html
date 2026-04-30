@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evolution report — self-learning pipeline</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --panel: #151a22;
+      --text: #e8eaed;
+      --muted: #8b939e;
+      --accent: #3dd6c3;
+      --v1: #6b9fff;
+      --v2: #7ee787;
+      --reject: #f85149;
+      --adopt: #3fb950;
+      --pending: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+    }
+    header {
+      padding: 1.5rem 2rem; border-bottom: 1px solid #252b36;
+      background: linear-gradient(180deg, #121820 0%, var(--bg) 100%);
+    }
+    header h1 { margin: 0 0 0.35rem; font-size: 1.35rem; font-weight: 600; }
+    header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+    main { padding: 1.5rem 2rem 3rem; max-width: 1200px; margin: 0 auto; }
+    section.agent {
+      background: var(--panel); border-radius: 12px; padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem; border: 1px solid #252b36;
+    }
+    section.agent h2 {
+      margin: 0 0 1rem; font-size: 1.1rem; font-weight: 600;
+      color: var(--accent);
+    }
+    .grid {
+      display: grid; gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .chart-wrap {
+      background: #0e1218; border-radius: 8px; padding: 0.75rem;
+      border: 1px solid #1e2430;
+    }
+    .chart-wrap h3 {
+      margin: 0 0 0.5rem; font-size: 0.8rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    canvas { max-height: 280px; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Evolution report</h1>
+    <p><strong>Convergence</strong> charts match Agent Analytics (adopted Δ vs version, v2 rate + rolling avg). Train % uses the same score-derived rules; <code>pipeline_ab_*</code> in JSON matches the Pipeline A/B table; test % matches test-resolution-trend.</p>
+  </header>
+  <main id="main"></main>
+  <script type="application/json" id="evolution-data">{"generated_at_utc": "2026-04-30T00:13:08.142376+00:00", "source": "artifacts", "metric_alignment": "convergence: same build as Agent Analytics (Δ=v2−v1 vs prompt version from prompt_changes); train charts: score lists + VC fallback; pipeline_ab_*: Pipeline score-trend (VC only); test_*: test-resolution-trend API", "filters": {"agent": "", "limit": 500, "include_running": false, "include_mock": false, "glob": "artifacts/repro-*/run_doc.json"}, "run_count": 3, "agents": {"AssessmentAgent": {"run_count": 1, "points": [{"run_id": "pipeline-8d4e2f61", "started_at": "2026-04-29T13:10:17.006266+00:00", "completed_at": "2026-04-29T13:10:17.059997+00:00", "status": "completed", "decision": "adopt", "triggered_by": "repro_bundle_rerun", "train_v1_pct": 0.0, "train_v2_pct": 100.0, "train_delta_pct": 100.0, "pipeline_ab_v1_pct": 0.0, "pipeline_ab_v2_pct": 100.0, "pipeline_ab_delta_pct": 100.0, "test_v1_pct": 0.0, "test_v2_pct": 100.0, "test_delta_pct": 100.0, "p_value": 0.0498, "v2_execution_mode": "simulator", "llm_calls": 0, "pipeline_cost_usd": 0.0, "train_n": 3, "test_n": 1, "transcript_count": 4, "iteration": 1}], "convergence": {"status": "ok", "points": [{"run_id": "pipeline-8d4e2f61", "started_at": "2026-04-29T13:10:17.006266+00:00", "version": "pipeline-8d4e2f61", "v2_resolution_rate": 1.0, "v2_execution_mode": "simulator", "v1_resolution_rate": 0.0, "resolution_delta": 1.0, "decision": "adopt", "delta_from_v1": 1.0}], "baseline_v1_rate": 0.0, "trend_non_decreasing": true, "stability_band": 0.0, "plateau": false, "plateau_window": 3, "plateau_delta_eps": 0.015, "plateau_band_eps": 0.03}}, "FinalNoticeAgent": {"run_count": 1, "points": [{"run_id": "pipeline-a66a2020", "started_at": "2026-04-29T13:10:18.601495+00:00", "completed_at": "2026-04-29T13:10:18.932690+00:00", "status": "completed", "decision": "adopt", "triggered_by": "repro_bundle_rerun", "train_v1_pct": 0.0, "train_v2_pct": 100.0, "train_delta_pct": 100.0, "pipeline_ab_v1_pct": 0.0, "pipeline_ab_v2_pct": 100.0, "pipeline_ab_delta_pct": 100.0, "test_v1_pct": 0.0, "test_v2_pct": 100.0, "test_delta_pct": 100.0, "p_value": 0.0, "v2_execution_mode": "simulator", "llm_calls": 0, "pipeline_cost_usd": 0.0, "train_n": 48, "test_n": 12, "transcript_count": 60, "iteration": 1}], "convergence": {"status": "ok", "points": [{"run_id": "pipeline-a66a2020", "started_at": "2026-04-29T13:10:18.601495+00:00", "version": "pipeline-a66a2020", "v2_resolution_rate": 1.0, "v2_execution_mode": "simulator", "v1_resolution_rate": 0.0, "resolution_delta": 1.0, "decision": "adopt", "delta_from_v1": 1.0}], "baseline_v1_rate": 0.0, "trend_non_decreasing": true, "stability_band": 0.0, "plateau": false, "plateau_window": 3, "plateau_delta_eps": 0.015, "plateau_band_eps": 0.03}}, "ResolutionAgent": {"run_count": 1, "points": [{"run_id": "pipeline-55414e4c", "started_at": "2026-04-29T13:10:17.785052+00:00", "completed_at": "2026-04-29T13:10:17.991539+00:00", "status": "completed", "decision": "adopt", "triggered_by": "repro_bundle_rerun", "train_v1_pct": 0.0, "train_v2_pct": 100.0, "train_delta_pct": 100.0, "pipeline_ab_v1_pct": 0.0, "pipeline_ab_v2_pct": 100.0, "pipeline_ab_delta_pct": 100.0, "test_v1_pct": 0.0, "test_v2_pct": 100.0, "test_delta_pct": 100.0, "p_value": 0.0, "v2_execution_mode": "simulator", "llm_calls": 0, "pipeline_cost_usd": 0.0, "train_n": 24, "test_n": 6, "transcript_count": 30, "iteration": 1}], "convergence": {"status": "ok", "points": [{"run_id": "pipeline-55414e4c", "started_at": "2026-04-29T13:10:17.785052+00:00", "version": "pipeline-55414e4c", "v2_resolution_rate": 1.0, "v2_execution_mode": "simulator", "v1_resolution_rate": 0.0, "resolution_delta": 1.0, "decision": "adopt", "delta_from_v1": 1.0}], "baseline_v1_rate": 0.0, "trend_non_decreasing": true, "stability_band": 0.0, "plateau": false, "plateau_window": 3, "plateau_delta_eps": 0.015, "plateau_band_eps": 0.03}}}}</script>
+  <script>
+    const report = JSON.parse(document.getElementById('evolution-data').textContent);
+    const main = document.getElementById('main');
+
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#b4bcc8' } },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8b939e', maxRotation: 45 },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+        },
+        y: {
+          ticks: { color: '#8b939e' },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+        },
+      },
+    };
+
+    function decisionColor(d) {
+      if (d === 'adopt') return '#3fb950';
+      if (d === 'reject') return '#f85149';
+      return '#8b939e';
+    }
+
+    function mkCanvas(grid, title) {
+      const w = document.createElement('div');
+      w.className = 'chart-wrap';
+      w.innerHTML = `<h3>${title}</h3><canvas></canvas>`;
+      grid.appendChild(w);
+      return w.querySelector('canvas');
+    }
+
+    for (const [agent, block] of Object.entries(report.agents || {})) {
+      const sec = document.createElement('section');
+      sec.className = 'agent';
+      sec.innerHTML = `<h2>${agent}</h2><div class="grid" data-agent="${agent}"></div>
+        <div class="meta">${block.run_count} runs · source: ${report.source}</div>`;
+      main.appendChild(sec);
+      const grid = sec.querySelector('.grid');
+
+      const conv = block.convergence || {};
+      const convPts = conv.points || [];
+      const adoptPts = convPts.filter(p => String(p.decision||'').toLowerCase().startsWith('adopt'));
+      const verLabels = adoptPts.map(p => {
+        const v = p.version || p.run_id || '';
+        const s = String(v);
+        return s.length > 14 ? s.slice(0,14)+'…' : s;
+      });
+      const deltaPct = adoptPts.map(p => (Number(p.resolution_delta)||0) * 100);
+      const deltaRolling = adoptPts.map((_, i) => {
+        const s = Math.max(0, i - 2);
+        const slice = deltaPct.slice(s, i + 1);
+        return slice.reduce((a,b)=>a+b,0) / slice.length;
+      });
+      let yMin = -40, yMax = 40;
+      if (deltaPct.length) {
+        const m = Math.max(20, ...deltaPct.map(Math.abs), ...deltaRolling.map(Math.abs));
+        yMin = -Math.min(100, m);
+        yMax = Math.min(100, m);
+        if (yMax - yMin < 20) { yMin = -30; yMax = 30; }
+      }
+      if (adoptPts.length) {
+        new Chart(mkCanvas(grid, 'Adopted Δ vs version (Agent Analytics)'), {
+          type: 'line',
+          data: {
+            labels: verLabels,
+            datasets: [
+              { label: 'Δ v2−v1 (pp)', data: deltaPct, borderColor: '#58a6ff', tension: 0.15, spanGaps: true, pointRadius: 4 },
+              { label: '3-run rolling avg', data: deltaRolling, borderColor: '#bc8cff', borderDash: [4,3], tension: 0.15, spanGaps: true, pointRadius: 2 },
+            ],
+          },
+          options: {
+            ...chartDefaults,
+            plugins: {
+              ...chartDefaults.plugins,
+              subtitle: {
+                display: true,
+                text: 'Adopted points: ' + adoptPts.length +
+                  ' · plateau: ' + (conv.plateau ? 'yes' : 'no') +
+                  ' · stability band: ' + (typeof conv.stability_band === 'number' ? (conv.stability_band*100).toFixed(1)+'%' : '—'),
+                color: '#8b939e',
+                font: { size: 11 },
+              },
+            },
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                min: yMin,
+                max: yMax,
+                title: { display: true, text: 'Δ percentage points (v2−v1, same run)', color: '#8b939e' },
+              },
+            },
+          },
+        });
+      } else {
+        const emptyC = document.createElement('div');
+        emptyC.className = 'chart-wrap';
+        emptyC.innerHTML = '<h3>Adopted Δ vs version (Agent Analytics)</h3>'
+          + '<p style="color:#8b939e;font-size:0.85rem;padding:0.25rem 0;">No adopted runs in convergence series.</p>';
+        grid.appendChild(emptyC);
+      }
+
+      const ratePts = convPts.slice(-5);
+      if (ratePts.length && conv.status === 'ok') {
+        const rl = ratePts.map(p => {
+          const v = p.version || p.run_id || '';
+          const s = String(v);
+          return s.length > 14 ? s.slice(0,14)+'…' : s;
+        });
+        const v2r = ratePts.map(p => (Number(p.v2_resolution_rate)||0) * 100);
+        const roll3 = ratePts.map((_, i) => {
+          const s = Math.max(0, i - 2);
+          const sl = v2r.slice(s, i + 1);
+          return sl.reduce((a,b)=>a+b,0) / sl.length;
+        });
+        new Chart(mkCanvas(grid, 'V2 train resolution % (last ≤5 in convergence window)'), {
+          type: 'line',
+          data: {
+            labels: rl,
+            datasets: [
+              { label: 'V2 rate', data: v2r, borderColor: '#7ee787', tension: 0.15, spanGaps: true },
+              { label: 'Rolling (3)', data: roll3, borderColor: '#bc8cff', borderDash: [4,3], tension: 0.15 },
+            ],
+          },
+          options: {
+            ...chartDefaults,
+            scales: {
+              ...chartDefaults.scales,
+              y: { ...chartDefaults.scales.y, min: 0, max: 100, title: { display: true, text: '%', color: '#8b939e' } },
+            },
+          },
+        });
+      }
+
+      const pts = block.points || [];
+      const labels = pts.map(p => '#' + p.iteration);
+
+      const trainV1 = pts.map(p => p.train_v1_pct);
+      const trainV2 = pts.map(p => p.train_v2_pct);
+      const testV1 = pts.map(p => p.test_v1_pct);
+      const testV2 = pts.map(p => p.test_v2_pct);
+
+      new Chart(mkCanvas(grid, 'Train resolution % (Agent Analytics rule)'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'V1 (train)', data: trainV1, borderColor: '#6b9fff', tension: 0.2, spanGaps: true },
+            { label: 'V2 (train)', data: trainV2, borderColor: '#7ee787', tension: 0.2, spanGaps: true },
+          ],
+        },
+        options: {
+          ...chartDefaults,
+          scales: {
+            ...chartDefaults.scales,
+            y: { ...chartDefaults.scales.y, min: 0, max: 100, title: { display: true, text: '%', color: '#8b939e' } },
+          },
+        },
+      });
+
+      new Chart(mkCanvas(grid, 'Holdout resolution % (test-resolution-trend rule)'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'V1 (test)', data: testV1, borderColor: '#a371f7', tension: 0.2, spanGaps: true },
+            { label: 'V2 (test)', data: testV2, borderColor: '#ff9b4a', tension: 0.2, spanGaps: true },
+          ],
+        },
+        options: {
+          ...chartDefaults,
+          scales: {
+            ...chartDefaults.scales,
+            y: { ...chartDefaults.scales.y, min: 0, max: 100, title: { display: true, text: '%', color: '#8b939e' } },
+          },
+        },
+      });
+
+      const trainD = pts.map(p => p.train_delta_pct);
+      const testD = pts.map(p => p.test_delta_pct);
+      new Chart(mkCanvas(grid, 'Resolution delta (V2 − V1, points)'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Train Δ', data: trainD, backgroundColor: 'rgba(61,214,195,0.55)' },
+            { label: 'Test Δ', data: testD, backgroundColor: 'rgba(107,159,255,0.5)' },
+          ],
+        },
+        options: {
+          ...chartDefaults,
+          scales: {
+            ...chartDefaults.scales,
+            y: { ...chartDefaults.scales.y, title: { display: true, text: 'percentage points', color: '#8b939e' } },
+          },
+        },
+      });
+
+      const pvals = pts.map(p => (p.p_value == null ? null : Math.min(p.p_value, 1)));
+      new Chart(mkCanvas(grid, 'Fisher p-value (train comparison)'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'p-value', data: pvals, borderColor: '#ff7b72', tension: 0.15, spanGaps: true },
+          ],
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            legend: chartDefaults.plugins.legend,
+            annotation: false,
+          },
+          scales: {
+            ...chartDefaults.scales,
+            y: {
+              ...chartDefaults.scales.y,
+              min: 0,
+              max: 1,
+              title: { display: true, text: 'p', color: '#8b939e' },
+            },
+          },
+        },
+      });
+
+      const cost = pts.map(p => p.pipeline_cost_usd);
+      new Chart(mkCanvas(grid, 'Pipeline cost (USD)'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Cost USD', data: cost, borderColor: '#d2a8ff', tension: 0.2, fill: 'origin',
+              backgroundColor: 'rgba(210,168,255,0.12)' },
+          ],
+        },
+        options: { ...chartDefaults },
+      });
+
+      const decColors = pts.map(p => decisionColor(p.decision));
+      new Chart(mkCanvas(grid, 'Decision (by run)'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Decision',
+              data: pts.map(() => 1),
+              backgroundColor: decColors,
+              barPercentage: 0.9,
+              categoryPercentage: 0.95,
+            },
+          ],
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const p = pts[ctx.dataIndex];
+                  return [
+                    'Decision: ' + p.decision.toUpperCase(),
+                    'V2 train: ' + (p.train_v2_pct ?? '—') + '%',
+                    'V2 test: ' + (p.test_v2_pct ?? '—') + '%',
+                  ];
+                },
+              },
+            },
+          },
+          scales: {
+            ...chartDefaults.scales,
+            y: {
+              ...chartDefaults.scales.y,
+              min: 0,
+              max: 1.15,
+              ticks: { stepSize: 1, callback: () => '' },
+              title: { display: true, text: 'Each bar = one run (color = decision)', color: '#8b939e' },
+            },
+          },
+        },
+      });
+    }
+
+    if (!Object.keys(report.agents || {}).length) {
+      main.innerHTML = '<p style="color:#8b939e">No runs matched filters.</p>';
+    }
+  </script>
+</body>
+</html>

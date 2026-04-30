@@ -1,0 +1,174 @@
+{
+  "generated_at_utc": "2026-04-30T00:13:08.142376+00:00",
+  "source": "artifacts",
+  "metric_alignment": "convergence: same build as Agent Analytics (Δ=v2−v1 vs prompt version from prompt_changes); train charts: score lists + VC fallback; pipeline_ab_*: Pipeline score-trend (VC only); test_*: test-resolution-trend API",
+  "filters": {
+    "agent": "",
+    "limit": 500,
+    "include_running": false,
+    "include_mock": false,
+    "glob": "artifacts/repro-*/run_doc.json"
+  },
+  "run_count": 3,
+  "agents": {
+    "AssessmentAgent": {
+      "run_count": 1,
+      "points": [
+        {
+          "run_id": "pipeline-8d4e2f61",
+          "started_at": "2026-04-29T13:10:17.006266+00:00",
+          "completed_at": "2026-04-29T13:10:17.059997+00:00",
+          "status": "completed",
+          "decision": "adopt",
+          "triggered_by": "repro_bundle_rerun",
+          "train_v1_pct": 0.0,
+          "train_v2_pct": 100.0,
+          "train_delta_pct": 100.0,
+          "pipeline_ab_v1_pct": 0.0,
+          "pipeline_ab_v2_pct": 100.0,
+          "pipeline_ab_delta_pct": 100.0,
+          "test_v1_pct": 0.0,
+          "test_v2_pct": 100.0,
+          "test_delta_pct": 100.0,
+          "p_value": 0.0498,
+          "v2_execution_mode": "simulator",
+          "llm_calls": 0,
+          "pipeline_cost_usd": 0.0,
+          "train_n": 3,
+          "test_n": 1,
+          "transcript_count": 4,
+          "iteration": 1
+        }
+      ],
+      "convergence": {
+        "status": "ok",
+        "points": [
+          {
+            "run_id": "pipeline-8d4e2f61",
+            "started_at": "2026-04-29T13:10:17.006266+00:00",
+            "version": "pipeline-8d4e2f61",
+            "v2_resolution_rate": 1.0,
+            "v2_execution_mode": "simulator",
+            "v1_resolution_rate": 0.0,
+            "resolution_delta": 1.0,
+            "decision": "adopt",
+            "delta_from_v1": 1.0
+          }
+        ],
+        "baseline_v1_rate": 0.0,
+        "trend_non_decreasing": true,
+        "stability_band": 0.0,
+        "plateau": false,
+        "plateau_window": 3,
+        "plateau_delta_eps": 0.015,
+        "plateau_band_eps": 0.03
+      }
+    },
+    "FinalNoticeAgent": {
+      "run_count": 1,
+      "points": [
+        {
+          "run_id": "pipeline-a66a2020",
+          "started_at": "2026-04-29T13:10:18.601495+00:00",
+          "completed_at": "2026-04-29T13:10:18.932690+00:00",
+          "status": "completed",
+          "decision": "adopt",
+          "triggered_by": "repro_bundle_rerun",
+          "train_v1_pct": 0.0,
+          "train_v2_pct": 100.0,
+          "train_delta_pct": 100.0,
+          "pipeline_ab_v1_pct": 0.0,
+          "pipeline_ab_v2_pct": 100.0,
+          "pipeline_ab_delta_pct": 100.0,
+          "test_v1_pct": 0.0,
+          "test_v2_pct": 100.0,
+          "test_delta_pct": 100.0,
+          "p_value": 0.0,
+          "v2_execution_mode": "simulator",
+          "llm_calls": 0,
+          "pipeline_cost_usd": 0.0,
+          "train_n": 48,
+          "test_n": 12,
+          "transcript_count": 60,
+          "iteration": 1
+        }
+      ],
+      "convergence": {
+        "status": "ok",
+        "points": [
+          {
+            "run_id": "pipeline-a66a2020",
+            "started_at": "2026-04-29T13:10:18.601495+00:00",
+            "version": "pipeline-a66a2020",
+            "v2_resolution_rate": 1.0,
+            "v2_execution_mode": "simulator",
+            "v1_resolution_rate": 0.0,
+            "resolution_delta": 1.0,
+            "decision": "adopt",
+            "delta_from_v1": 1.0
+          }
+        ],
+        "baseline_v1_rate": 0.0,
+        "trend_non_decreasing": true,
+        "stability_band": 0.0,
+        "plateau": false,
+        "plateau_window": 3,
+        "plateau_delta_eps": 0.015,
+        "plateau_band_eps": 0.03
+      }
+    },
+    "ResolutionAgent": {
+      "run_count": 1,
+      "points": [
+        {
+          "run_id": "pipeline-55414e4c",
+          "started_at": "2026-04-29T13:10:17.785052+00:00",
+          "completed_at": "2026-04-29T13:10:17.991539+00:00",
+          "status": "completed",
+          "decision": "adopt",
+          "triggered_by": "repro_bundle_rerun",
+          "train_v1_pct": 0.0,
+          "train_v2_pct": 100.0,
+          "train_delta_pct": 100.0,
+          "pipeline_ab_v1_pct": 0.0,
+          "pipeline_ab_v2_pct": 100.0,
+          "pipeline_ab_delta_pct": 100.0,
+          "test_v1_pct": 0.0,
+          "test_v2_pct": 100.0,
+          "test_delta_pct": 100.0,
+          "p_value": 0.0,
+          "v2_execution_mode": "simulator",
+          "llm_calls": 0,
+          "pipeline_cost_usd": 0.0,
+          "train_n": 24,
+          "test_n": 6,
+          "transcript_count": 30,
+          "iteration": 1
+        }
+      ],
+      "convergence": {
+        "status": "ok",
+        "points": [
+          {
+            "run_id": "pipeline-55414e4c",
+            "started_at": "2026-04-29T13:10:17.785052+00:00",
+            "version": "pipeline-55414e4c",
+            "v2_resolution_rate": 1.0,
+            "v2_execution_mode": "simulator",
+            "v1_resolution_rate": 0.0,
+            "resolution_delta": 1.0,
+            "decision": "adopt",
+            "delta_from_v1": 1.0
+          }
+        ],
+        "baseline_v1_rate": 0.0,
+        "trend_non_decreasing": true,
+        "stability_band": 0.0,
+        "plateau": false,
+        "plateau_window": 3,
+        "plateau_delta_eps": 0.015,
+        "plateau_band_eps": 0.03
+      }
+    }
+  }
+}
